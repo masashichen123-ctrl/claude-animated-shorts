@@ -211,7 +211,7 @@ const blob = (out: Stage, x: number, y: number, z: number, sc = 1, k = 1) => {
 export type Stage = { places: Place[]; fx: FxPlace[] };
 
 // ---------------- the cast ----------------
-const ENGINEER: Outfit = { jacket: "#d6b46c", pants: "#4a4f5c", boots: "#3a2a22", hat: "cap", cap: "#f6c62e", skin: SKINS[0], belt: "#3a2a22" };
+const ENGINEER: Outfit = { jacket: "#d6b46c", pants: "#4a4f5c", boots: "#3a2a22", hat: "cap", cap: "#f6c62e", skin: SKINS[0], belt: null };
 const VET: Outfit = { jacket: "#5f7044", pants: "#4b4338", boots: "#2f2620", hat: "hair", hair: "#8a8d94", moustache: "#8a8d94", skin: SKINS[1], build: "stout" };
 const REPORTER: Outfit = { jacket: "#2f5f9a", pants: "#2c3140", boots: "#2a2228", hat: "hair", hair: "#2a1d16", skin: SKINS[2], buttons: "#e8c45a" };
 const CAMERAMAN: Outfit = { jacket: "#7a4a8c", pants: "#3b3f52", boots: "#4a3426", hat: "cap", cap: "#d8453c", skin: SKINS[3] };
@@ -284,7 +284,7 @@ export const stage = (id: number, f: number, cam: CamInfo): Stage => {
       ring(out, cam, t, (i) => (["pained", "nervous", "dazed"] as Expr[])[i % 3]);
       stink();
       if (k < 2 && f > TRUCK_HALT + 6) put(out, cam, t, 1, ENGINEER, "eng", [13.2, 0, -9.6], { expr: f > F(3, 0.5) ? "nervous" : "neutral", look: -1 }, 1, [sec(F(3, 0.5))]);
-      if (k === 2) put(out, cam, t, 1, ENGINEER, "eng", [10.5, 0, -5.3], { expr: "nervous", look: -1, headTilt: 0.08 });
+      if (k === 2) put(out, cam, t, 1, ENGINEER, "eng", [7.9, 0, -5.7], { expr: "nervous", look: 1, headTilt: 0.08 });
       break;
     }
     case 4:
@@ -322,8 +322,8 @@ export const stage = (id: number, f: number, cam: CamInfo): Stage => {
       if (k < 2) {
         const tb = (f - BLAST) / FPS;
         if (tb >= 0) {
-          const size = 5 + 40 * easeOut(tb / 1.6), g = q(clamp01(tb / 1.6), 30);
-          out.fx.push({ key: `blast${g}`, cw: 900, ch: 900, draw: (p) => fxBlast(p, g), x: WHALE[0] + 0.5, y: size * 0.4, z: WHALE[2] - 1.5, w: size, h: size });
+          const size = 5 + 30 * easeOut(tb / 1.6), g = q(clamp01(tb / 1.6), 30);
+          out.fx.push({ key: `blast${g}`, cw: 900, ch: 900, draw: (p) => fxBlast(p, g), x: WHALE[0] + 0.5, y: size * 0.4, z: WHALE[2] - 3.4, w: size, h: size });
           if (tb < 0.3) { const u = q(tb / 0.3, 30); out.fx.push({ key: `bb${u}`, cw: 500, ch: 500, draw: (p) => fxBurst(p, u, "#fff3b0", 14, 60, 240), x: WHALE[0], y: 3, z: WHALE[2] - 3, w: 26, h: 26 }); }
         }
       } else crowd(out, cam, t, (i) => (i % 3 === 0 ? "shock" : i % 3 === 1 ? "nervous" : "pained"), 0, f > RAIN + 26);
@@ -360,18 +360,18 @@ export const stage = (id: number, f: number, cam: CamInfo): Stage => {
       const up = smooth((f - (SLAP - 16)) / 10) * (1 - smooth((f - SLAP + 2) / 3));
       const ex: Expr = f < SLAP - 16 ? "smile" : f < SLAP ? "grin" : f < SLAP + 24 ? "shock" : "laugh";
       put(out, cam, t, 5, KID, "kid", [TABLE[0] + 0.12, 0, TABLE[2] + 0.74], { expr: ex, look: 0, ...(f >= SLAP - 16 && f < SLAP + 40 ? { wave: 1.4 * up - 0.6 } : {}) }, 1, [sec(SLAP - 16), sec(SLAP), sec(SLAP + 24)]);
-      if (f >= SLAP && f < SLAP + 6) { const u = q((f - SLAP) / 6, 30); out.fx.push({ key: `burst${u}`, cw: 500, ch: 500, draw: (p) => fxBurst(p, u, "#ffd6de"), x: TABLE[0], y: 1.12, z: TABLE[2] - 0.3, w: 1.3, h: 1.3 }); }
+      if (f >= SLAP && f < SLAP + 6) { const u = q((f - SLAP) / 6, 30); out.fx.push({ key: `burst${u}`, cw: 500, ch: 500, draw: (p) => fxBurst(p, u, "#ffd6de"), x: TABLE[0], y: 1.12, z: TABLE[2] - 0.3, w: 0.8, h: 0.8 }); }
       break;
     }
     case 14:
-      put(out, cam, t, 1, ENGINEER, "eng", [-5.6, 0, -1.2], { expr: "relief", look: 1 });
+      put(out, cam, t, 1, ENGINEER, "eng", [3.6, 0, -4.2], { expr: "relief", look: -1 });
       break;
     case 15:
       put(out, cam, t, 2, VET, "vet", [-97.4, 0, -53.2], { expr: f > F(15, 0.6) ? "dazed" : "stern", look: 1 }, 1, [sec(F(15, 0.6))]);
       break;
     case 16:
-      put(out, cam, t, 2, VET, "vet", [LOT[0] - 0.5, 0, LOT[2] - 0.5], { expr: "grin", look: 0 });
-      put(out, cam, t, 6, SALESMAN, "sale", [LOT[0] - 2.1, 0, LOT[2] + 0.3], { expr: "relief_open", look: 1, wave: 0.5 + 0.5 * Math.sin(t * 5) });
+      put(out, cam, t, 2, VET, "vet", [LOT[0] - 0.25, 0, LOT[2] - 0.5], { expr: "grin", look: 0 });
+      put(out, cam, t, 6, SALESMAN, "sale", [LOT[0] - 1.25, 0, LOT[2] + 0.5], { expr: "relief_open", look: 1, wave: 0.5 + 0.5 * Math.sin(t * 5) });
       break;
   }
   return out;

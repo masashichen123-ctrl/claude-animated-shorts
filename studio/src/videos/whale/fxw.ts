@@ -109,23 +109,24 @@ export const paintBadge = (g: CanvasRenderingContext2D) => {
   text(g, "HWY", 128, 90, 56, "#1c1a22"); text(g, "DEPT", 128, 152, 50, "#1c1a22");
 };
 
-/** the dealer's banner, 1680 x 340: "GET A WHALE OF A DEAL!" with a little whale */
+/** the dealer's banner, 1000 x 720: "GET A / WHALE / OF A DEAL!" with a little whale */
 export const paintBanner = (g: CanvasRenderingContext2D) => {
-  g.fillStyle = "#f6c62e"; g.fillRect(0, 0, 1680, 340);
+  g.fillStyle = "#f6c62e"; g.fillRect(0, 0, 1000, 720);
   g.fillStyle = "#e23b3b";
-  for (let i = 0; i < 28; i++) { g.beginPath(); g.moveTo(i * 60, 0); g.lineTo(i * 60 + 30, 34); g.lineTo(i * 60 + 60, 0); g.fill(); g.beginPath(); g.moveTo(i * 60, 340); g.lineTo(i * 60 + 30, 306); g.lineTo(i * 60 + 60, 340); g.fill(); }
-  g.strokeStyle = "#1c1a22"; g.lineWidth = 16; g.strokeRect(8, 8, 1664, 324);
-  text(g, "GET A WHALE OF A DEAL!", 760, 176, 112, "#ffffff", "#1c1a22", 26);
-  text(g, "GET A WHALE OF A DEAL!", 760, 176, 112, "#e23b3b");
-  // whale
-  const x = 1520, y = 176;
+  for (let i = 0; i < 20; i++) { g.beginPath(); g.moveTo(i * 50, 0); g.lineTo(i * 50 + 25, 30); g.lineTo(i * 50 + 50, 0); g.fill(); g.beginPath(); g.moveTo(i * 50, 720); g.lineTo(i * 50 + 25, 690); g.lineTo(i * 50 + 50, 720); g.fill(); }
+  g.strokeStyle = "#1c1a22"; g.lineWidth = 16; g.strokeRect(8, 8, 984, 704);
+  const line = (s: string, x: number, y: number, px: number, col: string) => { text(g, s, x, y, px, "#ffffff", "#1c1a22", 24); text(g, s, x, y, px, col); };
+  line("GET A", 330, 150, 120, "#1c1a22");
+  line("WHALE", 500, 345, 230, "#e23b3b");
+  line("OF A DEAL!", 500, 570, 138, "#1c1a22");
+  const x = 800, y = 140, k = 0.82;
+  g.save(); g.translate(x, y); g.scale(k, k);
   g.fillStyle = "#4f86c6"; g.strokeStyle = "#1c1a22"; g.lineWidth = 12;
-  g.beginPath(); g.moveTo(x - 120, y + 10); g.quadraticCurveTo(x - 110, y - 80, x, y - 76); g.quadraticCurveTo(x + 96, y - 70, x + 100, y + 6); g.quadraticCurveTo(x + 90, y + 66, x - 10, y + 62);
-  g.quadraticCurveTo(x - 80, y + 60, x - 120, y + 10); g.closePath(); g.fill(); g.stroke();
-  g.beginPath(); g.moveTo(x - 112, y + 6); g.lineTo(x - 150, y - 50); g.lineTo(x - 128, y - 10); g.lineTo(x - 156, y + 34); g.closePath(); g.fill(); g.stroke();
-  g.fillStyle = "#1c1a22"; g.beginPath(); g.arc(x + 56, y - 14, 9, 0, Math.PI * 2); g.fill();
-  g.lineWidth = 9; g.beginPath(); g.arc(x + 44, y + 18, 34, 0.2, 1.4); g.stroke();
-  g.strokeStyle = "#7fd0f0"; g.lineWidth = 10; g.beginPath(); g.moveTo(x - 10, y - 84); g.quadraticCurveTo(x - 30, y - 130, x - 54, y - 112); g.moveTo(x - 10, y - 84); g.quadraticCurveTo(x + 10, y - 132, x + 36, y - 112); g.stroke();
+  g.beginPath(); g.moveTo(-120, 10); g.quadraticCurveTo(-110, -80, 0, -76); g.quadraticCurveTo(96, -70, 100, 6); g.quadraticCurveTo(90, 66, -10, 62); g.quadraticCurveTo(-80, 60, -120, 10); g.closePath(); g.fill(); g.stroke();
+  g.beginPath(); g.moveTo(-112, 6); g.lineTo(-150, -50); g.lineTo(-128, -10); g.lineTo(-156, 34); g.closePath(); g.fill(); g.stroke();
+  g.fillStyle = "#1c1a22"; g.beginPath(); g.arc(56, -14, 9, 0, Math.PI * 2); g.fill();
+  g.lineWidth = 9; g.beginPath(); g.arc(44, 18, 34, 0.2, 1.4); g.stroke();
+  g.restore();
 };
 
 /** price sticker for the windscreen, 256 x 160 */

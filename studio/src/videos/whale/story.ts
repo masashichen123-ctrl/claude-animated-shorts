@@ -51,7 +51,7 @@ export type Light = "day" | "golden";
 export type ShotDef = { id: number; a: number; b: number; light: Light; sunAz?: number; sunEl?: number };
 const LIGHT_OF: Record<number, Light> = { 16: "golden" };
 export const SHOTS: ShotDef[] = WORDS.map((_, i) => ({ id: i + 1, a: F(i + 1), b: i === 15 ? TOTAL : F(i + 2), light: LIGHT_OF[i + 1] ?? "day" }));
-SHOTS[15].sunAz = -35; SHOTS[15].sunEl = 14;
+SHOTS[15].sunAz = 140; SHOTS[15].sunEl = 24;
 /** crossfades (frames) at place/time changes; a white flash after the hook and at the blast */
 export const XFADE: Record<number, number> = { 3: 8, 7: 8, 11: 8, 12: 8, 13: 10, 14: 10, 15: 8, 16: 10 };
 export const FLASH_AT = F(2);
@@ -101,14 +101,14 @@ export const truckX = (f: number) => TRUCK_STOP[0] + 29 * (1 - easeOut((f - TRUC
 const CAMS: Record<number, Key[]> = {
   // 1 hook: low wide of the whale + crates with the engineer at the plunger -> his grin -> the plunger
   1: [
-    { f: 0, s: hold([-9, 1.1, -17], [0.5, 1.9, 4], 0, 46, 0.0022) },
+    { f: 0, s: hold([-9, 1.1, -17], [-1.2, 1.8, 2], 0, 46, 0.0022) },
     { f: F(1, 0.34), dur: 30, s: hold([-4.6, 1.55, -12.4], add(PLUNGER, 0.1, 1.55, 0), F(1, 0.34), 38, 0.002, -0.04) },
     { f: F(1, 0.72), dur: 26, s: hold([-3.9, 0.75, -11.2], add(PLUNGER, 0.35, 0.6, 0), F(1, 0.72), 36, 0.003, 0.04) },
   ],
   // 2 the beach: aerial of the whale and the town holding its nose -> faces
   2: [
-    { f: F(2), s: holdZ([24, 15, -36], [0, 1.2, 4], F(2), 44, 0.0018) },
-    { f: F(2, 0.62), cut: true, s: hold([-7.6, 1.5, -12.2], [-6.0, 1.5, -7.5], F(2, 0.62), 38, 0.0025, 0.035) },
+    { f: F(2), s: holdZ([17, 10, -27], [0, 1.0, 1], F(2), 44, 0.0018) },
+    { f: F(2, 0.62), cut: true, s: hold([-8.0, 1.5, -14.3], [-5.6, 1.45, -7.6], F(2, 0.62), 38, 0.0025, 0.035) },
   ],
   // 3 the highway truck rolls up; "the beach was a road": the road sign in the sand
   3: [
@@ -120,7 +120,7 @@ const CAMS: Record<number, Key[]> = {
   4: [
     { f: F(4), s: hold([1.2, 1.5, -11.2], [3.0, 1.55, -7], F(4), 38, 0.0022) },
     { f: F(4, 0.4), dur: 22, s: hold([2.0, 1.55, -10.2], [3.0, 1.6, -7], F(4, 0.4), 36, 0.002, 0.04) },
-    { f: F(4, 0.7), cut: true, s: hold([-12.6, 0.55, -16.4], add(LOG, 0, 0.75, 0), F(4, 0.7), 36, 0.0028) },
+    { f: F(4, 0.7), cut: true, s: hold([-12.4, 0.9, -18.6], add(LOG, 0, 0.8, 0), F(4, 0.7), 36, 0.0028) },
   ],
   // 5 the veteran: "twenty sticks would do it" -> the little bundle
   5: [
@@ -169,7 +169,7 @@ const CAMS: Record<number, Key[]> = {
   // 16 the dealer's lot: the proud owner -> up to the banner
   16: [
     { f: F(16), s: hold(add(LOT, -2.2, 1.5, -7.2), add(LOT, 0, 1.3, 0), F(16), 40, 0.0018) },
-    { f: F(16, 0.55), dur: 46, s: holdZ(add(LOT, -1.2, 1.3, -9.0), add(LOT, 0.2, 4.7, 2.4), F(16, 0.55), 34, 0.0012) },
+    { f: F(16, 0.55), dur: 46, s: holdZ(add(LOT, -0.5, 1.35, -10.5), add(LOT, 0.2, 4.35, 2.4), F(16, 0.55), 34, 0.0012) },
   ],
 };
 

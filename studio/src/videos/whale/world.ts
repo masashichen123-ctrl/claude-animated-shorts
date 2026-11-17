@@ -130,7 +130,7 @@ export class World {
 
     // ---- static scenery ----
     const b = new Batch();
-    const grass = lam("grassHD", () => ({ map: grassHD() }));
+    const grass = lam("grassW", () => ({ map: grassHD(), color: "#b9c2a4" }));
     const sand = lam("sandW", () => ({ map: ctex("sandW", 512, 512, paintSand) }));
     const wet = col("wetSand", "#c9b587"), wood = lam("wood", () => ({ map: beamHD() })), drift = col("drift", "#b7a58c");
     const asphalt = col("asphalt", "#6c6f78"), paintW = col("paintW", "#f1efe6"), pine = col("pine", "#3f8a4f"), pine2 = col("pine2", "#35784a");
@@ -158,7 +158,7 @@ export class World {
     for (let i = 0; i < 12; i++) b.add(ell(90 + 60 * hh(i, 11), 22 + 22 * hh(i, 12), 50, 20), hill, new THREE.Matrix4().makeTranslation(-600 + i * 110, -4, -330 - 60 * hh(i, 13)));
     // headland far down the beach, sea stacks
     b.add(ell(120, 34, 60, 20), hill, new THREE.Matrix4().makeTranslation(430, -6, -10));
-    for (const [x, z, r, h] of [[70, 80, 5, 11], [84, 96, 3, 7], [-120, 110, 6, 14]]) b.add(new THREE.CylinderGeometry(r * 0.5, r, h, 7).translate(0, h / 2 - 1, 0), col("stack", "#77736d"), new THREE.Matrix4().makeTranslation(x, 0, z));
+    for (const [x, z, r, h] of [[-260, 150, 9, 20], [-282, 170, 5, 11]]) b.add(new THREE.CylinderGeometry(r * 0.5, r, h, 7).translate(0, h / 2 - 1, 0), col("stack", "#77736d"), new THREE.Matrix4().makeTranslation(x, 0, z));
     // driftwood log
     b.add(new THREE.CylinderGeometry(0.26, 0.32, 5.2, 9).rotateZ(Math.PI / 2), drift, new THREE.Matrix4().makeTranslation(LOG[0], 0.26, LOG[2]));
     b.add(new THREE.CylinderGeometry(0.09, 0.12, 1.1, 6).rotateZ(0.7), drift, new THREE.Matrix4().makeTranslation(LOG[0] - 1.6, 0.7, LOG[2]));
@@ -179,7 +179,7 @@ export class World {
     b.add(boxGeo(V(lx - 9, 0, lz + 9), V(lx + 9, 4.6, lz + 16)), cream);
     b.add(boxGeo(V(lx - 9.4, 4.6, lz + 8.6), V(lx + 9.4, 5.1, lz + 16.4)), col("fascia", "#d9483b"));
     for (let i = 0; i < 5; i++) b.add(boxGeo(V(lx - 8.2 + i * 3.4, 0.5, lz + 8.92), V(lx - 5.4 + i * 3.4, 3.7, lz + 9)), glassB);
-    for (const s of [-1, 1]) b.add(new THREE.CylinderGeometry(0.09, 0.11, 6.2, 8).translate(0, 3.1, 0), col("pole", "#d7dae0"), new THREE.Matrix4().makeTranslation(lx + 0.2 + s * 4.5, 0, lz + 2.4));
+    for (const s of [-1, 1]) b.add(new THREE.CylinderGeometry(0.09, 0.11, 6.2, 8).translate(0, 3.1, 0), col("pole", "#d7dae0"), new THREE.Matrix4().makeTranslation(lx + 0.2 + s * 2.1, 0, lz + 2.45));
     b.build(R);
 
     // sea (same shader as the river)
@@ -227,8 +227,8 @@ export class World {
     this.crater = mesh(new THREE.CircleGeometry(6.5, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: "#5d5148", transparent: true, opacity: 0.55, depthWrite: false }), R, WHALE[0] + 0.8, 0.03, WHALE[2] - 4.2);
     this.crater.castShadow = false; this.crater.layers.set(NOINK); this.crater.scale.set(1.4, 1, 0.7);
     // burial mound (shot 14): sand heap over the body, the tail still sticks out; a shovel on top
-    mesh(ell(6.9, 2.7, 3.6, 22), sand, this.mound, 1.3, -0.1, 0);
-    const sh = new THREE.Group(); sh.position.set(2.2, 2.45, -0.6); sh.rotation.z = 0.25; this.mound.add(sh);
+    mesh(ell(7.9, 3.7, 4.4, 22), sand, this.mound, 0.9, -0.1, 0);
+    const sh = new THREE.Group(); sh.position.set(2.0, 3.4, -0.8); sh.rotation.z = 0.25; this.mound.add(sh);
     mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.3, 6).translate(0, 0.75, 0), wood, sh);
     mesh(boxGeo(V(-0.16, -0.05, -0.02), V(0.16, 0.3, 0.02)), col("blade", "#9aa0aa"), sh);
     mesh(boxGeo(V(-0.14, 1.36, -0.03), V(0.14, 1.44, 0.03)), wood, sh);
@@ -292,9 +292,9 @@ export class World {
     const shiny = makeCar(R, "#d8453c", "e"); shiny.g.position.set(lx + 1.9, 0, lz + 0.3); shiny.g.rotation.y = Math.PI * 0.78;
     const st = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.31), unlit("sticker", 256, 160, paintSticker)); st.position.set(-1.16, 0.3, 0); st.rotation.y = -Math.PI / 2; st.layers.set(NOINK); shiny.cabin.add(st);
     for (let i = 0; i < 4; i++) { const o = makeCar(R, ["#3f76b8", "#f1efe6", "#5c9a56", "#e2b93c"][i], "l" + i); o.g.position.set(lx - 7.5 + i * 5, 0, lz + 5.6); o.g.rotation.y = Math.PI / 2; }
-    const banner = new THREE.Mesh(new THREE.PlaneGeometry(8.8, 1.78), unlit("banner", 1680, 340, paintBanner));
-    banner.position.set(lx + 0.2, 4.9, lz + 2.38); banner.rotation.y = Math.PI; banner.layers.set(NOINK); R.add(banner);
-    mesh(boxGeo(V(-4.4, -0.89, 0), V(4.4, 0.89, 0.03)), col("bannerBack", "#e2b93c"), R, lx + 0.2, 4.9, lz + 2.4);
+    const banner = new THREE.Mesh(new THREE.PlaneGeometry(4.0, 2.88), unlit("banner", 1000, 720, paintBanner));
+    banner.position.set(lx + 0.2, 4.45, lz + 2.38); banner.rotation.y = Math.PI; banner.layers.set(NOINK); R.add(banner);
+    mesh(boxGeo(V(-2.0, -1.44, 0), V(2.0, 1.44, 0.03)), col("bannerBack", "#e2b93c"), R, lx + 0.2, 4.45, lz + 2.4);
     const blub = twoTone(new THREE.MeshPhongMaterial({ color: "#e0637a", specular: "#ffffff", shininess: 60 }), 0.3);
     this.bigChunk = mesh(new THREE.IcosahedronGeometry(1, 1), blub, R); this.bigChunk.scale.set(1.25, 0.8, 1.05);
     this.carShadow = mesh(new THREE.CircleGeometry(1, 20).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: "#2b2a3a", transparent: true, opacity: 0.4, depthWrite: false }), R);
@@ -383,7 +383,7 @@ export class World {
     this.crates.visible = (id === 1 || (id >= 6 && id <= 8)) && !(id === 8 && f >= BLAST);
     this.bundle.visible = id === 5;
     this.plBox.visible = id === 1 || id === 7 || id === 8;
-    this.handle.position.y = id === 1 && f >= PUSH ? 0.42 - 0.3 * easeOut((f - PUSH) / 4) : 0.42;
+    this.handle.position.y = id === 1 && f >= PUSH ? 0.42 - 0.4 * easeOut((f - PUSH) / 4) : 0.42;
     this.truck.visible = id === 1 || (id >= 3 && id <= 12) || id === 14;
     const tX = id === 3 ? truckX(f) : TRUCK_STOP[0];
     this.truck.position.set(tX, id === 3 && f < F(3, 0.42) ? 0.03 * Math.sin(f * 1.9) : 0, TRUCK_STOP[2]);
