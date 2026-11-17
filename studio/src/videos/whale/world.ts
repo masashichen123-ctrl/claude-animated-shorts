@@ -130,7 +130,7 @@ export class World {
 
     // ---- static scenery ----
     const b = new Batch();
-    const grass = lam("grassW", () => ({ map: grassHD(), color: "#b9c2a4" }));
+    const grass = lam("grassW", () => ({ map: grassHD(), color: "#a4aa8c" }));
     const sand = lam("sandW", () => ({ map: ctex("sandW", 512, 512, paintSand) }));
     const wet = col("wetSand", "#c9b587"), wood = lam("wood", () => ({ map: beamHD() })), drift = col("drift", "#b7a58c");
     const asphalt = col("asphalt", "#6c6f78"), paintW = col("paintW", "#f1efe6"), pine = col("pine", "#3f8a4f"), pine2 = col("pine2", "#35784a");
@@ -227,8 +227,8 @@ export class World {
     this.crater = mesh(new THREE.CircleGeometry(6.5, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: "#5d5148", transparent: true, opacity: 0.55, depthWrite: false }), R, WHALE[0] + 0.8, 0.03, WHALE[2] - 4.2);
     this.crater.castShadow = false; this.crater.layers.set(NOINK); this.crater.scale.set(1.4, 1, 0.7);
     // burial mound (shot 14): sand heap over the body, the tail still sticks out; a shovel on top
-    mesh(ell(7.9, 3.7, 4.4, 22), sand, this.mound, 0.9, -0.1, 0);
-    const sh = new THREE.Group(); sh.position.set(2.0, 3.4, -0.8); sh.rotation.z = 0.25; this.mound.add(sh);
+    mesh(ell(7.2, 3.7, 4.4, 22), sand, this.mound, 1.8, -0.1, 0);
+    const sh = new THREE.Group(); sh.position.set(2.6, 3.4, -0.8); sh.rotation.z = 0.25; this.mound.add(sh);
     mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.3, 6).translate(0, 0.75, 0), wood, sh);
     mesh(boxGeo(V(-0.16, -0.05, -0.02), V(0.16, 0.3, 0.02)), col("blade", "#9aa0aa"), sh);
     mesh(boxGeo(V(-0.14, 1.36, -0.03), V(0.14, 1.44, 0.03)), wood, sh);

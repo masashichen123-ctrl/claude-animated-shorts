@@ -101,7 +101,7 @@ export const truckX = (f: number) => TRUCK_STOP[0] + 29 * (1 - easeOut((f - TRUC
 const CAMS: Record<number, Key[]> = {
   // 1 hook: low wide of the whale + crates with the engineer at the plunger -> his grin -> the plunger
   1: [
-    { f: 0, s: hold([-9, 1.1, -17], [-1.2, 1.8, 2], 0, 46, 0.0022) },
+    { f: 0, s: hold([-6.2, 1.3, -15.5], [-1.0, 1.7, 1.5], 0, 46, 0.0022) },
     { f: F(1, 0.34), dur: 30, s: hold([-4.6, 1.55, -12.4], add(PLUNGER, 0.1, 1.55, 0), F(1, 0.34), 38, 0.002, -0.04) },
     { f: F(1, 0.72), dur: 26, s: hold([-3.9, 0.75, -11.2], add(PLUNGER, 0.35, 0.6, 0), F(1, 0.72), 36, 0.003, 0.04) },
   ],
