@@ -254,3 +254,15 @@ export const crowd = (out: Stage, cam: CamInfo, f: number, centre: V3, n: number
   }
 };
 export type { Outfit, Expr, FrontOpts, SideOpts };
+/** a character in side view (facing screen-right unless mirror), standing or in a side pose */
+export const putSide = (out: Stage, cam: CamInfo, f: number, i: number, o: Outfit, okey: string, at: V3, mirror: boolean, so: SideOpts = {}, sc = 1) => {
+  out.places.push(person(cam, { i, o, okey }, at[0], at[1], at[2], { side: true, mirror }, {}, { mode: "stand", blink: lidAt(f / FPS, i), ...so }, sc));
+  blob(out, at[0], at[1], at[2], sc);
+};
+/** a custom drawing on a lit character card (600 x 1000 design units, feet at y = 975), e.g. an animal */
+export const creature = (out: Stage, cam: CamInfo, key: string, draw: (p: Pen) => void, at: V3, mirror = false, sc = 1, shadow = true) => {
+  const d = cam.pos.distanceTo(new THREE.Vector3(at[0], at[1] + 1, at[2])) / sc;
+  const [w, h, k] = d < 3.2 ? [1800, 3000, 3.0] : d < 6.5 ? [1080, 1800, 1.8] : d < 16 ? [480, 800, 0.8] : [240, 400, 0.4];
+  out.places.push({ key: `${key}|${w}`, draw, x: at[0], y: at[1], z: at[2], scale: sc, mirror, size: [w, h, k] });
+  if (shadow) blob(out, at[0], at[1], at[2], sc);
+};
