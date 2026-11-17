@@ -125,7 +125,7 @@ export const build = (root: THREE.Group, env: Env) => {
   board(pg, "num1", 200, 200, (g) => { g.fillStyle = "#e8c45a"; g.fillRect(0, 0, 200, 200); text(g, "1", 100, 108, 150, "#1c1a22"); }, 0.6, 0.6, 0, 0.7, -0.61);
   mesh(boxGeo(V(-6, 0, 2), V(6, 6, 2.4)), col("velvet", "#7a2e3a"), pg);
   void clamp01; void easeOut; void F;
-  return { fleet, tower, vodka, rub, bottle, destroyer, magnet, half };
+  return { fleet, tower, vodka, rub, bottle, destroyer, magnet, half, wg };
 };
 
 export const pose = (h: Handles, id: number, f: number) => {
@@ -136,6 +136,7 @@ export const pose = (h: Handles, id: number, f: number) => {
   h.rub.position.z = id === 2 ? -0.6 + 0.4 * Math.abs(Math.sin(f * 0.25)) : 0;
   h.bottle.visible = id === 13;
   h.destroyer.visible = id === 14;
+  h.wg.visible = id === 10;
   const u = id === 14 ? easeOut((f - F(14)) / 8) : 1;
   h.destroyer.position.z = SHOP[2] + 24 - 13 * u;
   h.magnet.position.y = id === 9 ? 7 + 2.5 * clamp01((f - F(9, 0.3)) / 40) : 7;
