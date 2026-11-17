@@ -1,0 +1,251 @@
+{
+ "TOTAL": 1398,
+ "SENT": [
+  0,
+  4.68,
+  8.38,
+  11.78,
+  14.5,
+  19.2,
+  20.26,
+  22.58,
+  24.94,
+  27.48,
+  31.42,
+  34.82,
+  38.26,
+  43.64,
+  46.6
+ ],
+ "SPOKEN": [
+  4.26,
+  3.46,
+  3.04,
+  2.44,
+  4.44,
+  0.72,
+  2,
+  2.02,
+  2.52,
+  3.4,
+  3.08,
+  3.08,
+  5.14,
+  1.76
+ ],
+ "flashes": [
+  140
+ ],
+ "shots": [
+  {
+   "a": 0,
+   "b": 140,
+   "amb": "river",
+   "light": "day"
+  },
+  {
+   "a": 140,
+   "b": 251,
+   "amb": "river",
+   "light": "day"
+  },
+  {
+   "a": 251,
+   "b": 353,
+   "amb": "river",
+   "light": "golden"
+  },
+  {
+   "a": 353,
+   "b": 435,
+   "amb": "river",
+   "light": "day"
+  },
+  {
+   "a": 435,
+   "b": 576,
+   "amb": "room",
+   "light": "day"
+  },
+  {
+   "a": 576,
+   "b": 608,
+   "amb": "room",
+   "light": "day"
+  },
+  {
+   "a": 608,
+   "b": 677,
+   "amb": "room",
+   "light": "day"
+  },
+  {
+   "a": 677,
+   "b": 748,
+   "amb": "room",
+   "light": "day"
+  },
+  {
+   "a": 748,
+   "b": 824,
+   "amb": "room",
+   "light": "day"
+  },
+  {
+   "a": 824,
+   "b": 943,
+   "amb": "street",
+   "light": "day"
+  },
+  {
+   "a": 943,
+   "b": 1045,
+   "amb": "street",
+   "light": "day"
+  },
+  {
+   "a": 1045,
+   "b": 1148,
+   "amb": "room",
+   "light": "day"
+  },
+  {
+   "a": 1148,
+   "b": 1309,
+   "amb": "room",
+   "light": "day"
+  },
+  {
+   "a": 1309,
+   "b": 1398,
+   "amb": "room",
+   "light": "golden"
+  }
+ ],
+ "events": [
+  {
+   "f": 6,
+   "kind": "bell",
+   "gain": 0.7
+  },
+  {
+   "f": 30,
+   "kind": "murmur",
+   "dur": 2
+  },
+  {
+   "f": 172,
+   "kind": "flush"
+  },
+  {
+   "f": 203,
+   "kind": "drip"
+  },
+  {
+   "f": 279,
+   "kind": "sizzle",
+   "dur": 2,
+   "gain": 0.4
+  },
+  {
+   "f": 383,
+   "kind": "bell",
+   "gain": 0.6
+  },
+  {
+   "f": 475,
+   "kind": "splash",
+   "gain": 0.4
+  },
+  {
+   "f": 515,
+   "kind": "drip"
+  },
+  {
+   "f": 578,
+   "kind": "oof",
+   "n": 3,
+   "gain": 0.7
+  },
+  {
+   "f": 614,
+   "kind": "murmur",
+   "dur": 2,
+   "gain": 1.2
+  },
+  {
+   "f": 696,
+   "kind": "stamp",
+   "gain": 1.2
+  },
+  {
+   "f": 714,
+   "kind": "cheer",
+   "n": 4,
+   "gain": 0.6
+  },
+  {
+   "f": 778,
+   "kind": "oof",
+   "n": 1
+  },
+  {
+   "f": 855,
+   "kind": "murmur",
+   "dur": 2
+  },
+  {
+   "f": 980,
+   "kind": "oof",
+   "n": 3,
+   "gain": 0.5
+  },
+  {
+   "f": 1072,
+   "kind": "whoa",
+   "n": 1
+  },
+  {
+   "f": 1091,
+   "kind": "ratchet",
+   "n": 6
+  },
+  {
+   "f": 1179,
+   "kind": "clank"
+  },
+  {
+   "f": 1240,
+   "kind": "clank",
+   "gain": 0.7
+  },
+  {
+   "f": 1320,
+   "kind": "flush",
+   "gain": 1.2
+  }
+ ],
+ "cuts": [
+  251,
+  353,
+  576,
+  608,
+  677,
+  748,
+  943
+ ],
+ "glides": [
+  1351
+ ],
+ "musicStops": [
+  [
+   576,
+   608
+  ]
+ ],
+ "music": {
+  "mood": "sneaky",
+  "key": 5,
+  "tempo": 100
+ }
+}

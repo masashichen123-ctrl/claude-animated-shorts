@@ -40,7 +40,7 @@ export const stage = (id: number, f: number, cam: CamInfo): Stage => {
       for (let i = 0; i < 8; i++) { const sd = i % 2 ? 1 : -1, row = Math.floor(i / 2) % 3; put(out, cam, f, 10 + i, MP(i), `mp${i % 6}`, add(CHAMBER, sd * (2.2 + row * 1.1), 0.5 + row * 0.4, -3 + (i % 4) * 0.9), { mode: "stand", expr: (["stern", "laugh", "pained", "stern"] as Expr[])[i % 4], look: -sd, wave: i % 3 === 0 ? 0.5 + 0.5 * Math.sin(t * 6 + i) : undefined }); }
       break;
     case 8:
-      put(out, cam, f, 2, MP(0), "mp0", add(CHAMBER, -0.9, 0, 1.0), { expr: f > F(8, 0.3) ? "grin" : "stern", look: 1 }, 1, [F(8, 0.3) / FPS]);
+      put(out, cam, f, 2, MP(0), "mp0", add(CHAMBER, -0.35, 0, 0.9), { expr: f > F(8, 0.3) ? "grin" : "stern", look: 1 }, 1, [F(8, 0.3) / FPS]);
       break;
     case 9:
       for (let i = 0; i < 3; i++) put(out, cam, f, 20 + i, MP(i), `mp${i}`, add(CHAMBER, -2.0 + i * 1.3, 0, -0.4), { expr: "pained", look: 0 });

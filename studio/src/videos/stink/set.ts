@@ -58,7 +58,7 @@ export const build = (root: THREE.Group, env: Env) => {
   board(tub, "limeLabel", 600, 160, (g) => { g.fillStyle = "#f4f0e0"; g.fillRect(0, 0, 600, 160); text(g, "CHLORIDE OF LIME", 300, 84, 54, "#1c1a22"); }, 1.0, 0.27, 0, 0.32, -0.56);
   const scroll = new THREE.Group(); scroll.position.set(CHAMBER[0], 0.92, CHAMBER[2] + 1.9); root.add(scroll);
   board(scroll, "sewerAct", 500, 600, (g) => { g.fillStyle = "#f4ecd2"; g.fillRect(0, 0, 500, 600); text(g, "SEWER ACT", 250, 110, 64, "#1c1a22"); text(g, "1858", 250, 200, 56, "#8a2a2a"); for (let k = 0; k < 6; k++) { g.fillStyle = "#8a8d94"; g.fillRect(60, 270 + k * 40, 380, 10); } g.strokeStyle = "#2f3b6a"; g.lineWidth = 6; g.beginPath(); g.moveTo(80, 540); g.bezierCurveTo(160, 500, 220, 580, 320, 520); g.stroke(); }, 0.75, 0.9, 0, 0.0, 0, 0).rotation.set(-Math.PI / 2 + 0.2, Math.PI, 0);
-  const days = board(root, "days18", 400, 300, (g) => { g.fillStyle = "#ffffff"; g.fillRect(0, 0, 400, 300); g.fillStyle = "#c8202a"; g.fillRect(0, 0, 400, 80); text(g, "DAYS", 200, 44, 56, "#ffffff"); text(g, "18", 200, 190, 150, "#1c1a22"); }, 1.0, 0.75, CHAMBER[0] + 2.4, 2.6, CHAMBER[2] + 2.9);
+  const days = board(root, "days18", 400, 300, (g) => { g.fillStyle = "#ffffff"; g.fillRect(0, 0, 400, 300); g.fillStyle = "#c8202a"; g.fillRect(0, 0, 400, 80); text(g, "DAYS", 200, 44, 56, "#ffffff"); text(g, "18", 200, 190, 150, "#1c1a22"); }, 0.9, 0.68, CHAMBER[0] + 0.7, 2.1, CHAMBER[2] + 2.8);
   // street
   for (let i = 0; i < 8; i++) block(root, STREET[0] - 28 + i * 8, STREET[2] + 8, 7, 6, 8 + 3 * hh(i, 1), ["#b8664a", "#c9b79c", "#8a6a5a"][i % 3], i);
   mesh(quadUp(-40, 40, -6, 5, 10, 3, 0.01), col("cobbles", "#8f8b82"), root, ...STREET);
