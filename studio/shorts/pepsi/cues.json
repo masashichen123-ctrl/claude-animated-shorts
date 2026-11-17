@@ -1,0 +1,270 @@
+{
+ "TOTAL": 1455,
+ "SENT": [
+  0,
+  3.5,
+  9.66,
+  13.6,
+  15.52,
+  19.38,
+  22.62,
+  24.74,
+  27.64,
+  30.04,
+  33.8,
+  36.56,
+  41.04,
+  42.4,
+  43.94,
+  48.5
+ ],
+ "SPOKEN": [
+  3.02,
+  6.02,
+  3.52,
+  1.14,
+  3.66,
+  2.86,
+  1.82,
+  2.88,
+  2.08,
+  3.06,
+  2.5,
+  4.2,
+  1.16,
+  1.44,
+  3.36
+ ],
+ "flashes": [
+  105
+ ],
+ "shots": [
+  {
+   "a": 0,
+   "b": 105,
+   "amb": "beach",
+   "light": "day"
+  },
+  {
+   "a": 105,
+   "b": 290,
+   "amb": "city",
+   "light": "day"
+  },
+  {
+   "a": 290,
+   "b": 408,
+   "amb": "beach",
+   "light": "day"
+  },
+  {
+   "a": 408,
+   "b": 466,
+   "amb": "room",
+   "light": "day"
+  },
+  {
+   "a": 466,
+   "b": 581,
+   "amb": "beach",
+   "light": "day"
+  },
+  {
+   "a": 581,
+   "b": 679,
+   "amb": "room",
+   "light": "day"
+  },
+  {
+   "a": 679,
+   "b": 742,
+   "amb": "beach",
+   "light": "day"
+  },
+  {
+   "a": 742,
+   "b": 829,
+   "amb": "beach",
+   "light": "day"
+  },
+  {
+   "a": 829,
+   "b": 901,
+   "amb": "city",
+   "light": "day"
+  },
+  {
+   "a": 901,
+   "b": 1014,
+   "amb": "city",
+   "light": "day"
+  },
+  {
+   "a": 1014,
+   "b": 1097,
+   "amb": "room",
+   "light": "day"
+  },
+  {
+   "a": 1097,
+   "b": 1231,
+   "amb": "room",
+   "light": "day"
+  },
+  {
+   "a": 1231,
+   "b": 1272,
+   "amb": "room",
+   "light": "day"
+  },
+  {
+   "a": 1272,
+   "b": 1318,
+   "amb": "room",
+   "light": "day"
+  },
+  {
+   "a": 1318,
+   "b": 1455,
+   "amb": "none",
+   "light": "golden"
+  }
+ ],
+ "events": [
+  {
+   "f": 6,
+   "kind": "bell",
+   "gain": 0.6
+  },
+  {
+   "f": 20,
+   "kind": "rumble",
+   "dur": 2,
+   "gain": 0.6
+  },
+  {
+   "f": 132,
+   "kind": "pop"
+  },
+  {
+   "f": 213,
+   "kind": "thud"
+  },
+  {
+   "f": 240,
+   "kind": "boing",
+   "gain": 0.5
+  },
+  {
+   "f": 321,
+   "kind": "clank",
+   "gain": 0.5
+  },
+  {
+   "f": 348,
+   "kind": "glass",
+   "gain": 0.5
+  },
+  {
+   "f": 415,
+   "kind": "ding"
+  },
+  {
+   "f": 466,
+   "kind": "rumble",
+   "dur": 2.6
+  },
+  {
+   "f": 521,
+   "kind": "honk",
+   "gain": 1.5
+  },
+  {
+   "f": 607,
+   "kind": "whoa",
+   "n": 3,
+   "gain": 0.6
+  },
+  {
+   "f": 759,
+   "kind": "boing"
+  },
+  {
+   "f": 785,
+   "kind": "oof",
+   "n": 1
+  },
+  {
+   "f": 842,
+   "kind": "crunch"
+  },
+  {
+   "f": 860,
+   "kind": "clank"
+  },
+  {
+   "f": 873,
+   "kind": "crunch",
+   "gain": 0.7
+  },
+  {
+   "f": 1021,
+   "kind": "ding",
+   "gain": 0.6
+  },
+  {
+   "f": 1059,
+   "kind": "whoa",
+   "n": 1,
+   "gain": 0.6
+  },
+  {
+   "f": 1135,
+   "kind": "bell",
+   "gain": 0.5
+  },
+  {
+   "f": 1242,
+   "kind": "glass",
+   "gain": 0.4
+  },
+  {
+   "f": 1272,
+   "kind": "thud",
+   "gain": 1.5
+  },
+  {
+   "f": 1276,
+   "kind": "honk",
+   "gain": 1.5
+  },
+  {
+   "f": 1328,
+   "kind": "fanfare",
+   "gain": 0.7
+  },
+  {
+   "f": 1359,
+   "kind": "cheer",
+   "n": 5
+  }
+ ],
+ "cuts": [
+  204,
+  290,
+  581,
+  679,
+  742,
+  952,
+  1014,
+  1231,
+  1272
+ ],
+ "glides": [],
+ "musicStops": [],
+ "music": {
+  "mood": "march",
+  "key": 5,
+  "tempo": 112
+ }
+}

@@ -27,16 +27,16 @@ const cams: Record<number, Key[]> = {
   5: [{ f: F(5), s: track({ pos: add(DOCK, -30, 8, 2), look: add(DOCK, -10, 1, 40), fov: 50 }, { pos: add(DOCK, 20, 8, 2), look: add(DOCK, 30, 1, 40), fov: 50 }, F(5), F(6)) }],
   6: [{ f: F(6), s: hold(add(BOARDRM, -2, 1.7, -4.4), add(BOARDRM, 0, 1.1, 0.4), F(6), 38, 0.0025) }],
   7: [{ f: F(7), s: holdZ(add(DOCK, 6, 2.0, 8), add(DOCK, 0, 1, 40), F(7), 40, 0.002) }],
-  8: [{ f: F(8), s: hold(add(DOCK, -2.8, 3.2, 26), add(DOCK, 0, 3.4, 32), F(8), 38, 0.0025, 0.05) }],
+  8: [{ f: F(8), s: hold(add(DOCK, -0.6, 3.6, 25.5), add(DOCK, 0.8, 3.6, 32), F(8), 38, 0.0025, 0.05) }],
   9: [{ f: F(9), s: hold(add(SCRAP, -9, 3, -12), add(SCRAP, 0, 3.5, 0), F(9), 44, 0.0018) }],
   10: [
     { f: F(10), s: holdZ(add(WHITE, 0, 2.5, -40), add(WHITE, 0, 7, 0), F(10), 40, 0.0016) },
-    { f: F(10, 0.55), cut: true, s: hold(add(OFFICE, -1.5, 1.7, -5.5), add(OFFICE, 0, 1.6, 0), F(10, 0.55), 40, 0.002) },
+    { f: F(10, 0.55), cut: true, s: hold(add(OFFICE, -0.6, 1.7, -8.5), add(OFFICE, 0, 1.5, 0), F(10, 0.55), 40, 0.002) },
   ],
   11: [{ f: F(11), s: hold(add(OFFICE, -1.4, 1.75, -3.6), add(OFFICE, -1.2, 1.7, 0), F(11), 36, 0.003) }],
   12: [{ f: F(12), s: hold(add(SHOP, -2.5, 1.8, -6), add(SHOP, 0, 1.6, 0.5), F(12), 42, 0.0018) }],
   13: [{ f: F(13), s: hold(add(SHOP, 0.6, 1.4, -2.6), add(SHOP, 0.6, 1.15, 0.3), F(13), 34, 0.003) }],
-  14: [{ f: F(14), s: hold(add(SHOP, -7, 3.0, -10), add(SHOP, 0, 3.5, 4), F(14), 48, 0.002) }],
+  14: [{ f: F(14), s: hold(add(SHOP, -9, 4.0, -12), add(SHOP, 0.5, 2.5, 2), F(14), 48, 0.002) }],
   15: [{ f: F(15), s: hold(add(PODIUM, -1.5, 2.2, -8), add(PODIUM, 0, 2.2, 0), F(15), 40, 0.0018) }],
 };
 

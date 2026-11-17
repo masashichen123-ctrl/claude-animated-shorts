@@ -96,7 +96,7 @@ export const build = (root: THREE.Group, env: Env) => {
   sub(root, add(BOARDRM, 0, 0.95, 0.3), 0.08, 0.3);
   for (let k = 0; k < 3; k++) for (let i = 0; i < 12; i++) mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.38, 10).translate(0, 0.19, 0), shiny(i % 3 ? "#dfeef4" : "#8fbf7a", "#fff", 90), root, SHOP[0] - 3.6 + i * 0.65, 1.08 + k * 0.8, SHOP[2] + 2.7);
   const bottle = mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.38, 10).translate(0, 0.19, 0), shiny("#dfeef4", "#fff", 90), root, SHOP[0] + 0.6, 1.0, SHOP[2] - 0.1);
-  const destroyer = warship(root, add(SHOP, 2, -0.5, 12), 34, -Math.PI / 2 - 0.25);
+  const destroyer = warship(root, add(SHOP, 1.5, -0.5, 24), 34, Math.PI / 2 + 0.2);
   // scrapyard
   const sg = new THREE.Group(); sg.position.set(...SCRAP); root.add(sg);
   mesh(quadUp(-50, 50, -50, 50, 12, 12, 0), col("yard", "#8f8b82"), sg);
@@ -137,7 +137,7 @@ export const pose = (h: Handles, id: number, f: number) => {
   h.bottle.visible = id === 13;
   h.destroyer.visible = id === 14;
   const u = id === 14 ? easeOut((f - F(14)) / 8) : 1;
-  h.destroyer.position.z = SHOP[2] + 12 - 8 * u;
+  h.destroyer.position.z = SHOP[2] + 24 - 13 * u;
   h.magnet.position.y = id === 9 ? 7 + 2.5 * clamp01((f - F(9, 0.3)) / 40) : 7;
   h.half.rotation.z = id === 9 ? 0.15 * Math.sin(f * 0.1) : 0;
 };
