@@ -35,7 +35,7 @@ export const build = (root: THREE.Group, env: Env) => {
   for (const y of [0.55, 1.0]) b.add(boxGeo(V(-120, y, -16.56), V(120, y + 0.02, -16.53)), col("wire", "#8a8d94"));
   // camp: tent, ammunition boxes, a table
   const cm = new THREE.Matrix4().makeTranslation(...CAMP);
-  b.add(new THREE.ConeGeometry(2.6, 2.8, 4).rotateY(Math.PI / 4).translate(-5, 1.4, -3), col("tent", "#9a8f6a"), cm);
+  b.add(new THREE.ConeGeometry(2.6, 2.8, 4).rotateY(Math.PI / 4).translate(-7, 1.4, 5), col("tent", "#9a8f6a"), cm);
   for (let i = 0; i < 10; i++) b.add(boxGeo(V(-0.4, 0, -0.25), V(0.4, 0.35, 0.25)), col("ammo", "#55603a"), new THREE.Matrix4().makeTranslation(CAMP[0] + 2.2 + (i % 4) * 0.85, 0.36 * Math.floor(i / 4), CAMP[2] - 2.5));
   b.build(root);
   for (let i = 0; i < 18; i++) { const a = hh(i, 3) * Math.PI * 2, d = 50 + 90 * hh(i, 4); tree(root, Math.cos(a) * d, Math.sin(a) * d + 30, 8 + 4 * hh(i, 5), i); }
@@ -72,13 +72,13 @@ export const build = (root: THREE.Group, env: Env) => {
   // the plaque stage
   const pg = new THREE.Group(); pg.position.set(...PLAQUE); root.add(pg);
   mesh(quadUp(-30, 30, -30, 30, 8, 8, 0), col("stageFloor", "#4a3f6b"), pg);
-  mesh(boxGeo(V(-4, 0, 1.0), V(4, 6, 1.4)), col("velvet", "#7a2e3a"), pg);
+  mesh(boxGeo(V(-6, 0, 1.0), V(6, 10, 1.4)), col("velvet", "#7a2e3a"), pg);
   board(pg, "crest", 700, 800, (g) => {
     g.fillStyle = "#e8b43a"; g.strokeStyle = "#1c1a22"; g.lineWidth = 18;
     g.beginPath(); g.moveTo(150, 120); g.lineTo(550, 120); g.lineTo(550, 470); g.quadraticCurveTo(540, 680, 350, 760); g.quadraticCurveTo(160, 680, 150, 470); g.closePath(); g.fill(); g.stroke();
     for (const [x, y] of [[250, 250], [450, 250], [350, 420], [260, 560], [440, 560]]) { g.fillStyle = "#ffffff"; g.beginPath(); for (let k = 0; k < 10; k++) { const a = (k * Math.PI) / 5 - Math.PI / 2, rr = k % 2 ? 18 : 42; g.lineTo(x + rr * Math.cos(a), y + rr * Math.sin(a)); } g.closePath(); g.fill(); }
   }, 2.6, 3.0, 0, 3.1, 0.95);
-  for (const s of [-1, 1]) mesh(new THREE.CylinderGeometry(0.5, 0.6, 0.9, 16).translate(0, 0.45, 0), col("plinth", "#c9bfae"), pg, s * 2.5, 0, -0.4);
+  for (const s of [-1, 1]) mesh(new THREE.CylinderGeometry(0.5, 0.6, 0.9, 16).translate(0, 0.45, 0), col("plinth", "#c9bfae"), pg, s * 2.1, 0, -0.4);
   void env; void ell; void F;
   return { truck, tal1, tal2, shells, gunTop };
 };

@@ -14,6 +14,8 @@ export const SIGN50: V3 = [20, 0, -20];    // speed sign by the road (road along
 export const PLAQUE: V3 = [0, 0, -300];    // the coat-of-arms plaque (separate little stage)
 
 // ---------------- the truck chase (shot 5) ----------------
+/** the lone emu racing past the 50 sign in shot 9 */
+export const emu9 = (f: number): V3 => [SIGN50[0] - 14 + 30 * clamp01((f - F(9)) / (F(10) - F(9))), 0, SIGN50[2] + 2];
 export const truckAt = (id: number, f: number): V3 => {
   if (id === 3) { const u = clamp01((f - F(3)) / (F(3, 0.6) - F(3))); return [-60 + 46 * (1 - (1 - u) ** 3), 0, -20]; }
   if (id === 5) { const u = clamp01((f - F(5)) / (F(6) - F(5))); return [-20 + 40 * u, 0, 18]; }
@@ -37,17 +39,17 @@ const cams: Record<number, Key[]> = {
     { f: F(5, 0.55), cut: true, s: (f: number) => { const p = truckAt(5, f); return { pos: add(p, 16, 1.0, 10), look: add(p, 4, 1.2, 1), fov: 44, roll: 0 }; } },
   ],
   6: [{ f: F(6), s: hold(add(BOARD, -1.2, 1.7, -4.4), add(BOARD, 0, 1.8, 0), F(6), 40, 0.0022) }],
-  7: [{ f: F(7), s: hold(add(CAMP, -1, 1.5, -6.5), add(CAMP, 0.5, 1.2, 0), F(7), 40, 0.002) }],
+  7: [{ f: F(7), s: hold(add(CAMP, 2.0, 1.5, -8.5), add(CAMP, 4.0, 1.0, -1.6), F(7), 40, 0.002) }],
   8: [{ f: F(8), s: hold(add(CAMP, 4.0, 1.4, -2.5), add(CAMP, 4.6, 1.5, 1.5), F(8), 38, 0.0025, -0.04) }],
-  9: [{ f: F(9), s: track({ pos: add(SIGN50, -12, 1.4, -6), look: add(SIGN50, -6, 1.2, 0), fov: 40 }, { pos: add(SIGN50, 6, 1.4, -6), look: add(SIGN50, 12, 1.2, 0), fov: 40 }, F(9), F(10)) }],
+  9: [{ f: F(9), s: (f: number) => { const e = emu9(f); return { pos: add(e, -2.5, 1.3, -7), look: add(e, 0.6, 1.1, 0), fov: 40, roll: 0 }; } }],
   10: [
     { f: F(10), s: hold([0, 0.8, 4], [0, 1.4, 20], F(10), 46, 0.002) },
     { f: F(10, 0.6), cut: true, s: hold(add(CAMP, 0.5, 1.75, -4.0), add(CAMP, 0.5, 1.7, 0), F(10, 0.6), 36, 0.0025) },
   ],
   11: [{ f: F(11), s: hold([-8, 1.5, -10], [-24, 1.5, -20], F(11), 44, 0.0016) }],
   12: [{ f: F(12), s: hold(add(BOARD, -1.6, 1.7, -4.8), add(BOARD, 0, 1.8, 0), F(12), 40, 0.0018) }],
-  13: [{ f: F(13), s: hold(add(CAMP, 6.5, 0.5, 2.6), add(CAMP, 9, 0.6, 6.5), F(13), 40, 0.0025) }],
-  14: [{ f: F(14), s: hold(add(PLAQUE, 0, 2.2, -8), add(PLAQUE, 0, 2.6, 0), F(14), 40, 0.0018) }],
+  13: [{ f: F(13), s: hold(add(CAMP, 6.0, 0.7, 1.6), add(CAMP, 9.0, 0.7, 6.4), F(13), 44, 0.0025) }],
+  14: [{ f: F(14), s: hold(add(PLAQUE, 0, 2.4, -15), add(PLAQUE, 0, 2.6, 0), F(14), 40, 0.0018) }],
 };
 
 const dof: Dof[] = [

@@ -2,7 +2,7 @@
 import { Pen, INK, SKINS, Outfit, Expr, fxPuff } from "../kit/toon";
 import { beginStage, put, putSide, creature, fx, step, FOLK, CamInfo, Stage, hh } from "../kit/cast";
 import { FPS, V3, add, clamp01 } from "../kit/timeline";
-import { TL, F, CAMP, GUN, FARM, BOARD, SIGN50, PLAQUE, truckAt } from "./timeline";
+import { TL, F, CAMP, GUN, FARM, BOARD, SIGN50, PLAQUE, truckAt, emu9 } from "./timeline";
 
 type P2 = [number, number];
 /** an emu facing screen-right in the 600 x 1000 card (feet at y = 975). mode: stand / run / peck. */
@@ -98,16 +98,15 @@ export const stage = (id: number, f: number, cam: CamInfo): Stage => {
       put(out, cam, f, 5, MAJOR, "major", add(BOARD, 1.6, 0, -0.7), { expr: "nervous", look: -1 });
       break;
     case 7:
-      for (let i = 0; i < 3; i++) put(out, cam, f, 6 + i, SOLDIER(i), `s${i}`, add(CAMP, 2.6 + i * 0.85, 0.36, -2.4), { mode: "sit", expr: (["relief", "smile", "relief_open"] as Expr[])[i], look: 0 });
-      emu(out, cam, add(CAMP, -2.2, 0, 3.5), false, "stand", 0, "smug");
+      for (let i = 0; i < 3; i++) put(out, cam, f, 6 + i, SOLDIER(i), `s${i}`, add(CAMP, 2.6 + i * 0.85, 0, -3.3), { expr: (["relief", "smile", "relief_open"] as Expr[])[i], look: 0 });
+      emu(out, cam, add(CAMP, 6.0, 0, -0.6), true, "stand", 0, "smug");
       break;
     case 8:
       put(out, cam, f, 6, { ...SOLDIER(0), hat: "hair", hair: "#3a2a1c" }, "s0bare", add(CAMP, 3.6, 0, 1.6), { expr: "pained", look: 1 });
       emu(out, cam, add(CAMP, 5.3, 0, 2.2), true, "stand", 0, "smug", true);
       break;
     case 9: {
-      const u = clamp01((f - F(9)) / (F(10) - F(9)));
-      const at: V3 = [SIGN50[0] - 14 + 30 * u, 0, SIGN50[2] + 4];
+      const at = emu9(f);
       emu(out, cam, at, false, "run", (t * 3.2) % 1, "smug");
       fx(out, "speed", 300, 300, speed, add(at, -1.6, 1.0, 0), 1.6, 1.0, { soft: true });
       dust(out, add(at, -1.4, 0, 0), f, 2, 1.4);
@@ -130,7 +129,7 @@ export const stage = (id: number, f: number, cam: CamInfo): Stage => {
       emu(out, cam, add(CAMP, 9.6, 0, 6.6), true, f > F(13, 0.4) ? "peck" : "stand", 0, "calm");
       break;
     case 14:
-      emu(out, cam, add(PLAQUE, 2.5, 0.9, -0.4), true, "stand", 0, "smug", false, 0.9);
+      emu(out, cam, add(PLAQUE, 2.1, 0.9, -0.4), true, "stand", 0, "smug", false, 0.9);
       break;
   }
   return out;

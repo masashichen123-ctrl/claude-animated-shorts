@@ -1,0 +1,282 @@
+{
+ "TOTAL": 1537,
+ "SENT": [
+  0,
+  5.38,
+  11.02,
+  16.3,
+  18.84,
+  23,
+  27.76,
+  30.14,
+  32.02,
+  36.3,
+  40.2,
+  41.44,
+  46.44,
+  47.68,
+  51.22
+ ],
+ "SPOKEN": [
+  5.06,
+  5.28,
+  4.72,
+  2.18,
+  3.74,
+  4.74,
+  1.94,
+  1.32,
+  3.88,
+  3.56,
+  0.9,
+  4.5,
+  1.22,
+  2.34
+ ],
+ "flashes": [
+  161
+ ],
+ "shots": [
+  {
+   "a": 0,
+   "b": 161,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 161,
+   "b": 331,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 331,
+   "b": 489,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 489,
+   "b": 565,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 565,
+   "b": 690,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 690,
+   "b": 833,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 833,
+   "b": 904,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 904,
+   "b": 961,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 961,
+   "b": 1089,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 1089,
+   "b": 1206,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 1206,
+   "b": 1243,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 1243,
+   "b": 1393,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 1393,
+   "b": 1430,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 1430,
+   "b": 1537,
+   "amb": "none",
+   "light": "golden"
+  }
+ ],
+ "events": [
+  {
+   "f": 6,
+   "kind": "gunburst",
+   "n": 8
+  },
+  {
+   "f": 30,
+   "kind": "gunburst",
+   "n": 6
+  },
+  {
+   "f": 52,
+   "kind": "gunburst",
+   "n": 7
+  },
+  {
+   "f": 109,
+   "kind": "squawk",
+   "gain": 1.2
+  },
+  {
+   "f": 209,
+   "kind": "squawk",
+   "gain": 0.6
+  },
+  {
+   "f": 272,
+   "kind": "murmur",
+   "dur": 1.5
+  },
+  {
+   "f": 331,
+   "kind": "engine",
+   "dur": 2.5
+  },
+  {
+   "f": 412,
+   "kind": "brake"
+  },
+  {
+   "f": 437,
+   "kind": "clank"
+  },
+  {
+   "f": 496,
+   "kind": "squawk"
+  },
+  {
+   "f": 515,
+   "kind": "squawk",
+   "gain": 0.7
+  },
+  {
+   "f": 565,
+   "kind": "engine",
+   "dur": 4
+  },
+  {
+   "f": 593,
+   "kind": "gunburst",
+   "n": 6
+  },
+  {
+   "f": 633,
+   "kind": "gunburst",
+   "n": 5
+  },
+  {
+   "f": 718,
+   "kind": "stamp"
+  },
+  {
+   "f": 775,
+   "kind": "stamp"
+  },
+  {
+   "f": 844,
+   "kind": "laugh",
+   "n": 3,
+   "gain": 0.6
+  },
+  {
+   "f": 912,
+   "kind": "squawk"
+  },
+  {
+   "f": 920,
+   "kind": "oof",
+   "n": 1
+  },
+  {
+   "f": 961,
+   "kind": "whistle_down",
+   "dur": 0.5,
+   "gain": 0.4
+  },
+  {
+   "f": 1007,
+   "kind": "wind_gust",
+   "dur": 1
+  },
+  {
+   "f": 1089,
+   "kind": "rumble",
+   "dur": 2.5
+  },
+  {
+   "f": 1206,
+   "kind": "engine",
+   "dur": 3
+  },
+  {
+   "f": 1220,
+   "kind": "squawk",
+   "gain": 0.8
+  },
+  {
+   "f": 1284,
+   "kind": "stamp"
+  },
+  {
+   "f": 1408,
+   "kind": "pop"
+  },
+  {
+   "f": 1430,
+   "kind": "fanfare",
+   "gain": 0.7
+  }
+ ],
+ "cuts": [
+  109,
+  256,
+  331,
+  489,
+  565,
+  627,
+  833,
+  904,
+  1089,
+  1153,
+  1206,
+  1393
+ ],
+ "glides": [],
+ "musicStops": [
+  [
+   690,
+   775
+  ]
+ ],
+ "music": {
+  "mood": "march",
+  "key": 0,
+  "tempo": 118
+ }
+}
