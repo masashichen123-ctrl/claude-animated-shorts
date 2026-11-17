@@ -1,5 +1,5 @@
 # Sound for "A Whale of a Deal": an original comic score (pizzicato bass + glockenspiel, a stop-time at the blast, a
-# brass button at the end), synthesized effects on every story beat, the narration ducking the music.
+# no ending sting), synthesized effects on every story beat, the narration ducking the music.
 # usage: python sound.py <voice.wav> <words.json> <timing.ts> <out_dir>
 # Reuses the synthesis helpers in templates/audio (dsp, instruments, sfx_gen). Event times mirror story.ts exactly.
 import json, os, re, sys
@@ -7,7 +7,7 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "..", "..", "..", "templates", "audio"))
-from dsp import SR, ns, tt, rng, lp, hp, bp, colored, smooth_noise, fades, pan, st, place, read_wav, write_wav, integrated, true_peak  # noqa: E402
+from dsp import SR, ns, tt, rng, lp, hp, bp, peq, shelf, colored, smooth_noise, fades, pan, st, place, read_wav, write_wav, integrated, true_peak  # noqa: E402
 import instruments as I  # noqa: E402
 import sfx_gen as X  # noqa: E402
 
@@ -35,6 +35,11 @@ GLIDES = [sec(F(1, 0.34)) + 0.5, sec(F(1, 0.72)) + 0.43, sec(F(3, 0.45)) + 0.47,
 # ---------------- voice ----------------
 v, vsr = read_wav(voice_path)
 assert vsr == SR, f"voice must be {SR} Hz (got {vsr})"
+# clarity (user note, round 2): cut rumble, take a little mud out, lift presence and air
+v = hp(v, 85, order=4)
+v = peq(v, 280, -2.5, q=0.9)
+v = peq(v, 3200, 3.5, q=0.8)
+v = shelf(v, 9000, 2.0, kind="high")
 voice = np.zeros((2, N)); place(voice, v, 0.0)
 words = json.load(open(words_path))
 
@@ -68,11 +73,7 @@ bar_loop(sec(F(9)), sec(F(13)) - 0.2, 0.5)
 for k, m in enumerate([72, 69, 65, 60]):  # descending "wah" over the still-there whale
     place(music, pan(I.brass(m2f(m - 12), 0.42, vel=0.5, r=R, kind="tuba", fall=-80 if k == 3 else 0), 0.1), sec(F(12, 0.5)) + k * 0.45)
 bar_loop(sec(F(13)), DUR - 2.4, 0.6)
-# button: "Whale of a Deal" -> brass chord + cymbal
-t_end = sec(F(16, 0.85))
-for m in (53, 57, 60, 65):
-    place(music, pan(I.brass(m2f(m), 1.4, vel=0.55, r=R, kind="tuba" if m < 55 else "horn"), 0.0), t_end)
-place(music, I.cymbal(vel=0.35, r=R, dur=2.0), t_end)
+# no ending sting: the music just stops under the last line (user note, round 2)
 
 # ---------------- effects ----------------
 sfx = np.zeros((2, N))
@@ -143,7 +144,7 @@ duck = np.zeros(N)
 for a, b in spans(words):
     duck[ns(max(0, a - 0.08)):ns(b + 0.12)] = 1.0
 k = int(0.12 * SR); duck = np.convolve(duck, np.ones(k) / k, mode="same")
-music *= 10 ** (-3.0 * duck / 20)  # -3 dB under the voice
+music *= 10 ** (-5.0 * duck / 20)  # -5 dB under the voice
 # stop-time silence at the blast (music only), back in for "Luckily"
 gate = np.ones(N); gate[ns(BLAST - 0.05):ns(sec(F(9)) - 0.05)] = 0.0
 music *= np.convolve(gate, np.ones(int(0.04 * SR)) / int(0.04 * SR), mode="same")
@@ -153,8 +154,8 @@ def at(x, target):
     L = integrated(x)
     return x * 10 ** ((target - L) / 20) if np.isfinite(L) else x
 # levels relative to the voice; the house rule then adds +3 dB music and -6 dB effects
-music = at(music, LV - 13.0) * 10 ** (3 / 20)
-sfx = at(sfx, LV - 9.0) * 10 ** (-6 / 20)
+music = at(music, LV - 15.0) * 10 ** (3 / 20)
+sfx = at(sfx, LV - 10.5) * 10 ** (-6 / 20)
 y = voice + music + sfx
 g = 10 ** ((-15.0 - integrated(y)) / 20)
 y, v_, m_, s_ = y * g, voice * g, music * g, sfx * g
