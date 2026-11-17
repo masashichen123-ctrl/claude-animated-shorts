@@ -35,11 +35,23 @@ GLIDES = [sec(F(1, 0.34)) + 0.5, sec(F(1, 0.72)) + 0.43, sec(F(3, 0.45)) + 0.47,
 # ---------------- voice ----------------
 v, vsr = read_wav(voice_path)
 assert vsr == SR, f"voice must be {SR} Hz (got {vsr})"
+v = np.asarray(v, float); v = v.mean(0) if v.ndim > 1 else v  # mono 1-D
 # clarity (user note, round 2): cut rumble, take a little mud out, lift presence and air
 v = hp(v, 85, order=4)
 v = peq(v, 280, -2.5, q=0.9)
 v = peq(v, 3200, 3.5, q=0.8)
 v = shelf(v, 9000, 2.0, kind="high")
+# level every sentence to the same loudness (the generated takes drift by up to 4 dB), gains eased across the gaps
+gains = np.zeros(len(v))
+act = lambda x: np.sqrt(np.mean(x[np.abs(x) > 0.01] ** 2)) if np.any(np.abs(x) > 0.01) else 1.0
+lv = [act(v[ns(SENT[i]):ns(SENT[i] + SPOKEN[i])]) for i in range(16)]
+ref = float(np.median(lv))
+for i in range(16):
+    a, b = ns(SENT[i]), ns(SENT[i + 1]) if i < 15 else len(v)
+    gains[a:min(b, len(v))] = 20 * np.log10(ref / lv[i])
+k = int(0.15 * SR); gains = np.convolve(np.pad(gains, (k, k), mode="edge"), np.ones(k) / k, mode="same")[k:-k]
+v = v * 10 ** (gains / 20)
+print("sentence level corrections (dB):", [round(20 * np.log10(ref / x), 1) for x in lv])
 voice = np.zeros((2, N)); place(voice, v, 0.0)
 words = json.load(open(words_path))
 

@@ -220,8 +220,7 @@ export const DOF: Dof[] = [
   { f: F(13), cInf: 9 },
   { f: F(14), cInf: 0 },
   { f: F(15), cInf: 11, focus: () => [-97.4, 1.55, -53.2] },
-  { f: F(16), cInf: 9 },
-  { f: F(16, 0.55), dur: 46, cInf: 0 },
+  { f: F(16), cInf: 0 }, // final shot kept sharp (user note, round 3)
 ];
 export const dofAt = (f: number) => {
   let i = 0; while (i + 1 < DOF.length && f >= DOF[i + 1].f) i++;
