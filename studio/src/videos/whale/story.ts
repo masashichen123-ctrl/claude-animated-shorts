@@ -3,6 +3,7 @@
 export const FPS = 30;
 export type V3 = [number, number, number];
 export const D0 = 0; // ground height (build.ts reads it)
+import { SENT_MEASURED, SPOKEN_MEASURED } from "./timing";
 
 export const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 export const smooth = (x: number) => { const u = clamp01(x); return u * u * (3 - 2 * u); };
@@ -14,14 +15,17 @@ const WORDS = [17, 16, 21, 17, 19, 6, 14, 16, 4, 13, 11, 11, 23, 4, 10, 15];
 /** pause after each sentence (s) */
 const GAP = [0.3, 0.3, 0.3, 0.3, 0.35, 0.45, 0.3, 0.35, 0.3, 0.35, 0.3, 0.35, 0.35, 0.45, 0.3, 1.0];
 const RATE = 3.7; // words per second (estimate until the voice is recorded)
-/** sentence start times (s); index 16 = end of film. REPLACE with the measured starts once voice.wav exists. */
-export const SENT: number[] = (() => {
+const MEASURED = SENT_MEASURED.length === WORDS.length + 1;
+/** sentence start times (s); index 16 = end of film: measured from the voice (timing.ts) or estimated from word counts */
+export const SENT: number[] = MEASURED ? SENT_MEASURED : (() => {
   const out = [0];
   WORDS.forEach((w, i) => out.push(out[i] + w / RATE + GAP[i]));
   return out;
 })();
+/** spoken length of each sentence (s) */
+export const SPOKEN: number[] = MEASURED ? SPOKEN_MEASURED : WORDS.map((w) => w / RATE);
 /** frame at fraction u (0..1) of the SPOKEN part of sentence n (1-based) */
-export const F = (n: number, u = 0) => Math.round((SENT[n - 1] + u * (WORDS[n - 1] / RATE)) * FPS);
+export const F = (n: number, u = 0) => Math.round((SENT[n - 1] + u * SPOKEN[n - 1]) * FPS);
 export const TOTAL = Math.round(SENT[16] * FPS);
 const T = (f: number) => f / FPS;
 
