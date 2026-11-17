@@ -84,13 +84,13 @@ export const build = (root: THREE.Group, _env: Env) => {
   b.add(boxGeo(V(-2.2, 0, -0.6), V(2.2, 0.9, 0.9)), col("counter", "#f1efe6"), km);
   b.add(boxGeo(V(-2.3, 0.9, -0.7), V(2.3, 0.98, 1.0)), col("counterTop", "#8a5a3c"), km);
   b.build(root);
-  board(root, "coloradoSign", 800, 200, (g) => { g.fillStyle = "#2f5f6a"; g.fillRect(0, 0, 800, 200); text(g, "COLORADO", 400, 104, 120, "#f6e7c4"); }, 4.2, 1.05, LAB[0], 3.6, LAB[2] + 2.98, Math.PI);
-  board(root, "poundsSign", 600, 200, (g) => { g.fillStyle = "#c8443a"; g.fillRect(0, 0, 600, 200); text(g, "POUNDS", 300, 104, 120, "#ffffff"); }, 3.0, 1.0, LAB[0] - 4.0, 2.4, LAB[2] + 2.98, Math.PI);
-  board(root, "calSign", 800, 200, (g) => { g.fillStyle = "#3f6fb5"; g.fillRect(0, 0, 800, 200); text(g, "CALIFORNIA", 400, 104, 110, "#f6e7c4"); }, 4.2, 1.05, CTRL[0] - 4.2, 3.9, CTRL[2] + 2.98, Math.PI);
-  board(root, "newtonsSign", 600, 200, (g) => { g.fillStyle = "#2f8f8a"; g.fillRect(0, 0, 600, 200); text(g, "NEWTONS", 300, 104, 110, "#ffffff"); }, 3.0, 1.0, CTRL[0] + 4.2, 3.9, CTRL[2] + 2.98, Math.PI);
+  board(root, "coloradoSign", 800, 200, (g) => { g.fillStyle = "#2f5f6a"; g.fillRect(0, 0, 800, 200); text(g, "COLORADO", 400, 104, 120, "#f6e7c4"); }, 4.2, 1.05, LAB[0], 3.6, LAB[2] + 2.98);
+  board(root, "poundsSign", 600, 200, (g) => { g.fillStyle = "#c8443a"; g.fillRect(0, 0, 600, 200); text(g, "POUNDS", 300, 104, 120, "#ffffff"); }, 3.0, 1.0, LAB[0] + 4.2, 3.0, LAB[2] + 2.98);
+  board(root, "calSign", 800, 200, (g) => { g.fillStyle = "#3f6fb5"; g.fillRect(0, 0, 800, 200); text(g, "CALIFORNIA", 400, 104, 110, "#f6e7c4"); }, 4.2, 1.05, CTRL[0] - 4.2, 3.9, CTRL[2] + 2.98);
+  board(root, "newtonsSign", 600, 200, (g) => { g.fillStyle = "#2f8f8a"; g.fillRect(0, 0, 600, 200); text(g, "NEWTONS", 300, 104, 110, "#ffffff"); }, 3.0, 1.0, CTRL[0] + 4.2, 3.9, CTRL[2] + 2.98);
   const scr = new THREE.Mesh(new THREE.PlaneGeometry(6, 3), new THREE.MeshBasicMaterial({ map: screenTex(), color: 0xdddddd })); scr.position.set(CTRL[0], 2.3, CTRL[2] + 2.95); scr.rotation.y = Math.PI; scr.layers.set(NOINK); root.add(scr);
   for (const x of [-4.5, -1.5, 1.5]) { const m = new THREE.Mesh(new THREE.PlaneGeometry(0.82, 0.58), new THREE.MeshBasicMaterial({ map: monTex(), color: 0xdddddd })); m.position.set(CTRL[0] + x, 1.18, CTRL[2] - 0.71); m.rotation.y = Math.PI; m.layers.set(NOINK); root.add(m); }
-  board(root, "chalk2", 600, 400, (g) => { g.fillStyle = "#2f3b32"; g.fillRect(0, 0, 600, 400); g.strokeStyle = "#8a5a3c"; g.lineWidth = 24; g.strokeRect(12, 12, 576, 376); text(g, "2 ?", 300, 210, 200, "#f4f4ee"); }, 3.2, 2.1, LAB[0] - 4.6, 2.2, LAB[2] + 2.97, Math.PI);
+  board(root, "chalk2", 600, 400, (g) => { g.fillStyle = "#2f3b32"; g.fillRect(0, 0, 600, 400); g.strokeStyle = "#8a5a3c"; g.lineWidth = 24; g.strokeRect(12, 12, 576, 376); text(g, "2 ?", 300, 210, 200, "#f4f4ee"); }, 3.2, 2.1, LAB[0] - 4.6, 2.2, LAB[2] + 2.97);
   // balance scale: one 1 lb block vs 4.5 small newton blocks
   const scale = new THREE.Group(); scale.position.set(LAB[0] + 6, 0.95, LAB[2] + 0.3); root.add(scale);
   mesh(new THREE.CylinderGeometry(0.05, 0.08, 0.7).translate(0, 0.35, 0), col("brass", "#c9a24a"), scale);

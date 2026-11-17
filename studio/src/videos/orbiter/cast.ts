@@ -43,7 +43,7 @@ export const stage = (id: number, f: number, cam: CamInfo): Stage => {
       for (let i = 0; i < 3; i++) put(out, cam, f, 20 + i, ENG_CA(i), `ca${i}`, add(CTRL, -2.4 + i * 1.6, 0, -2.0 - 0.3 * (i % 2)), { expr: f > F(9, 0.35) ? "relief" : "nervous", look: 0 }, 1, [F(9, 0.35) / FPS]);
       break;
     case 10: {
-      for (let i = 0; i < 2; i++) put(out, cam, f, 20 + i, ENG_CA(i), `ca${i}`, add(CTRL, 3.0 + i * 3.3, 0, -2.6), { expr: f > F(10, 0.4) ? "shock" : "nervous", look: i ? -1 : 1 }, 1, [F(10, 0.4) / FPS]);
+      for (let i = 0; i < 2; i++) put(out, cam, f, 20 + i, ENG_CA(i), `ca${i}`, add(CTRL, 4.0 + i * 1.6, 0, -2.9), { expr: f > F(10, 0.4) ? "shock" : "nervous", look: i ? -1 : 1 }, 1, [F(10, 0.4) / FPS]);
       for (let j = 0; j < 4; j++) { const u = clamp01((f - F(10, 0.25) - j * 6) / 30); if (u > 0 && u < 1) fx(out, "money", 300, 160, money, add(CTRL, 4.8 + (j - 1.5) * 0.6, 0.6 + 2.6 * u, -1.5 - 0.3 * j), 0.5, 0.27, { rot: u * 5 + j }); }
       break;
     }
@@ -51,7 +51,7 @@ export const stage = (id: number, f: number, cam: CamInfo): Stage => {
       put(out, cam, f, 11, ENG_CO(1), "co1", add(LAB, -3.1, 0, 1.9), { expr: f > F(11, 0.5) ? "nervous" : "neutral", look: -1 }, 1, [F(11, 0.5) / FPS]);
       break;
     case 12: {
-      put(out, cam, f, 30, COOK, "cook", add(KITCHEN, -1.0, 0, 1.15), { expr: k === 0 ? "smile" : "shock", look: 1 }, 1, [F(12, 0.62) / FPS]);
+      put(out, cam, f, 30, COOK, "cook", add(KITCHEN, 0.9, 0, 1.15), { expr: k === 0 ? "smile" : "shock", look: 1 }, 1, [F(12, 0.62) / FPS]);
       if (k === 1) { const u = clamp01((f - F(12, 0.66)) / 30); fx(out, `puff${step(u, 20)}`, 500, 500, (q) => puff(q, step(u, 20)), add(KITCHEN, 0, 1.4 + u, 0.1), 2.2 + 3 * u, 2.2 + 3 * u, { soft: true }); }
       break;
     }
@@ -64,7 +64,7 @@ export const stage = (id: number, f: number, cam: CamInfo): Stage => {
       break;
     }
     case 8:
-      if (f >= LOST) { const u = clamp01((f - LOST) / 24); fx(out, `blast${step(u, 16)}`, 900, 900, (q) => fxBlast(q, step(u, 16)), add(probeAt(8, LOST), 0, 0, 0), 8 + 10 * u, 8 + 10 * u, { soft: u > 0.6 }); }
+      if (f >= LOST) { const u = clamp01((f - LOST) / 24); fx(out, `blast${step(u, 16)}`, 900, 900, (q) => fxBlast(q, step(u, 16)), add(probeAt(8, LOST), 0, 0, 0), 4 + 6 * u, 4 + 6 * u, { soft: u > 0.6 }); }
       break;
   }
   void fxSmoke; void FOLK;

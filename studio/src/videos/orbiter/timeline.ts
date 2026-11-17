@@ -19,9 +19,10 @@ export const probeAt = (id: number, f: number): V3 => {
   if (id === 2) return add(SPACE, 0, 0, -60 + 60 * clamp01((f - F(2)) / (F(3) - F(2))));
   if (id === 6 || id === 7) { const u = clamp01((f - F(6)) / (F(8) - F(6))); return add(SPACE, 0, -14 * u * u, 40 * u); }
   if (id === 8 || id === 15 || id === 1) {
+    // skim down toward the limb in Mars-centred polar coordinates (never inside the planet)
     const f0 = id === 8 ? F(8) : id === 15 ? F(15) : 0, f1 = id === 8 ? F(9) : id === 15 ? CLOCK.TOTAL : F(2);
-    const u = clamp01((f - f0) / (f1 - f0));
-    return add(SPACE, 0, -60 - 120 * u, 160 + 150 * u);
+    const u = clamp01((f - f0) / (f1 - f0)), r = (id === 8 ? 300 : 252) - (id === 8 ? 62 : 14) * u, a = 0.05 + 0.25 * u;
+    return [MARS[0], MARS[1] + r * Math.sin(a), MARS[2] - r * Math.cos(a)];
   }
   if (id === 14) return add(SPACE, 0, -8, 130);
   return SPACE;
@@ -39,14 +40,14 @@ const cams: Record<number, Key[]> = {
   1: [{ f: 0, s: follow(1, -7, 2.5, -9, 0, 46, 0.05) }],
   2: [{ f: F(2), s: follow(2, 9, 3, -14, 0, 40) }],
   3: [
-    { f: F(3), s: hold(add(LAB, -5, 1.7, -9), add(LAB, 0, 1.6, 0), F(3), 42, 0.0018) },
-    { f: F(3, 0.52), cut: true, s: hold(add(CTRL, -5, 1.7, -9), add(CTRL, 0, 1.8, 0), F(3, 0.52), 42, 0.0018) },
+    { f: F(3), s: hold(add(LAB, -5, 1.9, -9.5), add(LAB, -0.5, 2.3, 0), F(3), 46, 0.0018) },
+    { f: F(3, 0.52), cut: true, s: hold(add(CTRL, -5, 1.9, -9.5), add(CTRL, 0, 2.3, 0), F(3, 0.52), 46, 0.0018) },
   ],
   4: [
     { f: F(4), s: hold(add(LAB, -2.4, 1.7, -6), add(LAB, -1, 1.7, -1), F(4), 38, 0.0022) },
     { f: F(4, 0.5), cut: true, s: hold(add(CTRL, 2.6, 1.7, -6), add(CTRL, 1, 1.8, -1), F(4, 0.5), 38, 0.0022) },
   ],
-  5: [{ f: F(5), s: hold(add(LAB, 6, 1.6, -4.5), add(LAB, 6, 1.25, 0.3), F(5), 36, 0.002) }],
+  5: [{ f: F(5), s: hold(add(LAB, 6, 1.8, -3.0), add(LAB, 6, 1.5, 0.3), F(5), 40, 0.002) }],
   6: [{ f: F(6), s: follow(6, 6, 3, -12, -2, 44) }],
   7: [{ f: F(7), s: (f: number) => { const p = probeAt(7, f); return { pos: add(SPACE, 40, 40, -60), look: add(p, 0, -20, 60), fov: 44, roll: 0 }; } }],
   8: [
