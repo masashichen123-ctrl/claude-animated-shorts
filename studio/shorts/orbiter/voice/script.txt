@@ -1,0 +1,15 @@
+In 1999, NASA lost a spacecraft at Mars because two teams used different units.
+The Mars Climate Orbiter had flown for nine months to get there.
+One team built its thrusters, in Colorado. Another team steered it, in California.
+The first team measured every push in pounds. The second team read every number as newtons.
+A pound of push is about four and a half newtons.
+So every small nudge the spacecraft made was four and a half times bigger than the navigators thought.
+Nudge after nudge, for months.
+When it finally reached Mars, it swung in far too low, and it was never heard from again.
+Luckily, nobody was on board.
+Unluckily, it cost a hundred and twenty-five million dollars.
+You see, a number without a unit is just a guess.
+A recipe that says "add two" could mean two spoons, or two buckets.
+After that, NASA made sure every team wrote down its units.
+And the orbiter's job had been to study the atmosphere of Mars.
+It got a very close look.
