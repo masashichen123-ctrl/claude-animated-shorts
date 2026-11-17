@@ -26,8 +26,8 @@ export const stage = (id: number, f: number, cam: CamInfo): Stage => {
       }
       break;
     case 5:
-      put(out, cam, f, 14, MASON(1, true), "m1old", add(TOWER, -1.5, 0, -8.6), { mode: "sit", expr: "smile_closed", blink: 1, look: 0 });
-      fx(out, `zzz${step((t * 0.6) % 1, 10)}`, 300, 300, (p) => { const u = step((t * 0.6) % 1, 10); for (let q = 0; q < 3; q++) { const x = 60 + q * 70, y = 230 - q * 80 - 30 * u, w = 26 + q * 10; p.stroke([[x, y], [x + w, y], [x, y + w], [x + w, y + w]], 9); } }, add(TOWER, -0.9, 1.6, -8.7), 0.7, 0.7);
+      put(out, cam, f, 14, MASON(1, true), "m1old", add(TOWER, -1.5, 0, -11.6), { mode: "sit", expr: "smile_closed", blink: 1, look: 0 });
+      fx(out, `zzz${step((t * 0.6) % 1, 10)}`, 300, 300, (p) => { const u = step((t * 0.6) % 1, 10); for (let q = 0; q < 3; q++) { const x = 60 + q * 70, y = 230 - q * 80 - 30 * u, w = 26 + q * 10; p.stroke([[x, y], [x + w, y], [x, y + w], [x + w, y + w]], 9); } }, add(TOWER, -0.9, 1.6, -11.7), 0.7, 0.7);
       break;
     case 6:
       for (let i = 0; i < 3; i++) put(out, cam, f, 10 + i, MASON(i, true), `m${i}old`, add(TOWER, -4 + i * 1.6, 0, -13.4 - 0.5 * (i % 2)), { expr: (["pained", "nervous", "dazed"] as Expr[])[i], look: 1 });

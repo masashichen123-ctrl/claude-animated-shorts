@@ -34,7 +34,7 @@ const cams: Record<number, Key[]> = {
   2: [{ f: F(2), s: hold(add(TOWER, -18, 4, -34), add(TOWER, 0, 4, 0), F(2), 44, 0.0018) }],
   3: [{ f: F(3), s: hold(add(TOWER, -16, 1.4, -28), add(TOWER, 0, 6, 0), F(3), 46, 0.0018, 0.03) }],
   4: [{ f: F(4), s: hold(add(TOWER, -22, 2.2, -36), add(TOWER, -2, 3, -6), F(4), 44, 0.0016) }],
-  5: [{ f: F(5), s: hold(add(TOWER, -3, 0.6, -16), add(TOWER, 2, 0.2, -6), F(5), 44, 0.002) }],
+  5: [{ f: F(5), s: hold(add(TOWER, -3.5, 1.0, -17.5), add(TOWER, -1.2, 1.0, -11.5), F(5), 42, 0.002) }],
   6: [{ f: F(6), s: hold(add(TOWER, -10, 1.7, -24), add(TOWER, -2, 2.2, -12), F(6), 42, 0.002) }],
   7: [{ f: F(7), s: holdZ(add(TOWER, -36, 12, -54), add(TOWER, 2, 24, 0), F(7), 44, 0.0014) }],
   8: [{ f: F(8), s: hold(add(TABLE, -0.9, 1.3, -2.1), add(TABLE, 0, 1.15, 0), F(8), 40, 0.0025) }],

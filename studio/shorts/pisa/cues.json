@@ -1,0 +1,210 @@
+{
+ "TOTAL": 1367,
+ "SENT": [
+  0,
+  3.36,
+  7.36,
+  11.56,
+  14.62,
+  20.38,
+  23.24,
+  27,
+  33.18,
+  34.86,
+  36.8,
+  38.98,
+  45.56
+ ],
+ "SPOKEN": [
+  2.84,
+  3.44,
+  3.78,
+  2.54,
+  5.14,
+  2.54,
+  3.74,
+  5.9,
+  1.24,
+  1.6,
+  1.84,
+  5.38
+ ],
+ "flashes": [
+  101
+ ],
+ "shots": [
+  {
+   "a": 0,
+   "b": 101,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 101,
+   "b": 221,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 221,
+   "b": 347,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 347,
+   "b": 439,
+   "amb": "field",
+   "light": "golden"
+  },
+  {
+   "a": 439,
+   "b": 611,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 611,
+   "b": 697,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 697,
+   "b": 810,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 810,
+   "b": 995,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 995,
+   "b": 1046,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 1046,
+   "b": 1104,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 1104,
+   "b": 1169,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 1169,
+   "b": 1367,
+   "amb": "field",
+   "light": "golden"
+  }
+ ],
+ "events": [
+  {
+   "f": 6,
+   "kind": "boing",
+   "gain": 0.5
+  },
+  {
+   "f": 121,
+   "kind": "stamp"
+  },
+  {
+   "f": 163,
+   "kind": "stamp"
+  },
+  {
+   "f": 260,
+   "kind": "rumble",
+   "dur": 2
+  },
+  {
+   "f": 278,
+   "kind": "whoa",
+   "n": 3,
+   "gain": 0.5
+  },
+  {
+   "f": 354,
+   "kind": "fanfare",
+   "gain": 0.5
+  },
+  {
+   "f": 377,
+   "kind": "clank",
+   "gain": 0.6
+  },
+  {
+   "f": 485,
+   "kind": "drip"
+  },
+  {
+   "f": 516,
+   "kind": "drip"
+  },
+  {
+   "f": 720,
+   "kind": "stamp"
+  },
+  {
+   "f": 748,
+   "kind": "stamp"
+  },
+  {
+   "f": 776,
+   "kind": "stamp"
+  },
+  {
+   "f": 916,
+   "kind": "click"
+  },
+  {
+   "f": 1003,
+   "kind": "rumble",
+   "dur": 1.6
+  },
+  {
+   "f": 1060,
+   "kind": "boing",
+   "gain": 0.5
+  },
+  {
+   "f": 1132,
+   "kind": "bell",
+   "gain": 0.8
+  },
+  {
+   "f": 1202,
+   "kind": "laugh",
+   "n": 3,
+   "gain": 0.5
+  }
+ ],
+ "cuts": [
+  221,
+  611,
+  697,
+  1046
+ ],
+ "glides": [
+  1272
+ ],
+ "musicStops": [
+  [
+   347,
+   439
+  ]
+ ],
+ "music": {
+  "mood": "grand",
+  "key": 2,
+  "tempo": 96
+ }
+}
