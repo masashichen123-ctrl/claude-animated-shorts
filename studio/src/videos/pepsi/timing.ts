@@ -1,3 +1,3 @@
-// ESTIMATED from word counts; replaced by the measured timings once the voice exists.
-export const SENT_MEASURED: number[] = [0.0, 2.462, 8.167, 10.899, 12.55, 15.553, 18.285, 20.477, 23.48, 25.942, 29.756, 32.488, 37.653, 38.764, 40.145, 44.859];
-export const SPOKEN_MEASURED: number[] = [2.162, 5.405, 2.432, 1.351, 2.703, 2.432, 1.892, 2.703, 2.162, 3.514, 2.432, 4.865, 0.811, 1.081, 3.514];
+// Measured from voice/words.json by timing.py: sentence start times (s, index 16 = end of film) and spoken lengths.
+export const SENT_MEASURED: number[] = [0.0, 3.5, 9.66, 13.6, 15.52, 19.38, 22.62, 24.74, 27.64, 30.04, 33.8, 36.56, 41.04, 42.4, 43.94, 48.5];
+export const SPOKEN_MEASURED: number[] = [3.02, 6.02, 3.52, 1.14, 3.66, 2.86, 1.82, 2.88, 2.08, 3.06, 2.5, 4.2, 1.16, 1.44, 3.36];
