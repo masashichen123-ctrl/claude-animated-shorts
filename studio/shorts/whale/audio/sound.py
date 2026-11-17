@@ -158,9 +158,8 @@ sfx = at(sfx, LV - 9.0) * 10 ** (-6 / 20)
 y = voice + music + sfx
 g = 10 ** ((-15.0 - integrated(y)) / 20)
 y, v_, m_, s_ = y * g, voice * g, music * g, sfx * g
-pk = np.max(np.abs(y))
-if pk > 0.87:
-    y = np.tanh(y / 0.87 * 1.1) * 0.87 / np.tanh(1.1)  # gentle soft-clip as the limiter
+CEIL = 10 ** (-1.5 / 20)  # soft limiter: unity gain for quiet signals, peaks approach -1.5 dBFS and never pass it
+y = CEIL * np.tanh(y / CEIL)
 write_wav(os.path.join(out_dir, "mix.wav"), y)
 for name, x in (("stem_voice", v_), ("stem_music", m_), ("stem_sfx", s_)):
     write_wav(os.path.join(out_dir, name + ".wav"), x)
