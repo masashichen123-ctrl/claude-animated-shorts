@@ -62,7 +62,7 @@ const cams: Record<number, Key[]> = {
     { f: F(12, 0.62), cut: true, s: hold(add(KITCHEN, -2.6, 2.0, -5.6), add(KITCHEN, 0, 1.4, 0), F(12, 0.62), 44, 0.0015, 0.04) },
   ],
   13: [{ f: F(13), s: hold(add(LAB, -1.4, 1.75, -6.5), add(LAB, 0.5, 1.4, -0.5), F(13), 42, 0.0022) }],
-  14: [{ f: F(14), s: track({ pos: add(SPACE, -16, 6, 100), look: add(SPACE, 0, -8, 135), fov: 44 }, { pos: add(SPACE, -9, 2, 116), look: add(SPACE, 0, -14, 160), fov: 40 }, F(14), F(15)) }],
+  14: [{ f: F(14), s: follow(14, 6, 3, -12, -2, 44) }],
   15: [{ f: F(15), s: follow(15, -5, 1.5, -7, -1, 38, -0.06) }],
 };
 
@@ -91,7 +91,7 @@ const events: SoundEvent[] = [
 
 export const TL = makeTimeline({
   clock: CLOCK,
-  sun: { 1: { az: 100, el: 20 }, 2: { az: 100, el: 20 }, 6: { az: 100, el: 20 }, 7: { az: 100, el: 20 }, 8: { az: 100, el: 20 }, 14: { az: 100, el: 20 }, 15: { az: 100, el: 20 } },
+  sun: { 1: { az: 150, el: 30 }, 2: { az: 100, el: 20 }, 6: { az: 100, el: 20 }, 7: { az: 100, el: 20 }, 8: { az: 150, el: 30 }, 14: { az: 150, el: 30 }, 15: { az: 150, el: 30 } },
   amb: { 1: "space", 2: "space", 3: "room", 4: "room", 5: "room", 6: "space", 7: "space", 8: "space", 9: "room", 10: "room", 11: "room", 12: "room", 13: "room", 14: "space", 15: "space" },
   xfade: { 3: 10, 6: 10, 9: 8, 12: 8, 13: 8, 14: 10 },
   flashes: [F(2), LOST],
