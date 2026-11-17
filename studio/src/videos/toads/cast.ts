@@ -42,7 +42,7 @@ export const stage = (id: number, f: number, cam: CamInfo): Stage => {
   switch (id) {
     case 1:
       toad(out, cam, add(FIELD, 0.5, 0.01, 2.4), k === 0 ? "tongue" : "up", 0.22);
-      if (k === 1) beetle(out, cam, add(FIELD, 1.0, 2.8, 5.0), 0.06);
+      if (k === 1) beetle(out, cam, add(FIELD, 1.0, 2.2, 5.0), 0.9);
       break;
     case 2:
       if (k === 1) { put(out, cam, f, 1, FARMER, "farmer", add(FIELD, -1.5, 0, 0.5), { expr: "grin", look: 1 }); fx(out, "bulb", 300, 300, bulb, add(FIELD, -1.5, 2.9, 0.4), 0.7, 0.7); }
@@ -56,7 +56,7 @@ export const stage = (id: number, f: number, cam: CamInfo): Stage => {
       break;
     case 5: case 10:
       toad(out, cam, add(FIELD, 0, 0.01, 4.6), id === 10 ? "up" : f > F(5, 0.5) ? "up" : "calm", 0.16);
-      beetle(out, cam, add(FIELD, 0.2, 3.0, 5.0), 0.06);
+      beetle(out, cam, add(FIELD, 0.2, 2.3, 5.0), 0.9);
       break;
     case 6:
       if (k === 0) { toad(out, cam, add(FIELD, 0, 0.01, 4.4), "sleep", 0.16); const u = step((t * 0.6) % 1, 10); fx(out, `zzz${u}`, 300, 300, (p) => zzz(p, u), add(FIELD, 0.25, 0.45, 4.3), 0.3, 0.3); }

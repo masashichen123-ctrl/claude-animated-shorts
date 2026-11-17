@@ -1,0 +1,252 @@
+{
+ "TOTAL": 1419,
+ "SENT": [
+  0,
+  5.94,
+  10.94,
+  13.76,
+  19.16,
+  23.54,
+  26.62,
+  29.08,
+  30.86,
+  33,
+  36.36,
+  39.12,
+  43.74,
+  47.3
+ ],
+ "SPOKEN": [
+  5.52,
+  4.72,
+  2.52,
+  4.88,
+  4.08,
+  2.86,
+  1.98,
+  1.46,
+  1.7,
+  3.06,
+  2.5,
+  4.42,
+  2.36
+ ],
+ "flashes": [
+  178
+ ],
+ "shots": [
+  {
+   "a": 0,
+   "b": 178,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 178,
+   "b": 328,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 328,
+   "b": 413,
+   "amb": "beach",
+   "light": "day"
+  },
+  {
+   "a": 413,
+   "b": 575,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 575,
+   "b": 706,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 706,
+   "b": 799,
+   "amb": "night",
+   "light": "golden"
+  },
+  {
+   "a": 799,
+   "b": 872,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 872,
+   "b": 926,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 926,
+   "b": 990,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 990,
+   "b": 1091,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 1091,
+   "b": 1174,
+   "amb": "room",
+   "light": "day"
+  },
+  {
+   "a": 1174,
+   "b": 1312,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 1312,
+   "b": 1419,
+   "amb": "beach",
+   "light": "golden"
+  }
+ ],
+ "events": [
+  {
+   "f": 4,
+   "kind": "croak"
+  },
+  {
+   "f": 24,
+   "kind": "croak",
+   "gain": 0.7
+  },
+  {
+   "f": 91,
+   "kind": "boing",
+   "gain": 0.5
+  },
+  {
+   "f": 263,
+   "kind": "ding",
+   "gain": 0.5
+  },
+  {
+   "f": 328,
+   "kind": "bell",
+   "gain": 0.7
+  },
+  {
+   "f": 358,
+   "kind": "croak",
+   "gain": 0.8
+  },
+  {
+   "f": 374,
+   "kind": "croak",
+   "gain": 0.6
+  },
+  {
+   "f": 471,
+   "kind": "croak"
+  },
+  {
+   "f": 486,
+   "kind": "croak",
+   "gain": 0.7
+  },
+  {
+   "f": 501,
+   "kind": "croak",
+   "gain": 0.8
+  },
+  {
+   "f": 636,
+   "kind": "whistle_down",
+   "dur": 0.6,
+   "gain": 0.3
+  },
+  {
+   "f": 749,
+   "kind": "zap",
+   "gain": 0.4
+  },
+  {
+   "f": 810,
+   "kind": "pop"
+  },
+  {
+   "f": 828,
+   "kind": "pop"
+  },
+  {
+   "f": 840,
+   "kind": "pop"
+  },
+  {
+   "f": 886,
+   "kind": "croak"
+  },
+  {
+   "f": 931,
+   "kind": "croak",
+   "gain": 1.2
+  },
+  {
+   "f": 941,
+   "kind": "croak",
+   "gain": 1.2
+  },
+  {
+   "f": 951,
+   "kind": "croak",
+   "gain": 1.2
+  },
+  {
+   "f": 1121,
+   "kind": "boing"
+  },
+  {
+   "f": 1136,
+   "kind": "cheer",
+   "n": 4,
+   "gain": 0.5
+  },
+  {
+   "f": 1174,
+   "kind": "rumble",
+   "dur": 3,
+   "gain": 0.6
+  },
+  {
+   "f": 1333,
+   "kind": "croak"
+  }
+ ],
+ "cuts": [
+  91,
+  256,
+  575,
+  706,
+  749,
+  799,
+  872,
+  926,
+  990
+ ],
+ "glides": [],
+ "musicStops": [
+  [
+   926,
+   951
+  ]
+ ],
+ "music": {
+  "mood": "bouncy",
+  "key": 4,
+  "tempo": 116
+ }
+}
