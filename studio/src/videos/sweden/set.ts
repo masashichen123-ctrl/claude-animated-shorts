@@ -106,6 +106,7 @@ export const pose = (h: Handles, id: number, f: number) => {
     c.g.position.set(p.x, 0, p.z);
     c.g.rotation.y = p.dir > 0 ? 0 : Math.PI;
     c.g.visible = id !== 2 && id !== 9 && id !== 12;
+    c.cabin.visible = !(i === 0 && (id === 3 || id === 10));
   });
   h.c1.visible = id === 4; h.c5.visible = id === 5 || id === 6;
   h.barrier.visible = id === 4;

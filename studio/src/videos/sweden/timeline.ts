@@ -19,9 +19,9 @@ export const sideAt = (id: number, f: number) => (id < 5 || id === 2 ? 0 : id ==
 export const flowAt = (id: number, f: number) => (id === 4 ? 0 : id === 5 ? clamp01((f - F(5, 0.9)) / 20) * 0.35 : id === 10 || id === 11 ? 0.45 : 1);
 
 const cams: Record<number, Key[]> = {
-  1: [{ f: 0, s: holdZ(add(TOWN, -26, 12, -22), add(TOWN, 0, 0, 0), 0, 44, 0.0016) }],
+  1: [{ f: 0, s: holdZ(add(TOWN, -24, 26, -26), add(TOWN, 0, 0, 0), 0, 44, 0.0016) }],
   2: [{ f: F(2), s: hold(add(BORDER, -10, 1.8, -8), add(BORDER, 0, 1.0, 0), F(2), 44, 0.0018) }],
-  3: [{ f: F(3), s: hold(add(TOWN, 6, 1.4, -LANE - 3.2), add(TOWN, 3.2, 1.3, -LANE), F(3), 38, 0.0025) }],
+  3: [{ f: F(3), s: hold(add(TOWN, 8, 2.4, -LANE - 6.5), add(TOWN, 3.6, 1.3, -LANE), F(3), 38, 0.0025) }],
   4: [
     { f: F(4), s: holdZ(add(TOWN, -18, 3, -10), add(TOWN, 0, 1, 0), F(4), 44, 0.0016) },
     { f: F(4, 0.55), cut: true, s: hold(add(TOWN, 4.2, 3.0, -7.5), add(TOWN, 4.2, 3.4, -9.5), F(4, 0.55), 36, 0.002) },
@@ -34,8 +34,8 @@ const cams: Record<number, Key[]> = {
   7: [{ f: F(7), s: hold(add(TOWN, -12, 2.2, -10), add(TOWN, 0, 1.2, 0), F(7), 42, 0.0018) }],
   8: [{ f: F(8), s: hold(add(TOWN, 8, 1.7, -9.5), add(TOWN, 9, 1.7, -6.0), F(8), 38, 0.0022) }],
   9: [{ f: F(9), s: hold(add(OFFICE, -1.5, 1.8, -5.2), add(OFFICE, 0, 2.2, 2.6), F(9), 40, 0.002) }],
-  10: [{ f: F(10), s: hold(add(TOWN, 4, 1.25, LANE - 2.5), add(TOWN, 1.5, 1.3, LANE), F(10), 34, 0.003) }],
-  11: [{ f: F(11), s: track({ pos: add(TOWN, -10, 2.0, -7), look: add(TOWN, -2, 1, 1), fov: 44 }, { pos: add(TOWN, 6, 2.0, -7), look: add(TOWN, 14, 1, 1), fov: 44 }, F(11), F(12)) }],
+  10: [{ f: F(10), s: hold(add(TOWN, 5.4, 2.4, LANE - 6.4), add(TOWN, 1.8, 1.3, LANE), F(10), 38, 0.003) }],
+  11: [{ f: F(11), s: hold(add(TOWN, -22, 2.2, -4.5), add(TOWN, 8, 1.0, 0.5), F(11), 40, 0.0018) }],
   12: [{ f: F(12), s: holdZ(add(ICE, -14, 5, -18), add(ICE, 0, 3, 10), F(12), 44, 0.0015) }],
 };
 

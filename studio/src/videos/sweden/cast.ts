@@ -21,7 +21,7 @@ export const stage = (id: number, f: number, cam: CamInfo): Stage => {
       break;
     case 3: case 10: {
       const p = carPose(0, id, f), seat = id === 3 ? -LANE - 0.4 : LANE - 0.4;
-      put(out, cam, f, 3, FOLK[2], "f2", [p.x + 0.1, 0.25, seat], { mode: "sit", expr: id === 3 ? "nervous" : "nervous", look: id === 3 ? 1 : 0 }, 0.9);
+      put(out, cam, f, 3, FOLK[2], "f2", [p.x + 0.1, 0.62, seat], { mode: "sit", expr: id === 3 ? "nervous" : "nervous", look: id === 3 ? 1 : 0 }, 0.9);
       break;
     }
     case 4:

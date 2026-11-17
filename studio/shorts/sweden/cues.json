@@ -1,0 +1,229 @@
+{
+ "TOTAL": 1335,
+ "SENT": [
+  0,
+  5.38,
+  9.14,
+  12.94,
+  17.58,
+  23.66,
+  25.36,
+  28.7,
+  31.82,
+  33.98,
+  37.78,
+  41.3,
+  44.5
+ ],
+ "SPOKEN": [
+  5,
+  3.42,
+  3.52,
+  4.38,
+  5.88,
+  1.36,
+  3.02,
+  2.96,
+  1.54,
+  3.38,
+  3.26,
+  2
+ ],
+ "flashes": [
+  161
+ ],
+ "shots": [
+  {
+   "a": 0,
+   "b": 161,
+   "amb": "street",
+   "light": "day"
+  },
+  {
+   "a": 161,
+   "b": 274,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 274,
+   "b": 388,
+   "amb": "street",
+   "light": "day"
+  },
+  {
+   "a": 388,
+   "b": 527,
+   "amb": "night",
+   "light": "golden"
+  },
+  {
+   "a": 527,
+   "b": 710,
+   "amb": "street",
+   "light": "golden"
+  },
+  {
+   "a": 710,
+   "b": 761,
+   "amb": "street",
+   "light": "golden"
+  },
+  {
+   "a": 761,
+   "b": 861,
+   "amb": "street",
+   "light": "day"
+  },
+  {
+   "a": 861,
+   "b": 955,
+   "amb": "street",
+   "light": "day"
+  },
+  {
+   "a": 955,
+   "b": 1019,
+   "amb": "room",
+   "light": "day"
+  },
+  {
+   "a": 1019,
+   "b": 1133,
+   "amb": "street",
+   "light": "day"
+  },
+  {
+   "a": 1133,
+   "b": 1239,
+   "amb": "street",
+   "light": "day"
+  },
+  {
+   "a": 1239,
+   "b": 1335,
+   "amb": "field",
+   "light": "golden"
+  }
+ ],
+ "events": [
+  {
+   "f": 4,
+   "kind": "engine",
+   "dur": 4,
+   "gain": 0.5
+  },
+  {
+   "f": 192,
+   "kind": "honk",
+   "gain": 1.4
+  },
+  {
+   "f": 208,
+   "kind": "brake"
+  },
+  {
+   "f": 213,
+   "kind": "honk",
+   "gain": 1.2
+  },
+  {
+   "f": 295,
+   "kind": "engine",
+   "dur": 2.4,
+   "gain": 0.5
+  },
+  {
+   "f": 467,
+   "kind": "bell",
+   "gain": 0.7
+  },
+  {
+   "f": 531,
+   "kind": "beep"
+  },
+  {
+   "f": 545,
+   "kind": "beep"
+  },
+  {
+   "f": 559,
+   "kind": "beep"
+  },
+  {
+   "f": 573,
+   "kind": "ding",
+   "gain": 0.9
+  },
+  {
+   "f": 598,
+   "kind": "engine",
+   "dur": 3,
+   "gain": 0.7
+  },
+  {
+   "f": 714,
+   "kind": "whoa",
+   "n": 3,
+   "gain": 0.5
+  },
+  {
+   "f": 788,
+   "kind": "cheer",
+   "n": 4,
+   "gain": 0.7
+  },
+  {
+   "f": 897,
+   "kind": "boing",
+   "gain": 0.5
+  },
+  {
+   "f": 964,
+   "kind": "whistle_down",
+   "dur": 0.8,
+   "gain": 0.5
+  },
+  {
+   "f": 982,
+   "kind": "ding"
+  },
+  {
+   "f": 1050,
+   "kind": "engine",
+   "dur": 2.4,
+   "gain": 0.4
+  },
+  {
+   "f": 1251,
+   "kind": "wind_gust",
+   "dur": 1.6
+  },
+  {
+   "f": 1269,
+   "kind": "honk"
+  }
+ ],
+ "cuts": [
+  274,
+  460,
+  527,
+  580,
+  710,
+  861,
+  1019,
+  1133
+ ],
+ "glides": [],
+ "musicStops": [
+  [
+   527,
+   580
+  ]
+ ],
+ "music": {
+  "mood": "bouncy",
+  "key": 7,
+  "tempo": 108
+ }
+}
