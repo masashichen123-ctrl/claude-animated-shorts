@@ -102,7 +102,7 @@ export const pose = (h: Handles, id: number, f: number) => {
   h.truck.visible = id === 9; h.truck.position.set(ROAD[0] + truckX(f), 0.33, ROAD[2]);
   const u = id === 10 ? vanAt(f) : 0;
   h.van.visible = id === 10 && f < F(10, 0.65);
-  h.van.position.set(ROAD[0] + 34, 2.0 + 30 * u * u, ROAD[2] + 1 - 20 * u); h.van.rotation.set(0.6 * u, 0, 0);
+  h.van.position.set(ROAD[0] + 34, 2.0 + 20 * u * u, ROAD[2] + 1 + 30 * u); h.van.rotation.set(-0.6 * u, 0, 0);
   h.stuck.visible = id === 8 && f >= F(8, 0.65);
   void LAUNCH;
 };

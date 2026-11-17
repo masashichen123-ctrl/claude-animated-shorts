@@ -1,0 +1,248 @@
+{
+ "TOTAL": 1381,
+ "SENT": [
+  0,
+  3.9,
+  8.16,
+  12.46,
+  15.42,
+  22,
+  26.18,
+  28.26,
+  30.88,
+  35.16,
+  39.46,
+  42.24,
+  46.04
+ ],
+ "SPOKEN": [
+  3.48,
+  3.9,
+  4.06,
+  2.54,
+  6.2,
+  3.84,
+  1.62,
+  2,
+  3.98,
+  3.96,
+  2.42,
+  2.6
+ ],
+ "flashes": [
+  117
+ ],
+ "shots": [
+  {
+   "a": 0,
+   "b": 117,
+   "amb": "beach",
+   "light": "day"
+  },
+  {
+   "a": 117,
+   "b": 245,
+   "amb": "room",
+   "light": "day"
+  },
+  {
+   "a": 245,
+   "b": 374,
+   "amb": "beach",
+   "light": "day"
+  },
+  {
+   "a": 374,
+   "b": 463,
+   "amb": "beach",
+   "light": "day"
+  },
+  {
+   "a": 463,
+   "b": 660,
+   "amb": "beach",
+   "light": "day"
+  },
+  {
+   "a": 660,
+   "b": 785,
+   "amb": "beach",
+   "light": "day"
+  },
+  {
+   "a": 785,
+   "b": 848,
+   "amb": "beach",
+   "light": "day"
+  },
+  {
+   "a": 848,
+   "b": 926,
+   "amb": "street",
+   "light": "day"
+  },
+  {
+   "a": 926,
+   "b": 1055,
+   "amb": "street",
+   "light": "day"
+  },
+  {
+   "a": 1055,
+   "b": 1184,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 1184,
+   "b": 1267,
+   "amb": "room",
+   "light": "golden"
+  },
+  {
+   "a": 1267,
+   "b": 1381,
+   "amb": "room",
+   "light": "golden"
+  }
+ ],
+ "events": [
+  {
+   "f": 0,
+   "kind": "jet",
+   "dur": 3,
+   "gain": 0.8
+  },
+  {
+   "f": 135,
+   "kind": "stamp"
+  },
+  {
+   "f": 152,
+   "kind": "stamp"
+  },
+  {
+   "f": 181,
+   "kind": "bell",
+   "gain": 0.5
+  },
+  {
+   "f": 281,
+   "kind": "clank"
+  },
+  {
+   "f": 318,
+   "kind": "ratchet",
+   "n": 10
+  },
+  {
+   "f": 389,
+   "kind": "pop"
+  },
+  {
+   "f": 412,
+   "kind": "pop"
+  },
+  {
+   "f": 435,
+   "kind": "clank",
+   "gain": 0.7
+  },
+  {
+   "f": 466,
+   "kind": "beep"
+  },
+  {
+   "f": 477,
+   "kind": "boom",
+   "gain": 0.8
+  },
+  {
+   "f": 481,
+   "kind": "jet",
+   "dur": 4
+  },
+  {
+   "f": 621,
+   "kind": "thud",
+   "gain": 1.4
+  },
+  {
+   "f": 625,
+   "kind": "brake"
+  },
+  {
+   "f": 683,
+   "kind": "fanfare",
+   "gain": 0.7
+  },
+  {
+   "f": 729,
+   "kind": "applause",
+   "dur": 2
+  },
+  {
+   "f": 800,
+   "kind": "cheer",
+   "n": 4,
+   "gain": 0.6
+  },
+  {
+   "f": 866,
+   "kind": "whistle_down",
+   "dur": 0.7,
+   "gain": 0.4
+  },
+  {
+   "f": 890,
+   "kind": "thud"
+  },
+  {
+   "f": 926,
+   "kind": "engine",
+   "dur": 3.5
+  },
+  {
+   "f": 1096,
+   "kind": "jet",
+   "dur": 1.4
+  },
+  {
+   "f": 1132,
+   "kind": "boom",
+   "gain": 0.5
+  },
+  {
+   "f": 1206,
+   "kind": "ding",
+   "gain": 0.6
+  },
+  {
+   "f": 1298,
+   "kind": "bell",
+   "gain": 0.5
+  }
+ ],
+ "cuts": [
+  176,
+  374,
+  463,
+  497,
+  574,
+  785,
+  1055,
+  1267
+ ],
+ "glides": [],
+ "musicStops": [
+  [
+   472,
+   500
+  ]
+ ],
+ "music": {
+  "mood": "march",
+  "key": 3,
+  "tempo": 112
+ }
+}

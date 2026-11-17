@@ -52,7 +52,7 @@ export const stage = (id: number, f: number, cam: CamInfo): Stage => {
       break;
     case 10: {
       const b0 = F(10, 0.65);
-      if (f >= b0) { const u = clamp01((f - b0) / 20); fx(out, `blast${step(u, 14)}`, 900, 900, (p) => fxBlast(p, step(u, 14)), add(ROAD, 34, 32, -19), 8 + 6 * u, 8 + 6 * u, { soft: u > 0.6 }); }
+      if (f >= b0) { const u = clamp01((f - b0) / 20); fx(out, `blast${step(u, 14)}`, 900, 900, (p) => fxBlast(p, step(u, 14)), add(ROAD, 34, 22, 31), 8 + 6 * u, 8 + 6 * u, { soft: u > 0.6 }); }
       put(out, cam, f, 5, POSTMAN, "postman", add(ROAD, 31, 0.33, -4.6), { expr: f >= b0 ? "dazed" : "smile", look: 1 }, 1, [b0 / FPS]);
       break;
     }

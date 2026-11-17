@@ -34,7 +34,7 @@ const cams: Record<number, Key[]> = {
     { f: F(2, 0.5), cut: true, s: holdZ(add(SUB, -24, 6, -26), add(SUB, 0, 2, 0), F(2, 0.5), 40, 0.0016) },
   ],
   3: [{ f: F(3), s: hold(add(SUB, -7, 4.2, -9), add(SUB, 0, 3.2, -1), F(3), 42, 0.002) }],
-  4: [{ f: F(4), s: hold(add(SUB, -2.2, 4.2, -5.2), add(SUB, 0, 3.2, -3.6), F(4), 38, 0.0025) }],
+  4: [{ f: F(4), s: hold(add(SUB, 4.2, 4.4, -8.8), add(SUB, 0.6, 3.3, -4.6), F(4), 40, 0.0025) }],
   5: [
     { f: F(5), s: hold(add(SUB, -14, 3, -16), add(SUB, 0, 5, -3), F(5), 46, 0.0012) },
     { f: LAUNCH + 20, cut: true, s: chase(-8, 3, 12) },
@@ -42,11 +42,11 @@ const cams: Record<number, Key[]> = {
   ],
   6: [{ f: F(6), s: hold(add(RUNWAY, -4, 1.8, -12), add(RUNWAY, -1.5, 1.8, -6), F(6), 40, 0.0022) }],
   7: [{ f: F(7), s: hold(add(RUNWAY, 6, 1.6, -9), add(RUNWAY, 2, 1.2, -2), F(7), 42, 0.002) }],
-  8: [{ f: F(8), s: hold(add(HOUSE, -4, 1.6, -7), add(HOUSE, 0, 1.4, 0), F(8), 42, 0.002, 0.03) }],
+  8: [{ f: F(8), s: hold(add(HOUSE, 3.5, 2.4, -14), add(HOUSE, 0.6, 1.8, 0), F(8), 40, 0.002, 0.03) }],
   9: [{ f: F(9), s: (f: number) => ({ pos: add(ROAD, truckX(f) - 6, 2.4, -9), look: add(ROAD, truckX(f) + 2, 1.5, 0), fov: 44, roll: 0 }) }],
-  10: [{ f: F(10), s: hold(add(ROAD, 30, 2.5, -14), add(ROAD, 34, 3, 0), F(10), 48, 0.0018) }],
+  10: [{ f: F(10), s: hold(add(ROAD, 30, 2.5, -14), add(ROAD, 34, 7, 10), F(10), 48, 0.0018) }],
   11: [{ f: F(11), s: hold(add(MUSEUM, -6, 2, -9), add(MUSEUM, 0, 2.2, 0), F(11), 42, 0.002) }],
-  12: [{ f: F(12), s: hold(add(MUSEUM, 1.5, 1.6, -3.6), add(MUSEUM, 2.4, 1.6, 0.4), F(12), 38, 0.0022) }],
+  12: [{ f: F(12), s: hold(add(MUSEUM, 1.6, 1.8, -7.5), add(MUSEUM, 1.2, 1.7, 0), F(12), 40, 0.0022) }],
 };
 const dof: Dof[] = [
   { f: 0, cInf: 0 }, { f: F(2), cInf: 9 }, { f: F(2, 0.5), cInf: 0 }, { f: F(3), cInf: 6 }, { f: F(4), cInf: 12 }, { f: F(5), cInf: 0 },
