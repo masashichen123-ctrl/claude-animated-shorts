@@ -1,0 +1,241 @@
+{
+ "TOTAL": 1739,
+ "SENT": [
+  0,
+  5.58,
+  11.46,
+  15.2,
+  21.12,
+  25.84,
+  30.46,
+  32.62,
+  34.94,
+  38.22,
+  41.3,
+  46.46,
+  50.78,
+  54.32,
+  57.98
+ ],
+ "SPOKEN": [
+  5.28,
+  5.5,
+  3.18,
+  5.6,
+  4.44,
+  4.4,
+  1.9,
+  1.96,
+  2.94,
+  2.8,
+  4.74,
+  4,
+  3.26,
+  2.46
+ ],
+ "flashes": [
+  167
+ ],
+ "shots": [
+  {
+   "a": 0,
+   "b": 167,
+   "amb": "street",
+   "light": "day"
+  },
+  {
+   "a": 167,
+   "b": 344,
+   "amb": "field",
+   "light": "day"
+  },
+  {
+   "a": 344,
+   "b": 456,
+   "amb": "street",
+   "light": "day"
+  },
+  {
+   "a": 456,
+   "b": 634,
+   "amb": "street",
+   "light": "day"
+  },
+  {
+   "a": 634,
+   "b": 775,
+   "amb": "street",
+   "light": "day"
+  },
+  {
+   "a": 775,
+   "b": 914,
+   "amb": "street",
+   "light": "day"
+  },
+  {
+   "a": 914,
+   "b": 979,
+   "amb": "street",
+   "light": "day"
+  },
+  {
+   "a": 979,
+   "b": 1048,
+   "amb": "street",
+   "light": "day"
+  },
+  {
+   "a": 1048,
+   "b": 1147,
+   "amb": "street",
+   "light": "day"
+  },
+  {
+   "a": 1147,
+   "b": 1239,
+   "amb": "room",
+   "light": "day"
+  },
+  {
+   "a": 1239,
+   "b": 1394,
+   "amb": "street",
+   "light": "day"
+  },
+  {
+   "a": 1394,
+   "b": 1523,
+   "amb": "street",
+   "light": "day"
+  },
+  {
+   "a": 1523,
+   "b": 1630,
+   "amb": "street",
+   "light": "day"
+  },
+  {
+   "a": 1630,
+   "b": 1739,
+   "amb": "field",
+   "light": "golden"
+  }
+ ],
+ "events": [
+  {
+   "f": 4,
+   "kind": "rumble",
+   "dur": 4,
+   "gain": 0.5
+  },
+  {
+   "f": 217,
+   "kind": "splat",
+   "gain": 0.8
+  },
+  {
+   "f": 250,
+   "kind": "splat",
+   "gain": 0.6
+  },
+  {
+   "f": 548,
+   "kind": "ding",
+   "gain": 0.5
+  },
+  {
+   "f": 660,
+   "kind": "clank"
+  },
+  {
+   "f": 694,
+   "kind": "clank",
+   "gain": 0.7
+  },
+  {
+   "f": 782,
+   "kind": "beep",
+   "gain": 2
+  },
+  {
+   "f": 804,
+   "kind": "ratchet",
+   "n": 8
+  },
+  {
+   "f": 854,
+   "kind": "ratchet",
+   "n": 8
+  },
+  {
+   "f": 889,
+   "kind": "ratchet",
+   "n": 8
+  },
+  {
+   "f": 914,
+   "kind": "rumble",
+   "dur": 2.4
+  },
+  {
+   "f": 1083,
+   "kind": "boing",
+   "gain": 0.6
+  },
+  {
+   "f": 1159,
+   "kind": "ratchet",
+   "n": 14
+  },
+  {
+   "f": 1239,
+   "kind": "rumble",
+   "dur": 4,
+   "gain": 0.7
+  },
+  {
+   "f": 1448,
+   "kind": "cheer",
+   "n": 6
+  },
+  {
+   "f": 1484,
+   "kind": "ding",
+   "gain": 0.7
+  },
+  {
+   "f": 1630,
+   "kind": "bell",
+   "gain": 0.7
+  },
+  {
+   "f": 1644,
+   "kind": "clank",
+   "gain": 0.5
+  }
+ ],
+ "cuts": [
+  456,
+  634,
+  775,
+  799,
+  914,
+  979,
+  1048,
+  1394,
+  1523
+ ],
+ "glides": [
+  104,
+  552,
+  715,
+  1681
+ ],
+ "musicStops": [],
+ "music": {
+  "mood": "bouncy",
+  "key": 0,
+  "tempo": 112
+ }
+}
