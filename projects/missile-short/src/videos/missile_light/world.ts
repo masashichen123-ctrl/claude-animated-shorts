@@ -6,13 +6,24 @@ import * as THREE from "three";
 import * as PAINT from "./paint";
 import { ctex, cloudHD } from "./paint";
 import { buildSets, buildMissile, poseMissile, SET_META, SetRig, MissileRig } from "./build";
-import { LIGHTS, LOOK, LightPreset } from "./lights";
-import { TONE, CHAR, LFB, untone } from "./shade";
+import { LIGHTS, LOOK, LightPreset, LightName, lightOf, SHOT_SUN, CUR } from "./lights";
+import { TONE, CHAR, LFB, HAZE, hazeShader, untone } from "./shade";
 import { NOINK } from "./ink";
 import { Pool, Actor, Fx, stage } from "./cast";
-import { FPS, SHOTS, ShotDef, SetName, Light, camAt, missileAt, noseDir } from "./story";
+import { FPS, SHOTS, ShotDef, SetName, SPOT, BOOM_AT, camAt, missileAt, noseDir } from "./story";
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
+/** haze length multiplier per set (the open-sea sets look ~1 km to the horizon; the far sea must stay cyan, not white) */
+const HAZE_K: Partial<Record<SetName, number>> = { sea: 3.2, subdeck: 2.4, runway: 1.5 };
+/** camera-relative sun azimuth actually used for a shot (sun disc only when it is roughly ahead of the lens) */
+const o2 = (id: number) => Math.abs(SHOT_SUN[id]?.az ?? SHOTS[id - 1].sunAz ?? 90);
+type Lamp = { p: [number, number, number]; I: number; halo: number; col?: string };
+/** practical lamps per set (bulb positions match build.ts pendant(): bulb at top - drop - 0.28) */
+const LAMPS: Partial<Record<SetName, Lamp[]>> = {
+  postoffice: [{ p: [-2.5, 3.22, 0.5], I: 9, halo: 1.3 }, { p: [2.5, 3.22, 0.5], I: 9, halo: 1.3 }, { p: [0, 3.22, 4.5], I: 9, halo: 1.3 }],
+  museum: [{ p: [-6, 9.22, -2], I: 70, halo: 2.4 }, { p: [6, 9.22, -2], I: 70, halo: 2.4 }, { p: [-6, 9.22, 8], I: 70, halo: 2.4 },
+    { p: [6, 9.22, 8], I: 70, halo: 2.4 }, { p: [0, 9.22, 14], I: 70, halo: 2.4 }],
+};
 /** sun disc (solid, soft rim) and the flat golden halo (lighting.md 6 / depth.md 6.4: r50 13-26 % of the frame width) */
 const discTex = () => ctex("sunDisc", 128, 128, (g) => {
   const gr = g.createRadialGradient(64, 64, 58, 64, 64, 64); gr.addColorStop(0, "rgba(255,255,255,1)"); gr.addColorStop(1, "rgba(255,255,255,0)");
@@ -43,7 +54,9 @@ export class World {
   private water: THREE.Mesh;
   private sunDisc: THREE.Sprite; private sunHalo: THREE.Sprite;
   private sunCache = new Map<number, THREE.Vector3>();
-  private cloudMaps: Record<Light, THREE.Texture[]>;
+  private cloudMaps: Record<LightName, THREE.Texture[]>;
+  private points: THREE.PointLight[] = []; private halos: THREE.Sprite[] = []; private spots: THREE.SpotLight[] = [];
+  private shadowSize = 4096;
   private clouds: THREE.Mesh[] = [];
   private sets: Record<SetName, SetRig>;
   private missile: MissileRig;
@@ -55,14 +68,26 @@ export class World {
     // ---- sky: 5 colour stops by elevation, written as tone-map-inverted linear values ----
     this.skyMat = new THREE.ShaderMaterial({
       uniforms: { c0: { value: new THREE.Color() }, c1: { value: new THREE.Color() }, c2: { value: new THREE.Color() },
-        c3: { value: new THREE.Color() }, c4: { value: new THREE.Color() }, e: { value: new THREE.Vector4() } },
+        c3: { value: new THREE.Color() }, c4: { value: new THREE.Color() }, e: { value: new THREE.Vector4() },
+        sunDirW: { value: new THREE.Vector3(0, 1, 0) }, glowCol: { value: new THREE.Color() }, glowK: { value: 0 }, tex: { value: 0 } },
       vertexShader: "varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+      // depth.md 3.3: 5 stops + painted world-space noise (does not swim with the camera) + a glow toward the sun
       fragmentShader: `uniform vec3 c0, c1, c2, c3, c4; uniform vec4 e; varying vec3 vP;
-        void main(){ float el = asin(clamp(normalize(vP).y, -1.0, 1.0));
+        uniform vec3 sunDirW; uniform vec3 glowCol; uniform float glowK; uniform float tex;
+        float sh(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5); }
+        float vn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f);
+          return mix(mix(sh(i), sh(i + vec2(1, 0)), f.x), mix(sh(i + vec2(0, 1)), sh(i + vec2(1, 1)), f.x), f.y); }
+        void main(){ vec3 dir = normalize(vP); float el = asin(clamp(dir.y, -1.0, 1.0));
           vec3 c = mix(c0, c1, smoothstep(0.0, e.x, el));
           c = mix(c, c2, smoothstep(e.x, e.y, el));
           c = mix(c, c3, smoothstep(e.y, e.z, el));
           c = mix(c, c4, smoothstep(e.z, e.w, el));
+          vec2 q = vec2(atan(dir.z, dir.x) * 6.0, el * 14.0);
+          c *= 1.0 + tex * (vn(q) + 0.5 * vn(q * 2.7 + 5.3) + 0.25 * vn(vec2(q.x * 3.1, q.y * 9.0)) - 0.875);
+          vec2 hd = normalize(vec2(dir.x, dir.z) + 1e-5), hs = normalize(vec2(sunDirW.x, sunDirW.z) + 1e-5);
+          float sg = pow(max(dot(hd, hs), 0.0), 4.0) * (1.0 - smoothstep(0.0, 0.52, el));
+          float sg2 = pow(max(dot(dir, normalize(sunDirW)), 0.0), 24.0);
+          c = mix(c, glowCol, clamp(glowK * (sg + 0.8 * sg2), 0.0, 1.0));
           gl_FragColor = vec4(c, 1.0); }`,
       side: THREE.BackSide, depthWrite: false, fog: false,
     });
@@ -79,15 +104,42 @@ export class World {
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(4096, 4096);
     R.add(this.hemi, this.sun, this.sun.target);
-    const lights = Object.keys(LOOK) as Light[];
-    this.cloudMaps = Object.fromEntries(lights.map((l) => [l, [0, 1, 2, 3].map((k) => cloudHD(k, LOOK[l].cloud))])) as unknown as Record<Light, THREE.Texture[]>;
-    for (let i = 0; i < 11; i++) {
-      const a = (i / 11) * Math.PI * 2 + 0.3, d = 620 + (i % 3) * 60;
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: this.cloudMaps.day[i % 4], color: new THREE.Color(1.1, 1.1, 1.1), transparent: true, depthWrite: false, fog: false }));
-      const w = 130 + (i % 4) * 30;
-      m.position.set(Math.cos(a) * d, 70 + (i % 4) * 38, Math.sin(a) * d); m.scale.set(w, w / 2, 1);
-      m.layers.set(NOINK);
+    const lights = Object.keys(LOOK) as LightName[];
+    this.cloudMaps = Object.fromEntries(lights.map((l) => [l, [0, 1, 2, 3].map((k) => cloudHD(k, LOOK[l].cloud))])) as unknown as Record<LightName, THREE.Texture[]>;
+    // depth.md 3.4: 30 stretched cards in 3 shells (low strata near the horizon, mid, high), each pre-mixed toward the
+    // sky colour at its elevation (low 45 %, mid 20 %, high 0) so they fade into the horizon like the reference
+    const rnd = (k: number) => { const x = Math.sin(k * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+    const SHELLS = [
+      { n: 12, d: [800, 1000], h: [25, 70], w: [80, 160], asp: [5, 7], op: 0.75, mix: 0.45 },
+      { n: 12, d: [650, 800], h: [80, 170], w: [120, 220], asp: [3, 4], op: 0.9, mix: 0.2 },
+      { n: 6, d: [600, 700], h: [180, 300], w: [160, 260], asp: [2, 2.5], op: 1.0, mix: 0.0 },
+    ];
+    let ci = 0;
+    for (const S of SHELLS) for (let i = 0; i < S.n; i++, ci++) {
+      const L2 = (r: number[], k: number) => r[0] + (r[1] - r[0]) * rnd(ci * 5 + k);
+      const a = (i / S.n) * Math.PI * 2 + rnd(ci * 5) * (Math.PI * 2 / S.n), d = L2(S.d, 1), w = L2(S.w, 2) * (S.n === 12 && S.mix > 0.3 ? 1.6 : 1), asp = L2(S.asp, 3);
+      const mat = new THREE.ShaderMaterial({
+        uniforms: { map: { value: this.cloudMaps.day[ci % 4] }, mixCol: { value: new THREE.Color() }, mixK: { value: S.mix }, op: { value: S.op }, gain: { value: 1.08 } },
+        vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+        fragmentShader: `uniform sampler2D map; uniform vec3 mixCol; uniform float mixK, op, gain; varying vec2 vUv;
+          void main(){ vec4 t = texture2D(map, vUv); gl_FragColor = vec4(mix(t.rgb * gain, mixCol, mixK), t.a * op); }`,
+        transparent: true, depthWrite: false, fog: false,
+      });
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
+      m.position.set(Math.cos(a) * d, L2(S.h, 4), Math.sin(a) * d); m.scale.set(w, w / asp, 1);
+      m.userData.el = Math.atan2(m.position.y, d);
+      m.layers.set(NOINK); m.renderOrder = -0.8 + ci * 0.001;
       this.clouds.push(m); R.add(m);
+    }
+    // ---- practicals (lighting.md 3.3): lamps per set, the flame light; additive halos so lamps glow ----
+    for (let i = 0; i < 6; i++) {
+      const p = new THREE.PointLight("#ffd9a0", 0, 0, 2); p.castShadow = false; p.visible = false; this.points.push(p); R.add(p);
+      const h = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex(), color: new THREE.Color(1, 1, 1), fog: false, depthWrite: false, transparent: true, blending: THREE.AdditiveBlending }));
+      h.layers.set(NOINK); h.visible = false; h.renderOrder = 6; this.halos.push(h); R.add(h);
+    }
+    for (let i = 0; i < 2; i++) {
+      const sp = new THREE.SpotLight("#ffe2bc", 0, 0, THREE.MathUtils.degToRad(28), 0.6, 2); sp.castShadow = false; sp.visible = false;
+      this.spots.push(sp); R.add(sp, sp.target);
     }
     // ---- the sea: depression-angle gradient + drifting painted marks (one big plane, raised / lowered per set) ----
     this.WU = {
@@ -119,9 +171,10 @@ export class World {
         .replace("#include <common>", WATER_DECL)
         .replace("#include <map_fragment>", WATER_COL)
         .replace("#include <lights_fragment_begin>", "float sunVis = 1.0;\n" + LFB)
-        .replace("#include <lights_fragment_end>", "#include <lights_fragment_end>\n  reflectedLight.directDiffuse = diffuseColor.rgb * mix(wShade, vec3(1.0), sunVis);\n  reflectedLight.indirectDiffuse = vec3(0.0);");
+        .replace("#include <lights_fragment_end>", "#include <lights_fragment_end>\n  reflectedLight.directDiffuse = diffuseColor.rgb * mix(wShade, vec3(1.0), sunVis) + pracD * 0.6;\n  reflectedLight.indirectDiffuse = vec3(0.0);");
+      hazeShader(sh);
     };
-    waterM.customProgramCacheKey = () => "sea1";
+    waterM.customProgramCacheKey = () => "sea2";
     const g = new THREE.PlaneGeometry(5000, 5000).rotateX(-Math.PI / 2);
     const wm = new THREE.Mesh(g, waterM);
     wm.receiveShadow = true;
@@ -138,7 +191,8 @@ export class World {
       fx += x / n; fz += z / n;
     }
     const n = Math.hypot(fx, fz) || 1; fx /= n; fz /= n;
-    const az = THREE.MathUtils.degToRad(s.sunAz ?? L.az), el = THREE.MathUtils.degToRad(s.sunEl ?? L.el);
+    const o = SHOT_SUN[id];
+    const az = THREE.MathUtils.degToRad(o?.az ?? s.sunAz ?? L.az), el = THREE.MathUtils.degToRad(o?.el ?? s.sunEl ?? L.el);
     const hx = fx * Math.cos(az) - fz * Math.sin(az), hz = fz * Math.cos(az) + fx * Math.sin(az); // screen right = (-fz, fx)
     v = new THREE.Vector3(hx * Math.cos(el), Math.sin(el), hz * Math.cos(el)).normalize();
     this.sunCache.set(id, v);
@@ -148,8 +202,36 @@ export class World {
   private actor(i: number) { while (this.actors.length <= i) this.actors.push(new Actor(this.root)); return this.actors[i]; }
   private fx(i: number) { while (this.fxs.length <= i) this.fxs.push(new Fx(this.root)); return this.fxs[i]; }
 
+  /** lamps of the active set + a flame light at the missile's tail + the puff's flash; halos on every bulb */
+  private practicals(set: SetName, ln: LightName, L: LightPreset, flame: number, tail: THREE.Vector3, boom: number, cam: THREE.PerspectiveCamera) {
+    const lamps: Lamp[] = (LAMPS[set] ?? []).slice();
+    const hot: { p: THREE.Vector3; I: number; col: string; halo: number; hk: number }[] = lamps.map((l) => ({ p: V(...l.p), I: l.I, col: l.col ?? L.pracCol, halo: l.halo, hk: 1 }));
+    if (flame > 0) hot.push({ p: tail.clone(), I: 60 * flame, col: "#ff9a4a", halo: 7 * flame, hk: 1.6 });
+    if (boom >= 0 && boom < 1.2) { const k = Math.max(0, 1 - boom / 1.2); hot.push({ p: V(...BOOM_AT), I: 900 * k, col: "#ffb060", halo: 0, hk: 0 }); }
+    for (let i = 0; i < this.points.length; i++) {
+      const pl = this.points[i], h = this.halos[i], q = hot[i];
+      pl.visible = !!q; h.visible = !!q && q.halo > 0;
+      if (!q) continue;
+      pl.position.copy(q.p); pl.color.set(q.col); pl.intensity = q.I;
+      if (h.visible) {
+        h.position.copy(q.p); h.scale.setScalar(q.halo);
+        (h.material as THREE.SpriteMaterial).color.set(q.col).multiplyScalar(0.55 * q.hk);
+      }
+    }
+    // museum: two spots from above-front, a warm pool on the exhibit and one on the plaque
+    const sp = set === "museum" ? [{ p: V(2, 11.5, 10), t: V(...SPOT.EXHIBIT), I: 2200 }, { p: V(6, 9, 9), t: V(SPOT.PLAQUE[0], 0.6, SPOT.PLAQUE[2]), I: 600 }] : [];
+    for (let i = 0; i < this.spots.length; i++) {
+      const s2 = this.spots[i], q = sp[i];
+      s2.visible = !!q;
+      if (!q) continue;
+      s2.position.copy(q.p); s2.target.position.copy(q.t); s2.target.updateMatrixWorld(); s2.intensity = q.I; s2.color.set(L.pracCol);
+    }
+    void ln; void cam;
+  }
+
   update(id: number, f: number, cam: THREE.PerspectiveCamera, scene: THREE.Scene) {
-    const t = f / FPS, s = SHOTS[id - 1], L = LIGHTS[s.light], K = LOOK[s.light], meta = SET_META[s.set];
+    const t = f / FPS, s = SHOTS[id - 1], ln = lightOf(id), L = LIGHTS[ln], K = LOOK[ln], meta = SET_META[s.set];
+    CUR.id = id;
     // ---- camera ----
     const c = camAt(id, f);
     cam.position.set(...c.pos); cam.up.set(0, 1, 0); cam.lookAt(...c.look); cam.rotateZ(c.roll);
@@ -161,14 +243,25 @@ export class World {
     this.hemi.color.set(L.sky); this.hemi.groundColor.set(L.ground); this.hemi.intensity = L.hemiI;
     this.sun.color.set(L.sunCol); this.sun.intensity = L.sunI;
     let Rr = THREE.MathUtils.clamp(dist * 1.15 + 7, 12, 95);
-    if (s.light === "golden" || s.light === "dusk") Rr = Math.max(Rr, 30);
+    if (ln === "golden" || ln === "dusk" || ln === "morning") Rr = Math.max(Rr, 30);
     if (s.set === "subdeck") Rr = Math.max(Rr, 30);
     this.sun.position.copy(focus).addScaledVector(sunDir, 220); this.sun.target.position.copy(focus);
     const sc = this.sun.shadow.camera;
     sc.left = -Rr; sc.right = Rr; sc.top = Rr; sc.bottom = -Rr; sc.near = 20; sc.far = 480; sc.updateProjectionMatrix();
     this.sun.shadow.bias = L.bias; this.sun.shadow.normalBias = L.normalBias * (Rr / 12);
+    // soft shadows (lighting.md 3.3): PCF-soft filters ~3 texels, so the map size sets the penumbra: texel = softM / 3
+    const ms = Math.pow(2, Math.round(Math.log2(THREE.MathUtils.clamp((6 * Rr) / L.softM, 512, 4096))));
+    if (ms !== this.shadowSize) {
+      this.shadowSize = ms; this.sun.shadow.mapSize.set(ms, ms);
+      if (this.sun.shadow.map) { this.sun.shadow.map.dispose(); (this.sun.shadow as { map: THREE.WebGLRenderTarget | null }).map = null; }
+    }
     TONE.uLitCol.value.set(...L.lit); TONE.uShadeCol.value.set(...L.shade); TONE.uShadeLift.value.set(...L.lift);
     TONE.uLambert.value = L.lambert; TONE.uSideK.value = L.sideK; TONE.uTerm.value = L.term; TONE.uBounce.value.set(...K.bounce); TONE.uSat.value = K.sat;
+    TONE.uPrac.value = L.prac; TONE.uAlbFloor.value.set(...L.albFloor); TONE.uRim.value.set(...L.rim);
+    TONE.uGobo.value = L.gobo; TONE.uGoboScale.value = L.goboScale; TONE.uGoboOff.value.set(0.04 * t, 0.015 * t); TONE.uSunW.value.copy(sunDir);
+    const indoor = s.set === "postoffice" || s.set === "museum";
+    TONE.uAO.value = L.ao; TONE.uAOR.value = L.aoR; TONE.uFloorY.value = 0; TONE.uCeilY.value = s.set === "postoffice" ? 4.4 : s.set === "museum" ? 12 : 1e4;
+    if (!indoor) TONE.uAO.value = L.ao * 0.6; // outdoors: building / wall bases only
     CHAR.uCharTint.value.set(...L.charTint); CHAR.uCharShade.value = L.charShade; CHAR.uGrad.value = L.charGrad;
     CHAR.uBodyGrad.value = L.bodyGrad; CHAR.uSideTint.value.set(...L.sideTint);
     // ---- sky, fog (colour = horizon colour), sun disc + halo, clouds ----
@@ -176,12 +269,17 @@ export class World {
     K.sky.c.forEach((h, i) => untone(h, su["c" + i].value));
     const e = K.sky.e.map((deg) => THREE.MathUtils.degToRad(deg));
     su.e.value.set(e[1], e[2], e[3], e[4]);
+    su.sunDirW.value.copy(sunDir); untone(L.glowCol, su.glowCol.value); su.glowK.value = L.glowK; su.tex.value = K.skyTex;
     this.sky.position.copy(cam.position);
-    untone(L.fog, this.fog.color);
-    [this.fog.near, this.fog.far] = meta.fog ?? [L.fogNear, L.fogFar];
+    // haze (depth.md 3.2): the open-sea sets see 1 km to the horizon, so their e-fold length is stretched
+    const HZ = L.haze, hk = HAZE_K[s.set] ?? 1;
+    untone(HZ.col, this.fog.color);
+    HAZE.uHaze.value.set(HZ.start * hk, HZ.len * hk, HZ.h * hk, HZ.max); HAZE.uHazeSat.value = HZ.sat; HAZE.uHazeY0.value = meta.water ?? 0;
+    // ink reads scene.fog linearly: near = haze start, far ~ where the haze reaches ~90 %
+    this.fog.near = HZ.start * hk; this.fog.far = HZ.max > 0 ? HZ.start * hk + 2.3 * HZ.len * hk : 1e5;
     scene.fog = this.fog; scene.background = null;
-    const outdoors = s.light !== "interior";
-    const showSun = s.light === "golden" || s.light === "dusk";
+    const outdoors = !indoor;
+    const showSun = (ln === "golden" || ln === "dusk" || ln === "morning") && (o2(id) < 70);
     this.sunDisc.visible = this.sunHalo.visible = showSun;
     if (showSun) {
       this.sunDisc.position.copy(cam.position).addScaledVector(sunDir, 900);
@@ -189,11 +287,18 @@ export class World {
       this.sunHalo.position.copy(this.sunDisc.position); this.sunHalo.scale.setScalar(2 * 900 * Math.tan(THREE.MathUtils.degToRad(24)));
       (this.sunHalo.material as THREE.SpriteMaterial).color.set(L.sunDisc).multiplyScalar(1.3);
     }
+    const skyAt = (elR: number, out: THREE.Color) => { // the sky stop colour at an elevation (radians), for the cloud pre-mix
+      const st = K.sky.e.map((d) => THREE.MathUtils.degToRad(d));
+      let k = 0; while (k + 1 < st.length && elR > st[k + 1]) k++;
+      const u = k + 1 < st.length ? THREE.MathUtils.smoothstep(elR, st[k], st[k + 1]) : 0;
+      return untone(new THREE.Color(K.sky.c[k]).lerp(new THREE.Color(K.sky.c[Math.min(k + 1, 4)]), u), out);
+    };
     for (let i = 0; i < this.clouds.length; i++) {
-      const m = this.clouds[i], mat = m.material as THREE.MeshBasicMaterial;
+      const m = this.clouds[i], mat = m.material as THREE.ShaderMaterial;
       m.visible = outdoors;
       m.lookAt(cam.position.x, m.position.y, cam.position.z);
-      mat.map = this.cloudMaps[s.light][i % 4];
+      mat.uniforms.map.value = this.cloudMaps[ln][i % 4];
+      skyAt(m.userData.el as number, mat.uniforms.mixCol.value);
     }
     this.sky.visible = outdoors;
     // ---- sea: colours (on-screen targets, tone-map-inverted), height per set ----
@@ -212,6 +317,8 @@ export class World {
     const nd = noseDir(mp.yaw, mp.pitch), dir = V(...nd);
     const tail = this.missile.tail.clone().applyMatrix4(this.missile.root.matrixWorld);
     const boosterTails = this.missile.boosterTails.map((b) => b.clone().applyMatrix4(this.missile.root.matrixWorld));
+    // ---- practical lights: set lamps, the booster / sustainer flame ----
+    this.practicals(s.set, ln, L, mp.flame > 0 && mp.visible ? mp.flame : 0, tail, mp.boom, cam);
     // ---- cast + effects ----
     const right = V(0, 0, 0).setFromMatrixColumn(cam.matrixWorld, 0), up = V(0, 0, 0).setFromMatrixColumn(cam.matrixWorld, 1);
     const st = stage(id, t, { pos: cam.position, right, up }, { pose: mp, dir, tail, boosterTails });

@@ -23,14 +23,25 @@ import { TOTAL, FLASH_AT, SHOTS, layersAt, dofAt } from "./story";
 export const MISSILE_FRAMES = TOTAL;
 
 /** A/B switches for test stills only (Remotion inputProps `{ post: { ink: false, ... } }`); everything is on by default. */
-type PostToggles = { ink: boolean; lens: boolean; pre: boolean; bloom: boolean; grade: boolean; grain: boolean };
-const toggles = (): PostToggles => ({ ink: true, lens: true, pre: true, bloom: true, grade: true, grain: false, ...((getInputProps() as { post?: Partial<PostToggles> }).post ?? {}) });
+type PostToggles = { ink: boolean; lens: boolean; pre: boolean; bloom: boolean; grade: boolean; grain: boolean; inkDebug: number };
+const toggles = (): PostToggles => ({ ink: true, lens: true, pre: true, bloom: true, grade: true, grain: false, inkDebug: 0, ...((getInputProps() as { post?: Partial<PostToggles> }).post ?? {}) });
 
 /** Bloom for emissive sources only (depth.md 6.4). Its MIP chain always starts at 540x960 (half of 1080x1920),
  *  whatever the output size, so the glow keeps the same size relative to the frame (e-fold ~30 px at 1080p,
  *  ~1.5 % of the frame height) at 540, 1080 and 1440 widths. ADD blend: HDR-safe (SCREEN darkens values > 1). */
+// Look pass r1 (lighting.md 3.4, "bloom on emissives only"): the bright pass keys on the MAX channel, not luminance,
+// with a threshold above any lit albedo (day lit 1.58 x white .85 = 1.34; golden 1.5 x .95 = 1.43): from 1.45, full
+// at 1.8. A/B on r1 stills: at the old luminance threshold 1.0 the sunlit top of the white missile bloomed (311, 816);
+// now only emissives do: sun disc (6.0), flame / boom / burst cards (glow 1.6-2.2), beacon 2.2, lamps 2.6. Max channel
+// so saturated sources (red beacon, orange flame: luminance < 1.3) still bloom. Emissives need k >= 1.8 to glow fully.
+const BLOOM_T = 1.45, BLOOM_S = 0.35;
+/** per light preset bloom strength / radius (lighting.md 3.4; e-fold glow ~30 px at 1080 for radius 0.6) */
+const BLOOM_LOOK: Record<string, [number, number]> = { day: [0.6, 0.6], golden: [0.8, 0.7], dusk: [0.8, 0.7], morning: [0.8, 0.7], interior: [0.9, 0.75], night: [0.9, 0.75] };
+/** vignette floor (depth.md 3.6: corner/centre luma 0.87 -> ~0.72 = k 0.28 from r0 0.45); presets that ask for more keep it */
+const VIG_K = 0.28, VIG_R0 = 0.45;
 const makeBloom = () => {
-  const b = new BloomEffect({ blendFunction: BlendFunction.ADD, intensity: 0.5, luminanceThreshold: 1.0, luminanceSmoothing: 0.2, mipmapBlur: true, levels: 6, radius: 0.6 });
+  const b = new BloomEffect({ blendFunction: BlendFunction.ADD, intensity: 0.6, luminanceThreshold: BLOOM_T, luminanceSmoothing: BLOOM_S, mipmapBlur: true, levels: 6, radius: 0.6 });
+  b.luminanceMaterial.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace("float l=luminance(texel.rgb);", "float l=max(texel.r,max(texel.g,texel.b));"); };
   const mip = b.mipmapBlurPass;
   const setSize = mip.setSize.bind(mip);
   mip.setSize = (w: number, h: number) => setSize(Math.round((1920 * w) / Math.max(h, 1)), 1920);
@@ -55,13 +66,14 @@ const Inner: React.FC<{ id: number; kit: boolean }> = ({ id, kit }) => {
   const on = useMemo(toggles, []);
   const fx = useMemo(() => ({
     ink: new InkPass(scene, camera as THREE.PerspectiveCamera),
-    lens: new LensBlur({ maxCoC: 24, nearScale: 1.2 }),
+    lens: new LensBlur({ maxFar: 14, maxNear: 22, nearScale: 1.4 }), // depth.md 3.5: split caps (was one 24 px clamp)
     bloom: makeBloom(),
     tone: new ToneMappingEffect({ mode: ToneMappingMode.NEUTRAL }),
     grade: new GradeEffect(GRADES.day, GRADE_STRENGTH.day),
     grain: new GrainEffect({ amount: 0.025, cellPx: 1.5 }), // film grain, OFF by default (inputProps post.grain): the reference measures no grain and it quadruples the file size
   }), [camera, scene]);
   useEffect(() => () => fx.ink.dispose(), [fx]);
+  fx.ink.debug = on.inkDebug;
   const post = useMemo(() => (
     <EffectComposer multisampling={4}>
       {on.ink ? <primitive object={fx.ink} dispose={null} /> : null}
@@ -82,7 +94,12 @@ const Inner: React.FC<{ id: number; kit: boolean }> = ({ id, kit }) => {
   if (d.focus) fpt.set(...d.focus(f)); else fpt.copy(target);
   fx.lens.focus = Math.max(0.3, fpt.sub(cam.position).dot(fwd));
   fx.lens.cInf = d.cInf;
-  gradeFor(fx.grade, SHOTS[id - 1].light);
+  const light = SHOTS[id - 1].light;
+  gradeFor(fx.grade, light);
+  const vig = fx.grade.uniforms.get("gradeVig")!.value as THREE.Vector2;
+  if (vig.x < VIG_K) vig.set(VIG_K, Math.min(vig.y, VIG_R0));
+  const [bi, br] = BLOOM_LOOK[light] ?? BLOOM_LOOK.day;
+  fx.bloom.intensity = bi; fx.bloom.mipmapBlurPass.radius = br;
   fx.grain.seed = f; // deterministic per frame
   return (
     <>

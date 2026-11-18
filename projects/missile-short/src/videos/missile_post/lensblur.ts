@@ -1,6 +1,10 @@
 // Thin-lens depth of field for the reference's soft backgrounds (reports/depth.md 6.1), as two deterministic gather
 // passes. CoC radius (px at 1080x1920) = cInf * |1 - focus / depth|, x nearScale in front of the focus plane,
-// clamped to maxCoC. Every pixel size is multiplied in the shader by (output height / 1920), so the picture is the
+// clamped to maxFar behind the focus plane and maxNear in front of it (look pass r1, look_reports/depth.md 3.5: the
+// reference's background blur tops out at ~4.2 sigma720 = 12.6 px at 1080 -> 14 px cap; foreground occluders reach
+// 5-7.8 sigma720 -> 22 px cap, nearScale 1.4). In the MAIN stage bright samples (emissive cores, max channel 1.6 -> 2.4
+// linear, above any lit albedo) get up to x4 weight, so lights defocus into bokeh discs instead of smears.
+// Every pixel size is multiplied in the shader by (output height / 1920), so the picture is the
 // same at 540, 1080 and 1440 widths.
 //   pre  : 16-tap gather over 0.29 x the CoC. It fills the gaps between the main taps, so the composite kernel is a
 //          smooth disc (1024 effective taps) instead of 64 visible copies of every edge.
@@ -17,13 +21,13 @@ const frag = /* glsl */ `
 uniform float focus;      // focus distance along the view axis (m)
 uniform float cInf;       // blur-disc radius (px at 1080x1920) of things at infinity; 0 = off
 uniform float nearScale;  // extra blur for things in front of the focus plane
-uniform float maxCoC;     // px at 1080x1920
+uniform float maxFar;     // px at 1080x1920, behind the focus plane
+uniform float maxNear;    // px at 1080x1920, in front of the focus plane
 #define GOLDEN 2.39996323
 
 float cocAt(float d, float s) {               // signed CoC radius in output px
   float c = cInf * s * (1.0 - focus / max(d, 1e-3));
-  if (c < 0.0) c *= nearScale;
-  return clamp(c, -maxCoC * s, maxCoC * s);
+  return c < 0.0 ? max(c * nearScale, -maxNear * s) : min(c, maxFar * s);
 }
 float distAt(vec2 uv) { return -getViewZ(readDepth(uv)); }
 
@@ -43,12 +47,16 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth,
       float rs = abs(cocAt(ds, s)) * SPREAD;
       if (ds > d0) rs = min(rs, R);            // background never bleeds over a nearer pixel
       float w = clamp(rs - rr + 0.5, 0.0, 1.0); // does the sample's disc reach us?
-      acc += texture2D(inputBuffer, suv).rgb * w; wsum += w;
+      vec3 sc = texture2D(inputBuffer, suv).rgb;
+#if BOKEH
+      w *= 1.0 + 3.0 * smoothstep(1.6, 2.4, max(sc.r, max(sc.g, sc.b))); // bright lights -> bokeh discs
+#endif
+      acc += sc * w; wsum += w;
     }
   }
   vec3 col = acc / wsum;
 #if NEAR_TAPS > 0
-  float M = maxCoC * s;
+  float M = maxNear * s;
   vec3 fg = vec3(0.0); float fw = 0.0, cov = 0.0;
   for (int i = 0; i < NEAR_TAPS; i++) {
     float rr = sqrt((float(i) + 0.5) / float(NEAR_TAPS)) * M;
@@ -67,20 +75,23 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth,
   outputColor = vec4(col, inputColor.a);
 }`;
 
-type Stage = { taps: number; spread: number; nearTaps: number; rot: number };
-const PRE: Stage = { taps: 16, spread: 0.287, nearTaps: 0, rot: 0.61 };
-const MAIN: Stage = { taps: 64, spread: 0.958, nearTaps: 32, rot: 0 };
+type Stage = { taps: number; spread: number; nearTaps: number; rot: number; bokeh: boolean };
+const PRE: Stage = { taps: 16, spread: 0.287, nearTaps: 0, rot: 0.61, bokeh: false };
+const MAIN: Stage = { taps: 64, spread: 0.958, nearTaps: 32, rot: 0, bokeh: true };
+
+/** maxCoC (legacy) sets both caps; maxFar / maxNear override it per side */
+export type LensOptions = { maxCoC?: number; maxFar?: number; maxNear?: number; nearScale?: number };
 
 export class LensBlurEffect extends Effect {
-  constructor({ maxCoC = 24, nearScale = 1.2, stage = MAIN }: { maxCoC?: number; nearScale?: number; stage?: Stage } = {}) {
+  constructor({ maxCoC, maxFar = maxCoC ?? 14, maxNear = maxCoC ?? 22, nearScale = 1.4, stage = MAIN }: LensOptions & { stage?: Stage } = {}) {
     super("LensBlurEffect", frag, {
       blendFunction: BlendFunction.NORMAL,
       attributes: EffectAttribute.DEPTH | EffectAttribute.CONVOLUTION,
       defines: new Map<string, string>([
-        ["TAPS", String(stage.taps)], ["SPREAD", stage.spread.toFixed(4)], ["NEAR_TAPS", String(stage.nearTaps)], ["ROT", stage.rot.toFixed(4)],
+        ["TAPS", String(stage.taps)], ["SPREAD", stage.spread.toFixed(4)], ["NEAR_TAPS", String(stage.nearTaps)], ["ROT", stage.rot.toFixed(4)], ["BOKEH", stage.bokeh ? "1" : "0"],
       ]),
       uniforms: new Map<string, Uniform>([
-        ["focus", new Uniform(10)], ["cInf", new Uniform(0)], ["nearScale", new Uniform(nearScale)], ["maxCoC", new Uniform(maxCoC)],
+        ["focus", new Uniform(10)], ["cInf", new Uniform(0)], ["nearScale", new Uniform(nearScale)], ["maxFar", new Uniform(maxFar)], ["maxNear", new Uniform(maxNear)],
       ]),
     });
   }
@@ -94,9 +105,9 @@ export class LensBlurEffect extends Effect {
 export class LensBlur {
   readonly pre: LensBlurEffect;
   readonly main: LensBlurEffect;
-  constructor({ maxCoC = 24, nearScale = 1.2 } = {}) {
-    this.pre = new LensBlurEffect({ maxCoC, nearScale, stage: PRE });
-    this.main = new LensBlurEffect({ maxCoC, nearScale, stage: MAIN });
+  constructor(o: LensOptions = {}) {
+    this.pre = new LensBlurEffect({ ...o, stage: PRE });
+    this.main = new LensBlurEffect({ ...o, stage: MAIN });
   }
   set focus(v: number) { this.pre.focus = v; this.main.focus = v; }
   set cInf(v: number) { this.pre.cInf = v; this.main.cInf = v; }
