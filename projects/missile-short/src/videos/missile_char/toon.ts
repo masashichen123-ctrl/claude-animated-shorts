@@ -71,7 +71,7 @@ export const SAILOR: Outfit = { jacket: "#86a9d6", pants: "#2c3d66", boots: INK,
   headType: "standard" };
 /** postmaster general: wide "bun" head, bald crown with grey side tufts, walrus moustache, round glasses, grey suit */
 export const POSTMASTER: Outfit = { jacket: "#6e7482", pants: "#5a5f6b", boots: "#2a2020", hat: "balding", hair: "#dcd9d2", glasses: true, collar: "suit", tie: "#b8323e",
-  buttons: "#3a3d45", build: "stout", moustache: "#d4cfc6", headType: "bun" };
+  buttons: "#3a3d45", build: "stout", moustache: "#bfb8ae", headType: "bun" };
 /** clerk: tall "bean" head, side-parted hair under a green eyeshade, cream shirt + blue tie, sleeve garters */
 export const CLERK: Outfit = { jacket: "#efe2c4", pants: "#4a4f5c", boots: "#3a2a20", hat: "visor", hair: "#5a3b2a", hairStyle: "side", collar: "shirt", tie: "#2f5fae",
   buttons: "none", build: "slim", headType: "bean" };
@@ -430,7 +430,7 @@ const faceFront = (p: Pen, cx: number, cy: number, W: number, expr: Expr, facing
   const mx = cx + 11 * u * facing, my = cy + 19 * u;
   mouth(p, F.mouth, mx, my, u);
   if (moustache && stout) { // bushy walrus moustache: a scalloped puff with its own ink line, a notch in the middle
-    const pts = scallop(mx, cy + 11 * u, 17 * u, 6.5 * u, 8, 0.12);
+    const pts = scallop(mx, cy + 11 * u, 20 * u, 5.5 * u, 10, 0.1);
     p.poly(pts, moustache, 2.2 * u);
     p.stroke([[mx, cy + 7 * u], [mx, cy + 11 * u]], 1.6 * u);
   } else if (moustache) for (const s of [-1, 1])

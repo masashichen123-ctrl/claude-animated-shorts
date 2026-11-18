@@ -1058,9 +1058,9 @@ const buildRunway = (): SetRig => {
   b.add(rbox(0.5, 0.6, 0.04, 0.02), col("#8a5530"), M4(px, 0.55, pz + 0.285));
   b.add(cached("seal", () => new THREE.CylinderGeometry(0.16, 0.16, 0.03, 20).rotateX(Math.PI / 2)), col("#d9b45a"), M4(px, 0.82, pz + 0.3));
   for (let k = 0; k < 9; k++) { const a = -Math.PI / 2 + ((k + 0.5) / 9) * Math.PI; b.add(tri(V(px, 0.62, pz + 0.33), V(px + 0.36 * Math.sin(a - 0.17), 0.62 - 0.36 * Math.cos(a - 0.17), pz + 0.33 + (k % 2) * 0.03), V(px + 0.36 * Math.sin(a + 0.17), 0.62 - 0.36 * Math.cos(a + 0.17), pz + 0.33 + (k % 2) * 0.03)), col(["#24407a", "#f2efe6", "#d8352f"][k % 3], THREE.DoubleSide)); }
-  for (const dx of [-0.16, 0.16]) {
-    b.add(rod(V(px + dx, 1.12, pz + 0.05), V(px + dx * 0.8, 1.42, pz - 0.12), 0.015), col("#4a4f55"));
-    b.add(lathe("mic", [[0, 0], [0.045, 0.01], [0.055, 0.06], [0.05, 0.12], [0, 0.13]], 12), col("#c9d3dc"), M4(px + dx * 0.8, 1.4, pz - 0.14));
+  for (const dx of [-0.3, 0.3]) { // low gooseneck mics at the lectern corners, clear of the speaker's face
+    b.add(rod(V(px + dx, 1.12, pz + 0.12), V(px + dx * 0.9, 1.24, pz + 0.02), 0.012), col("#4a4f55"));
+    b.add(lathe("mic", [[0, 0], [0.035, 0.01], [0.042, 0.05], [0.038, 0.09], [0, 0.1]], 12), col("#c9d3dc"), M4(px + dx * 0.9, 1.23, pz + 0.0));
   }
   for (const dx of [-2.2, 2.0]) {
     b.add(rod(V(px + dx, 0, pz - 0.6), V(px + dx, 3.2, pz - 0.6), 0.035), col("#d9b45a"));
