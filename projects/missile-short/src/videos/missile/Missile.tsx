@@ -16,8 +16,8 @@ import { useThree } from "@react-three/fiber";
 import { EffectComposer } from "@react-three/postprocessing";
 import { BlendFunction, BloomEffect, ToneMappingEffect, ToneMappingMode } from "postprocessing";
 import { World, loadKit } from "./world";
-import { InkPass, noInkFallback } from "./ink";
-import { LensBlur, GrainEffect } from "./lensblur";
+import { InkPass, noInkFallback, InkOptions } from "./ink";
+import { LensBlur, GrainEffect, OpaqueEffect } from "./lensblur";
 import { GradeEffect, GRADES, GRADE_STRENGTH, gradeFor } from "./grade";
 import { TOTAL, FLASH_AT, SHOTS, layersAt, dofAt } from "./story";
 import * as LXM from "./lights";
@@ -27,7 +27,7 @@ const LX = LXM as unknown as { LIGHTS: Record<string, unknown>; lightOf?: (id: n
 export const MISSILE_FRAMES = TOTAL;
 
 /** A/B switches for test stills only (Remotion inputProps `{ post: { ink: false, ... } }`); everything is on by default. */
-type PostToggles = { ink: boolean; lens: boolean; pre: boolean; bloom: boolean; grade: boolean; grain: boolean; inkDebug: number };
+type PostToggles = { ink: boolean; lens: boolean; pre: boolean; bloom: boolean; grade: boolean; grain: boolean; inkDebug: number; bloomT?: number; inkOpts?: InkOptions }; // bloomT: test override of the bright-pass threshold
 const toggles = (): PostToggles => ({ ink: true, lens: true, pre: true, bloom: true, grade: true, grain: false, inkDebug: 0, ...((getInputProps() as { post?: Partial<PostToggles> }).post ?? {}) });
 
 /** Bloom for emissive sources only (depth.md 6.4). Its MIP chain always starts at 540x960 (half of 1080x1920),
@@ -41,11 +41,17 @@ const toggles = (): PostToggles => ({ ink: true, lens: true, pre: true, bloom: t
 const BLOOM_T = 1.45, BLOOM_S = 0.35;
 /** per light preset bloom strength / radius (lighting.md 3.4; e-fold glow ~30 px at 1080 for radius 0.6) */
 const BLOOM_LOOK: Record<string, [number, number]> = { day: [0.6, 0.6], golden: [0.8, 0.7], dusk: [0.8, 0.7], morning: [0.8, 0.7], interior: [0.9, 0.75], gallery: [0.9, 0.75], night: [0.9, 0.75] };
-/** vignette floor (depth.md 3.6: corner/centre luma 0.87 -> ~0.72 = k 0.28 from r0 0.45); presets that ask for more keep it */
-const VIG_K = 0.28, VIG_R0 = 0.45;
+/** per-light bright-pass threshold (max channel, linear). Gallery / interior: lit cream floors and walls with practicals
+ *  reach ~1.6-1.9, so the threshold sits at 2.0 / 1.8 (verify_r1 #1: the museum's milky veil was the lit hall blooming).
+ *  A lights.ts preset may carry its own `bloomT`, which wins. */
+const BLOOM_TH: Record<string, number> = { gallery: 2.0, interior: 1.8 };
+/** per-shot bloom intensity factor: 13 (dusk puff) - the flame glow burned the missile to white (verify_r1 #4) */
+const SHOT_BLOOM_K: Record<number, number> = { 13: 0.35 };
 const makeBloom = () => {
   const b = new BloomEffect({ blendFunction: BlendFunction.ADD, intensity: 0.6, luminanceThreshold: BLOOM_T, luminanceSmoothing: BLOOM_S, mipmapBlur: true, levels: 6, radius: 0.6 });
-  b.luminanceMaterial.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace("float l=luminance(texel.rgb);", "float l=max(texel.r,max(texel.g,texel.b));"); };
+  // bright pass = max channel x the bloom mask the InkPass writes into alpha (1 + mask): only glow materials, the sky /
+  // sun and NOINK fx cards (flames, booms) can bloom; lit floors and walls never do, however hot (verify_r1 #1)
+  b.luminanceMaterial.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace("float l=luminance(texel.rgb);", "float l=max(texel.r,max(texel.g,texel.b))*clamp(2.0*(1.0-texel.a),0.0,1.0);"); };
   const mip = b.mipmapBlurPass;
   const setSize = mip.setSize.bind(mip);
   mip.setSize = (w: number, h: number) => setSize(Math.round((1920 * w) / Math.max(h, 1)), 1920);
@@ -74,10 +80,12 @@ const Inner: React.FC<{ id: number; kit: boolean }> = ({ id, kit }) => {
     bloom: makeBloom(),
     tone: new ToneMappingEffect({ mode: ToneMappingMode.NEUTRAL }),
     grade: new GradeEffect(GRADES.day, GRADE_STRENGTH.day),
+    opaque: new OpaqueEffect(),
     grain: new GrainEffect({ amount: 0.025, cellPx: 1.5 }), // film grain, OFF by default (inputProps post.grain): the reference measures no grain and it quadruples the file size
   }), [camera, scene]);
   useEffect(() => () => fx.ink.dispose(), [fx]);
   fx.ink.debug = on.inkDebug;
+  if (on.inkOpts) fx.ink.set(on.inkOpts); // test stills only (A/B of ink constants)
   const post = useMemo(() => (
     <EffectComposer multisampling={4}>
       {on.ink ? <primitive object={fx.ink} dispose={null} /> : null}
@@ -87,6 +95,7 @@ const Inner: React.FC<{ id: number; kit: boolean }> = ({ id, kit }) => {
       <primitive object={fx.tone} dispose={null} />
       {on.grade ? <primitive object={fx.grade} dispose={null} /> : null}
       {on.grain ? <primitive object={fx.grain} dispose={null} /> : null}
+      <primitive object={fx.opaque} dispose={null} />
     </EffectComposer>
   ), [fx, on]);
   const cam = camera as THREE.PerspectiveCamera;
@@ -103,15 +112,14 @@ const Inner: React.FC<{ id: number; kit: boolean }> = ({ id, kit }) => {
   fx.lens.cInf = d.cInf;
   const light = SHOTS[id - 1].light;
   gradeFor(fx.grade, light);
-  const vig = fx.grade.uniforms.get("gradeVig")!.value as THREE.Vector2;
-  if (vig.x < VIG_K) vig.set(VIG_K, Math.min(vig.y, VIG_R0));
   // bloom per shot: lights.ts LIGHTS[lightOf(id)].bloomI / bloomR when the light owner's version provides them,
   // else the BLOOM_LOOK table above (optional access: compiles against both lights.ts versions)
   const lname = (typeof LX.lightOf === "function" ? LX.lightOf(id) : light) as string;
-  const lp = (LX.LIGHTS as Record<string, { bloomI?: number; bloomR?: number } | undefined>)[lname];
+  const lp = (LX.LIGHTS as Record<string, { bloomI?: number; bloomR?: number; bloomT?: number } | undefined>)[lname];
   const [bi0, br0] = BLOOM_LOOK[lname] ?? BLOOM_LOOK[light] ?? BLOOM_LOOK.day;
   const bi = typeof lp?.bloomI === "number" ? lp.bloomI : bi0, br = typeof lp?.bloomR === "number" ? lp.bloomR : br0;
-  fx.bloom.intensity = bi; fx.bloom.mipmapBlurPass.radius = br;
+  fx.bloom.intensity = bi * (SHOT_BLOOM_K[id] ?? 1); fx.bloom.mipmapBlurPass.radius = br;
+  fx.bloom.luminanceMaterial.threshold = on.bloomT ?? (typeof lp?.bloomT === "number" ? lp.bloomT : BLOOM_TH[lname] ?? BLOOM_T);
   fx.grain.seed = f; // deterministic per frame
   return (
     <>

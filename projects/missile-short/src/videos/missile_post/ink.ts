@@ -227,7 +227,11 @@ void main() {
     zm = min(zm, dist(tMainDepth, vUv - vec2(texel.x, 0.0)));
     zm = min(zm, dist(tMainDepth, vUv + vec2(0.0, texel.y)));
     zm = min(zm, dist(tMainDepth, vUv - vec2(0.0, texel.y)));
-    if (zm < zc * 0.985 - 0.03) { gl_FragColor = vec4(0.0, 0.0, offWorld(), 1.0); return; } // a NOINK card in front
+    // a NOINK card in front: no ink; bloom mask only where the card covers the pixel centre (no 1 px rims on world edges)
+    if (zm < zc * 0.985 - 0.03) {
+      float b = dist(tMainDepth, vUv) < zc * 0.985 - 0.03 ? offWorld() : 0.0;
+      gl_FragColor = vec4(0.0, 0.5, b, 1.0); return;                          // g .5: marker for debug 5
+    }
   }
 
   float t = clamp(log(zc / dNear) / log(dFar / dNear), 0.0, 1.0);
@@ -288,6 +292,7 @@ void main() {
   vec4 c = texture2D(inputBuffer, vUv);
   if (debug == 1) { gl_FragColor = vec4(vec3(1.0 - a), 1.0); return; }               // mask only
   if (debug == 2) { gl_FragColor = vec4(texture2D(tNormal, vUv).xyz * 0.5 + 0.5, 1.0); return; } // world normals
+  if (debug == 5) { vec4 mk = texture2D(tMask, vUv); gl_FragColor = vec4(mk.b, mk.g > 0.25 && mk.g < 0.75 && mk.r < 0.01 ? 1.0 : 0.0, 0.0, 1.0); return; } // r = bloom mask, g = NOINK in front
   if (debug == 4) { gl_FragColor = vec4(c.rgb * (0.25 + 0.75 * texture2D(tMask, vUv).b), 1.0); return; } // bloom mask
   if (debug == 3) {                                                                                   // material ids
     float id = floor(abs(texture2D(tNormal, vUv).a) + 0.25) - 1.0;

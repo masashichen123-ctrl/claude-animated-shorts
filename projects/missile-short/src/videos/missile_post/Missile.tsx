@@ -16,7 +16,7 @@ import { useThree } from "@react-three/fiber";
 import { EffectComposer } from "@react-three/postprocessing";
 import { BlendFunction, BloomEffect, ToneMappingEffect, ToneMappingMode } from "postprocessing";
 import { World, loadKit } from "./world";
-import { InkPass, noInkFallback } from "./ink";
+import { InkPass, noInkFallback, InkOptions } from "./ink";
 import { LensBlur, GrainEffect, OpaqueEffect } from "./lensblur";
 import { GradeEffect, GRADES, GRADE_STRENGTH, gradeFor } from "./grade";
 import { TOTAL, FLASH_AT, SHOTS, layersAt, dofAt } from "./story";
@@ -27,7 +27,7 @@ const LX = LXM as unknown as { LIGHTS: Record<string, unknown>; lightOf?: (id: n
 export const MISSILE_FRAMES = TOTAL;
 
 /** A/B switches for test stills only (Remotion inputProps `{ post: { ink: false, ... } }`); everything is on by default. */
-type PostToggles = { ink: boolean; lens: boolean; pre: boolean; bloom: boolean; grade: boolean; grain: boolean; inkDebug: number; bloomT?: number }; // bloomT: test override of the bright-pass threshold
+type PostToggles = { ink: boolean; lens: boolean; pre: boolean; bloom: boolean; grade: boolean; grain: boolean; inkDebug: number; bloomT?: number; inkOpts?: InkOptions }; // bloomT: test override of the bright-pass threshold
 const toggles = (): PostToggles => ({ ink: true, lens: true, pre: true, bloom: true, grade: true, grain: false, inkDebug: 0, ...((getInputProps() as { post?: Partial<PostToggles> }).post ?? {}) });
 
 /** Bloom for emissive sources only (depth.md 6.4). Its MIP chain always starts at 540x960 (half of 1080x1920),
@@ -85,6 +85,7 @@ const Inner: React.FC<{ id: number; kit: boolean }> = ({ id, kit }) => {
   }), [camera, scene]);
   useEffect(() => () => fx.ink.dispose(), [fx]);
   fx.ink.debug = on.inkDebug;
+  if (on.inkOpts) fx.ink.set(on.inkOpts); // test stills only (A/B of ink constants)
   const post = useMemo(() => (
     <EffectComposer multisampling={4}>
       {on.ink ? <primitive object={fx.ink} dispose={null} /> : null}
