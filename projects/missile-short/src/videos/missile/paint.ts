@@ -1,5 +1,8 @@
-// Hand-painted look textures drawn on canvases (cached): grass, cobbles, stone courses, deck planks, water,
-// river bed, roof tiles, bricks, plaster facades with windows/doors/timber frames, iron chain links.
+// Hand-painted look textures drawn on canvases (cached). Bridge-template painters (grass, stone, planks, water marks,
+// clouds, roof tiles, facades, bricks) plus the missile short's own set (bottom of the file, "MISSILE SHORT"): the
+// Regulus skin, sub hull + deck slats, asphalt, concrete, sand, clapboard siding, floor tiles, parquet, plaster,
+// panelled wood, pigeon-hole slots, posters, the 1959 plaque, burlap sacks, the mail truck livery, corrugated hangar
+// metal, palm bark, podium bunting, marble and waterline foam. Owner: sets (with build.ts).
 import * as THREE from "three";
 
 export const rng = (seed: number) => {
@@ -718,3 +721,333 @@ export const chainHD = () => ctex("chainHD", 256, 1024, (g) => {
   }
 });
 
+
+
+// =================================================================================================================
+// MISSILE SHORT painters. Conventions: painted seams are dark TINTS (never pure black lines: the world ink pass draws
+// silhouettes and creases), per-panel jitter about +-6 % lightness, sizes noted as px per metre.
+// =================================================================================================================
+const seamLine = (g: G, x0: number, y0: number, x1: number, y1: number, w = 2, a = 0.35, rgb = "40,30,40") => {
+  g.strokeStyle = `rgba(${rgb},${a})`; g.lineWidth = w; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+};
+const rivetRow = (g: G, x0: number, y0: number, x1: number, y1: number, step: number, rad = 2.2) => {
+  const n = Math.max(1, Math.floor(Math.hypot(x1 - x0, y1 - y0) / step));
+  for (let i = 0; i <= n; i++) {
+    const x = x0 + ((x1 - x0) * i) / n, y = y0 + ((y1 - y0) * i) / n;
+    g.fillStyle = "rgba(60,55,65,0.45)"; g.beginPath(); g.arc(x, y + 0.6, rad, 0, TAU); g.fill();
+    g.fillStyle = "rgba(255,255,255,0.7)"; g.beginPath(); g.arc(x - 0.5, y - 0.5, rad * 0.55, 0, TAU); g.fill();
+  }
+};
+const speckle = (g: G, r: R, W: number, H: number, n: number, cols: string[], r0: number, r1: number) => {
+  for (let i = 0; i < n; i++) {
+    const x = U(r, 0, W), y = U(r, 0, H), rad = U(r, r0, r1);
+    g.fillStyle = pick(r, cols); wrap2(W, H, x, y, rad, (xx, yy) => { g.beginPath(); g.arc(xx, yy, rad, 0, TAU); g.fill(); });
+  }
+};
+
+/** Regulus I skin for the fuselage lathe. u (canvas x, 2048 px) runs tail (0) -> nose (1) over ~9 m; v (canvas y, 512)
+ *  runs once around. Gloss white, red bands, panel seams with rivet rows, the mail hatch on the forward fuselage. */
+export const missileSkinHD = () => ctex("missileSkinHD", 2048, 512, (g, r) => {
+  const W = 2048, H = 512;
+  const gr = g.createLinearGradient(0, 0, 0, H); // painted sheen around the body (top stays brightest under the sun)
+  gr.addColorStop(0, "#f6f4ee"); gr.addColorStop(0.5, "#eeebe3"); gr.addColorStop(1, "#f6f4ee");
+  g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  for (let i = 0; i < 10; i++) blotch(g, U(r, 0, W), U(r, 0, H), U(r, 60, 160), 2.5, "200,195,185", 0.08);
+  // red bands (tail, mid, nose) with a thin darker edge
+  for (const [a, b] of [[0.07, 0.13], [0.6, 0.655], [0.84, 0.875]]) {
+    g.fillStyle = "#d0322f"; g.fillRect(a * W, 0, (b - a) * W, H);
+    g.fillStyle = "rgba(90,10,10,0.25)"; g.fillRect(a * W, 0, 3, H); g.fillRect(b * W - 3, 0, 3, H);
+    g.fillStyle = "rgba(255,220,210,0.18)"; g.fillRect(a * W + 3, 0, (b - a) * W - 6, H * 0.06);
+  }
+  // panel stations around the body + longitudinal seams, rivets along each
+  for (const u of [0.05, 0.2, 0.33, 0.47, 0.58, 0.72, 0.8, 0.93]) { seamLine(g, u * W, 0, u * W, H, 2.5, 0.3); rivetRow(g, u * W + 7, 4, u * W + 7, H - 4, 22); }
+  for (const v of [0.12, 0.5, 0.88]) { seamLine(g, 0, v * H, W, v * H, 2, 0.22); rivetRow(g, 10, v * H + 6, W - 10, v * H + 6, 28, 1.8); }
+  // mail hatch (forward fuselage, on the side seen from the right): outline, hinge line, handle
+  const hx = 0.7 * W, hy = 0.18 * H, hw = 0.11 * W, hh = 0.22 * H;
+  g.strokeStyle = "rgba(50,40,50,0.55)"; g.lineWidth = 4; rr(g, hx, hy, hw, hh, 10); g.stroke();
+  g.fillStyle = "rgba(255,255,255,0.35)"; rr(g, hx + 5, hy + 5, hw - 10, 10, 4); g.fill();
+  rivetRow(g, hx + 10, hy + hh - 10, hx + hw - 10, hy + hh - 10, 18, 2);
+  g.fillStyle = "#9aa0a8"; rr(g, hx + hw * 0.4, hy + hh * 0.45, hw * 0.2, 14, 6); g.fill();
+  g.strokeStyle = "rgba(50,40,50,0.6)"; g.lineWidth = 2; rr(g, hx + hw * 0.4, hy + hh * 0.45, hw * 0.2, 14, 6); g.stroke();
+  // soft exhaust soot at the very tail
+  const sg = g.createLinearGradient(0, 0, 0.06 * W, 0); sg.addColorStop(0, "rgba(60,55,60,0.55)"); sg.addColorStop(1, "rgba(60,55,60,0)");
+  g.fillStyle = sg; g.fillRect(0, 0, 0.06 * W, H);
+});
+/** wing / fin paint: off-white with a few seams and rivets (planar uv = metres / 2) */
+export const wingHD = () => ctex("wingHD", 512, 512, (g, r) => {
+  g.fillStyle = "#f1eee6"; g.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 5; i++) blotch(g, U(r, 0, 512), U(r, 0, 512), U(r, 60, 140), 2, "200,195,185", 0.1);
+  for (const x of [128, 300, 450]) { seamLine(g, x, 0, x, 512, 2, 0.22); rivetRow(g, x + 6, 6, x + 6, 506, 20, 1.8); }
+  seamLine(g, 0, 256, 512, 256, 2, 0.2); rivetRow(g, 6, 262, 506, 262, 24, 1.8);
+});
+
+/** submarine hull plating (planar uv: 1 tile = 4 m): dark navy-grey, welded plate seams, salt streaks */
+export const hullHD = () => ctex("hullHD", 1024, 1024, (g, r) => {
+  const S = 1024;
+  g.fillStyle = "#3c4350"; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 18; i++) { const x = U(r, 0, S), y = U(r, 0, S), rad = U(r, 80, 220); wrap2(S, S, x, y, rad * 2, (xx, yy) => blotch(g, xx, yy, rad, 2, r() > 0.5 ? "90,98,115" : "25,28,36", 0.18)); }
+  for (let y = 0; y < S; y += 256) seamLine(g, 0, y + 2, S, y + 2, 3, 0.4, "15,18,25");
+  for (let row = 0; row < 4; row++) for (let x = (row % 2) * 256; x < S + 256; x += 512) seamLine(g, x % S, row * 256, x % S, row * 256 + 256, 3, 0.35, "15,18,25");
+  for (let i = 0; i < 40; i++) { // salt / rust streaks running down
+    const x = U(r, 0, S), y = U(r, 0, S), len = U(r, 60, 220), rust = r() < 0.25;
+    const lg = g.createLinearGradient(0, y, 0, y + len);
+    lg.addColorStop(0, rust ? "rgba(150,90,60,0.25)" : "rgba(210,220,230,0.18)"); lg.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = lg; wrapX(S, x, 6, (xx) => g.fillRect(xx, y, U(r, 3, 7), len));
+  }
+});
+/** sub deck: open wooden slats over dark gaps (1024 px = 2 m), slats run along the hull (canvas x) */
+export const subDeckHD = () => ctex("subDeckHD", 1024, 1024, (g, r) => {
+  const S = 1024, P = 64;
+  g.fillStyle = "#1e2026"; g.fillRect(0, 0, S, S);
+  for (let y = 0; y < S; y += P) {
+    let x = U(r, -300, 0);
+    while (x < S) {
+      const len = U(r, 300, 620), c = jit(r, "#7d7468", 0.08, 4, 0.12);
+      wrapX(S, x, len, (xx) => { g.fillStyle = c; g.fillRect(xx, y + 7, len - 6, P - 14); g.fillStyle = "rgba(255,245,230,0.12)"; g.fillRect(xx, y + 7, len - 6, 5); });
+      grain(g, r, S, x, y + P / 2, len - 10, 4, 1.5, "rgba(50,40,30,0.18)");
+      x += len;
+    }
+  }
+});
+/** runway / road asphalt (1024 px = 4 m): warm dark grey, aggregate speckle, tar seams, a few cracks */
+export const asphaltHD = (key = "asphaltHD", base = "#5f6167") => ctex(key, 1024, 1024, (g, r) => {
+  const S = 1024;
+  g.fillStyle = base; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 14; i++) { const x = U(r, 0, S), y = U(r, 0, S), rad = U(r, 120, 300); wrap2(S, S, x, y, rad * 1.5, (xx, yy) => blotch(g, xx, yy, rad, 1.5, r() > 0.5 ? "130,130,135" : "40,40,46", 0.16)); }
+  speckle(g, r, S, S, 2600, ["rgba(170,168,160,0.45)", "rgba(35,35,40,0.45)", "rgba(120,115,108,0.4)"], 0.8, 2.2);
+  g.lineCap = "round";
+  for (let i = 0; i < 6; i++) { // cracks
+    let x = U(r, 0, S), y = U(r, 0, S);
+    g.strokeStyle = "rgba(25,25,30,0.45)"; g.lineWidth = 2; g.beginPath(); g.moveTo(x, y);
+    for (let k = 0; k < 8; k++) { x += U(r, -30, 30); y += U(r, 10, 40); g.lineTo(x, y); }
+    g.stroke();
+  }
+  for (let i = 0; i < 3; i++) { const x = U(r, 0, S), y = U(r, 0, S); g.fillStyle = "rgba(30,30,36,0.25)"; rr(g, x, y, U(r, 80, 200), U(r, 60, 140), 30); g.fill(); }
+});
+/** poured concrete slabs (1024 px = 4 m, 2 m slabs): pale warm grey, soft stains, saw-cut joints */
+export const concreteHD = (key = "concreteHD", base = "#c9c4b8") => ctex(key, 1024, 1024, (g, r) => {
+  const S = 1024;
+  g.fillStyle = base; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { if ((i + j) % 2) { g.fillStyle = "rgba(255,255,255,0.05)"; g.fillRect(i * 256, j * 256, 256, 256); } }
+  for (let i = 0; i < 16; i++) { const x = U(r, 0, S), y = U(r, 0, S), rad = U(r, 60, 180); wrap2(S, S, x, y, rad * 1.5, (xx, yy) => blotch(g, xx, yy, rad, 1.4, r() > 0.5 ? "120,112,100" : "240,236,226", 0.14)); }
+  speckle(g, r, S, S, 900, ["rgba(110,104,95,0.3)", "rgba(250,248,240,0.35)"], 0.8, 1.8);
+  for (let k = 0; k < S; k += 512) { seamLine(g, k + 1, 0, k + 1, S, 3, 0.35, "70,64,58"); seamLine(g, 0, k + 1, S, k + 1, 3, 0.35, "70,64,58"); }
+});
+/** beach sand (1024 px = 4 m) */
+export const sandHD = () => ctex("sandHD", 1024, 1024, (g, r) => {
+  const S = 1024;
+  g.fillStyle = "#e8d39c"; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 18; i++) { const x = U(r, 0, S), y = U(r, 0, S), rad = U(r, 100, 260); wrap2(S, S, x, y, rad * 2, (xx, yy) => blotch(g, xx, yy, rad, 2, r() > 0.5 ? "250,236,190" : "205,175,120", 0.25)); }
+  speckle(g, r, S, S, 1500, ["rgba(180,150,100,0.35)", "rgba(255,250,230,0.45)"], 0.8, 1.6);
+});
+/** clapboard siding (512 px = 2 m, 0.2 m boards) in a 1950s pastel; canvas y = up the wall */
+export const sidingHD = (col: string) => ctex("sidingHD" + col, 512, 512, (g, r) => {
+  const S = 512, B = 51.2;
+  g.fillStyle = col; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 10; i++) {
+    const y = i * B;
+    const lg = g.createLinearGradient(0, y, 0, y + B);
+    lg.addColorStop(0, "rgba(255,255,255,0.14)"); lg.addColorStop(0.7, "rgba(255,255,255,0)"); lg.addColorStop(1, "rgba(60,40,40,0.16)");
+    g.fillStyle = lg; g.fillRect(0, y, S, B);
+    g.fillStyle = "rgba(50,35,40,0.38)"; g.fillRect(0, y + B - 4, S, 4); // shadow under the board lip
+  }
+  for (let i = 0; i < 10; i++) blotch(g, U(r, 0, S), U(r, 0, S), U(r, 40, 120), 2, "120,100,90", 0.06);
+});
+/** checker floor tiles (1024 px = 2 m, 0.5 m tiles) */
+export const tilesHD = (a: string, b: string) => ctex(`tilesHD${a}${b}`, 1024, 1024, (g, r) => {
+  const S = 1024, T = 256;
+  for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
+    g.fillStyle = jit(r, (i + j) % 2 ? a : b, 0.04, 3, 0.08); g.fillRect(i * T, j * T, T, T);
+    blotch(g, i * T + U(r, 60, 200), j * T + U(r, 60, 200), U(r, 40, 110), 1.5, "255,255,255", 0.12);
+  }
+  for (let k = 0; k <= S; k += T) { seamLine(g, k, 0, k, S, 4, 0.3, "60,45,40"); seamLine(g, 0, k, S, k, 4, 0.3, "60,45,40"); }
+});
+/** polished parquet / plank floor (1024 px = 2 m, 0.16 m boards along canvas x) */
+export const parquetHD = (base = "#b0784a") => ctex("parquetHD" + base, 1024, 1024, (g, r) => {
+  const S = 1024, P = 82;
+  for (let y = 0; y < S + P; y += P) {
+    let x = U(r, -400, 0);
+    while (x < S) {
+      const len = U(r, 320, 700), c = jit(r, base, 0.09, 4, 0.12);
+      wrapX(S, x, len, (xx) => { g.fillStyle = c; g.fillRect(xx, y, len, P); seamLine(g, xx + 1, y, xx + 1, y + P, 3, 0.35, "60,30,15"); });
+      grain(g, r, S, x, y + P * 0.35, len - 10, 5, 1.4, "rgba(70,35,15,0.16)");
+      grain(g, r, S, x, y + P * 0.7, len - 10, 5, 1.4, "rgba(70,35,15,0.12)");
+      x += len;
+    }
+    seamLine(g, 0, y, S, y, 3, 0.4, "60,30,15");
+    g.fillStyle = "rgba(255,240,220,0.08)"; g.fillRect(0, y + 3, S, 8); // varnish sheen
+  }
+});
+/** interior plaster (512 px = 2 m): soft mottle, faint picture-rail shading at the top */
+export const plasterHD = (col: string) => ctex("plasterHD" + col, 512, 512, (g, r) => {
+  const S = 512;
+  g.fillStyle = col; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 20; i++) { const x = U(r, 0, S), y = U(r, 0, S), rad = U(r, 40, 140); wrap2(S, S, x, y, rad * 1.3, (xx, yy) => blotch(g, xx, yy, rad, 1.3, r() > 0.5 ? "255,250,240" : "150,120,100", 0.08)); }
+});
+/** varnished raised-panel wood (1024 x 512 = 2 m x 1 m): counter fronts, wainscot, podium */
+export const panelHD = (base = "#7a4a2c") => ctex("panelHD" + base, 1024, 512, (g, r) => {
+  const W = 1024, H = 512;
+  g.fillStyle = base; g.fillRect(0, 0, W, H);
+  for (let y = 10; y < H; y += 26) grain(g, r, W, 0, y, W, 6, 1.5, "rgba(40,20,10,0.16)");
+  for (let i = 0; i < 4; i++) {
+    const x = i * 256 + 28, y = 50, w = 200, h = H - 100;
+    g.fillStyle = "rgba(0,0,0,0.18)"; rr(g, x, y, w, h, 8); g.fill();
+    g.fillStyle = "rgba(255,230,200,0.1)"; rr(g, x + 10, y + 10, w - 20, h - 20, 6); g.fill();
+    g.strokeStyle = "rgba(30,15,8,0.5)"; g.lineWidth = 4; rr(g, x, y, w, h, 8); g.stroke();
+    g.strokeStyle = "rgba(255,225,190,0.25)"; g.lineWidth = 3; g.beginPath(); g.moveTo(x + 4, y + h - 4); g.lineTo(x + 4, y + 4); g.lineTo(x + w - 4, y + 4); g.stroke();
+  }
+});
+/** pigeon-hole sorting wall (1024 x 1024 = 2.4 m x 2.4 m): 8 x 10 cubbies, letters poking out of most */
+export const slotsHD = () => ctex("slotsHD", 1024, 1024, (g, r) => {
+  const S = 1024, CW = 128, CH = 102.4;
+  g.fillStyle = "#8a5634"; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 8; i++) for (let j = 0; j < 10; j++) {
+    const x = i * CW, y = j * CH;
+    g.fillStyle = "#3a2216"; g.fillRect(x + 10, y + 10, CW - 20, CH - 16);
+    const lg = g.createLinearGradient(0, y + 10, 0, y + CH); lg.addColorStop(0, "rgba(0,0,0,0.35)"); lg.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = lg; g.fillRect(x + 10, y + 10, CW - 20, CH - 16);
+    const n = Math.floor(r() * 4);
+    for (let k = 0; k < n; k++) { // letters standing in the cubby, slightly fanned
+      const lx = x + 18 + k * 18 + U(r, -3, 3), ly = y + CH - 14, lh = U(r, 40, 62), lw = U(r, 60, 80);
+      g.save(); g.translate(lx, ly); g.rotate(U(r, -0.12, 0.12));
+      g.fillStyle = pick(r, ["#f4efe2", "#efe3c8", "#f7f4ea", "#e8d9b8", "#dfe8f2"]); g.fillRect(0, -lh, lw, lh);
+      g.strokeStyle = "rgba(60,45,40,0.45)"; g.lineWidth = 2; g.strokeRect(0, -lh, lw, lh);
+      if (r() < 0.35) { g.fillStyle = "#d0322f"; g.fillRect(lw - 16, -lh + 4, 12, 10); } // stamp
+      g.restore();
+    }
+    g.fillStyle = "rgba(255,225,190,0.25)"; g.fillRect(x + 4, y + 2, CW - 8, 6); // lit shelf lip
+  }
+});
+/** wall posters (512 x 720), no lettering: 0 airmail (plane over chevrons), 1 eagle + stars, 2 winged envelope */
+export const posterHD = (k: number) => ctex("posterHD" + k, 512, 720, (g, r) => {
+  const W = 512, H = 720;
+  const bg = ["#2f5d9a", "#f1e6c8", "#c9473c"][k % 3];
+  g.fillStyle = "#f4ecd8"; g.fillRect(0, 0, W, H);
+  g.fillStyle = bg; g.fillRect(24, 24, W - 48, H - 48);
+  if (k % 3 === 0) {
+    for (let i = -6; i < 12; i++) { g.fillStyle = i % 2 ? "#d0322f" : "#f4ecd8"; g.beginPath(); g.moveTo(24 + i * 60, H - 24); g.lineTo(84 + i * 60, H - 24); g.lineTo(24 + i * 60 + 140, H - 160); g.lineTo(i * 60 - 36 + 140, H - 160); g.fill(); }
+    g.fillStyle = "#f4ecd8"; g.beginPath(); g.ellipse(256, 300, 170, 26, -0.25, 0, TAU); g.fill(); // fuselage
+    g.beginPath(); g.moveTo(230, 300); g.lineTo(150, 170); g.lineTo(200, 170); g.lineTo(300, 290); g.fill(); // wings
+    g.beginPath(); g.moveTo(240, 300); g.lineTo(300, 420); g.lineTo(340, 410); g.lineTo(290, 300); g.fill();
+    g.fillStyle = "#f2c94c"; g.beginPath(); g.arc(400, 130, 46, 0, TAU); g.fill();
+  } else if (k % 3 === 1) {
+    for (let i = 0; i < 13; i++) { g.fillStyle = i % 2 ? "#f4ecd8" : "#c9473c"; g.fillRect(24, 430 + i * 20, W - 48, 20); }
+    g.fillStyle = "#2f5d9a"; g.fillRect(24, 24, W - 48, 400);
+    g.fillStyle = "#f4ecd8";
+    for (let i = 0; i < 5; i++) { const cx = 90 + i * 83, cy = 80; g.beginPath(); for (let a = 0; a < 10; a++) { const rad2 = a % 2 ? 9 : 22, b = -Math.PI / 2 + (a * Math.PI) / 5; g.lineTo(cx + rad2 * Math.cos(b), cy + rad2 * Math.sin(b)); } g.fill(); }
+    g.fillStyle = "#6a4a2a"; g.beginPath(); g.ellipse(256, 270, 60, 90, 0, 0, TAU); g.fill(); // eagle body
+    for (const sx of [-1, 1]) { g.beginPath(); g.moveTo(256 + sx * 40, 230); g.quadraticCurveTo(256 + sx * 190, 150, 256 + sx * 200, 320); g.quadraticCurveTo(256 + sx * 120, 280, 256 + sx * 40, 300); g.fill(); }
+    g.fillStyle = "#f4ecd8"; g.beginPath(); g.arc(256, 175, 34, 0, TAU); g.fill();
+    g.fillStyle = "#e0a530"; g.beginPath(); g.moveTo(276, 170); g.lineTo(312, 182); g.lineTo(276, 192); g.fill();
+  } else {
+    g.fillStyle = "#f4ecd8"; g.fillRect(126, 270, 260, 170); // envelope
+    g.strokeStyle = "#5a3a30"; g.lineWidth = 6; g.strokeRect(126, 270, 260, 170);
+    g.beginPath(); g.moveTo(126, 270); g.lineTo(256, 370); g.lineTo(386, 270); g.stroke();
+    for (const sx of [-1, 1]) { g.fillStyle = "#f4ecd8"; for (let i = 0; i < 4; i++) { g.beginPath(); g.ellipse(256 + sx * (170 + i * 18), 300 - i * 34, 70 - i * 10, 18, sx * (0.5 + i * 0.12), 0, TAU); g.fill(); } }
+    g.fillStyle = "#2f5d9a"; g.fillRect(320, 285, 44, 54);
+  }
+  g.strokeStyle = "rgba(40,30,30,0.35)"; g.lineWidth = 3; g.strokeRect(24, 24, W - 48, H - 48);
+  for (let i = 0; i < 8; i++) blotch(g, U(r, 0, W), U(r, 0, H), U(r, 40, 120), 1.5, "120,90,60", 0.08); // age
+});
+/** bronze plaque with "1959" (1024 x 512): the only lettering in the film, period-correct museum label */
+export const plaqueHD = () => ctex("plaqueHD", 1024, 512, (g, r) => {
+  const W = 1024, H = 512;
+  const lg = g.createLinearGradient(0, 0, W, H); lg.addColorStop(0, "#b98a3e"); lg.addColorStop(0.5, "#d6aa58"); lg.addColorStop(1, "#9c7130");
+  g.fillStyle = lg; g.fillRect(0, 0, W, H);
+  g.strokeStyle = "#5a3d14"; g.lineWidth = 14; rr(g, 26, 26, W - 52, H - 52, 30); g.stroke();
+  g.strokeStyle = "rgba(255,230,170,0.5)"; g.lineWidth = 4; rr(g, 44, 44, W - 88, H - 88, 22); g.stroke();
+  g.font = "bold 250px Georgia, 'Times New Roman', serif"; g.textAlign = "center"; g.textBaseline = "middle";
+  g.fillStyle = "rgba(255,235,180,0.55)"; g.fillText("1959", W / 2 + 4, 214 + 4);
+  g.fillStyle = "#3e2a0e"; g.fillText("1959", W / 2, 214);
+  g.fillStyle = "rgba(62,42,14,0.6)"; // engraved caption bars (not words)
+  for (const [y, w] of [[380, 620], [420, 520]] as const) { rr(g, (W - w) / 2, y, w, 16, 8); g.fill(); }
+  for (let i = 0; i < 6; i++) blotch(g, U(r, 0, W), U(r, 0, H), U(r, 50, 150), 1.5, "80,50,20", 0.12);
+});
+/** mail sack burlap (512 px = 1 m): coarse weave, a blue-grey stencil stripe */
+export const burlapHD = () => ctex("burlapHD", 512, 512, (g, r) => {
+  const S = 512;
+  g.fillStyle = "#cdb48a"; g.fillRect(0, 0, S, S);
+  for (let y = 0; y < S; y += 6) { g.fillStyle = `rgba(110,85,50,${0.1 + 0.08 * r()})`; g.fillRect(0, y, S, 2); }
+  for (let x = 0; x < S; x += 6) { g.fillStyle = `rgba(250,235,200,${0.08 + 0.08 * r()})`; g.fillRect(x, 0, 2, S); }
+  for (let i = 0; i < 10; i++) blotch(g, U(r, 0, S), U(r, 0, S), U(r, 50, 140), 1.3, "90,70,40", 0.14);
+  g.fillStyle = "rgba(50,70,110,0.55)"; g.fillRect(0, 300, S, 34); g.fillRect(0, 346, S, 12);
+});
+/** mail truck livery for the box body sides (1024 x 512 = box length x height): cream body, red-white-blue band, eagle disc */
+export const truckHD = () => ctex("truckHD", 1024, 512, (g, r) => {
+  const W = 1024, H = 512;
+  g.fillStyle = "#efe8d8"; g.fillRect(0, 0, W, H);
+  for (let i = 0; i < 8; i++) blotch(g, U(r, 0, W), U(r, 0, H), U(r, 80, 200), 2, "190,180,160", 0.1);
+  g.fillStyle = "#2f4f8f"; g.fillRect(0, 300, W, 46); g.fillStyle = "#f7f3ea"; g.fillRect(0, 346, W, 14); g.fillStyle = "#c8342f"; g.fillRect(0, 360, W, 40);
+  g.fillStyle = "#2f4f8f"; g.beginPath(); g.arc(W * 0.5, 160, 92, 0, TAU); g.fill();
+  g.strokeStyle = "#f7f3ea"; g.lineWidth = 10; g.beginPath(); g.arc(W * 0.5, 160, 76, 0, TAU); g.stroke();
+  g.fillStyle = "#f7f3ea"; // stylised eagle / wings (no lettering)
+  for (const sx of [-1, 1]) { g.beginPath(); g.moveTo(W * 0.5, 170); g.quadraticCurveTo(W * 0.5 + sx * 70, 100, W * 0.5 + sx * 64, 150); g.quadraticCurveTo(W * 0.5 + sx * 40, 170, W * 0.5, 196); g.fill(); }
+  for (const x of [8, W - 12]) seamLine(g, x, 0, x, H, 4, 0.4);
+  seamLine(g, 0, 20, W, 20, 3, 0.25); rivetRow(g, 30, 30, W - 30, 30, 40, 2.5); rivetRow(g, 30, H - 26, W - 30, H - 26, 40, 2.5);
+});
+/** corrugated quonset metal (512 px = 2 m): silver-grey ribs along canvas x, weathering */
+export const corrugatedHD = (base = "#a9adb0") => ctex("corrHD" + base, 512, 512, (g, r) => {
+  const S = 512, P = 32;
+  g.fillStyle = base; g.fillRect(0, 0, S, S);
+  for (let x = 0; x < S; x += P) {
+    const lg = g.createLinearGradient(x, 0, x + P, 0);
+    lg.addColorStop(0, "rgba(255,255,255,0.22)"); lg.addColorStop(0.45, "rgba(255,255,255,0)"); lg.addColorStop(1, "rgba(40,45,55,0.28)");
+    g.fillStyle = lg; g.fillRect(x, 0, P, S);
+  }
+  for (let y = 0; y < S; y += 256) seamLine(g, 0, y + 1, S, y + 1, 3, 0.3);
+  for (let i = 0; i < 12; i++) blotch(g, U(r, 0, S), U(r, 0, S), U(r, 40, 120), 1, r() > 0.6 ? "150,100,70" : "80,85,90", 0.12);
+});
+/** palm trunk rings (256 x 512 = around x 2 m up) */
+export const palmBarkHD = () => ctex("palmBarkHD", 256, 512, (g, r) => {
+  g.fillStyle = "#9a7a52"; g.fillRect(0, 0, 256, 512);
+  for (let y = 0; y < 512; y += 32) {
+    const lg = g.createLinearGradient(0, y, 0, y + 32); lg.addColorStop(0, "rgba(255,235,200,0.25)"); lg.addColorStop(0.6, "rgba(0,0,0,0)"); lg.addColorStop(1, "rgba(60,40,20,0.45)");
+    g.fillStyle = lg; g.fillRect(0, y, 256, 32);
+    seamLine(g, 0, y + 30 + U(r, -2, 2), 256, y + 30 + U(r, -2, 2), 3, 0.4, "60,40,25");
+  }
+});
+/** flag bunting for the podium front / stage skirt (512 x 256): blue star field + red/white stripes, gathered folds */
+export const buntingHD = () => ctex("buntingHD", 512, 256, (g) => {
+  for (let i = 0; i < 7; i++) { g.fillStyle = i % 2 ? "#f4f0e6" : "#c8323a"; g.fillRect(0, i * (256 / 7), 512, 256 / 7 + 1); }
+  g.fillStyle = "#2c3f86"; g.fillRect(0, 0, 200, 256 * (4 / 7));
+  g.fillStyle = "#f4f0e6";
+  for (let i = 0; i < 5; i++) for (let j = 0; j < 4; j++) { g.beginPath(); g.arc(22 + i * 38 + (j % 2) * 19, 18 + j * 34, 6, 0, TAU); g.fill(); }
+  for (let x = 0; x < 512; x += 64) { // folds
+    const lg = g.createLinearGradient(x, 0, x + 64, 0); lg.addColorStop(0, "rgba(255,255,255,0.12)"); lg.addColorStop(0.5, "rgba(0,0,0,0)"); lg.addColorStop(1, "rgba(30,20,40,0.22)");
+    g.fillStyle = lg; g.fillRect(x, 0, 64, 256);
+  }
+});
+/** pale marble for the museum pedestal (512 px = 2 m) */
+export const marbleHD = () => ctex("marbleHD", 512, 512, (g, r) => {
+  const S = 512;
+  g.fillStyle = "#e9e4da"; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 12; i++) blotch(g, U(r, 0, S), U(r, 0, S), U(r, 60, 160), 1.6, "200,190,175", 0.18);
+  g.lineCap = "round";
+  for (let i = 0; i < 9; i++) {
+    let x = U(r, 0, S), y = U(r, 0, S);
+    g.strokeStyle = "rgba(120,110,105,0.28)"; g.lineWidth = U(r, 1, 3); g.beginPath(); g.moveTo(x, y);
+    for (let k = 0; k < 10; k++) { x += U(r, 10, 40); y += U(r, -25, 25); g.lineTo(x, y); }
+    g.stroke();
+  }
+});
+/** waterline foam strip (512 x 128, alpha): broken white froth fading out at both edges; tiles along canvas x */
+export const foamHD = () => ctex("foamHD", 512, 128, (g, r) => {
+  for (let i = 0; i < 160; i++) {
+    const x = U(r, 0, 512), y = 64 + U(r, -30, 30) * (r() < 0.6 ? 0.4 : 1), rad = U(r, 6, 20), a = 0.95 - Math.abs(y - 64) / 50;
+    g.fillStyle = `rgba(255,255,255,${Math.max(0, a).toFixed(3)})`;
+    wrap2(512, 128, x, y, rad * 2, (xx, yy) => { g.beginPath(); g.ellipse(xx, yy, rad * 2, rad * 0.7, 0, 0, TAU); g.fill(); });
+  }
+});
+/** museum banner (256 x 768): a white Regulus silhouette climbing over stars on navy, red hem */
+export const museumBannerHD = (k: number) => ctex("musBanner" + k, 256, 768, (g) => {
+  g.fillStyle = k % 2 ? "#8c2b35" : "#253a73"; g.fillRect(0, 0, 256, 768);
+  g.fillStyle = "#f4ecd8";
+  for (let i = 0; i < 9; i++) { const cx = 40 + (i % 3) * 88, cy = 60 + Math.floor(i / 3) * 70; g.beginPath(); for (let a = 0; a < 10; a++) { const rad2 = a % 2 ? 6 : 15, b = -Math.PI / 2 + (a * Math.PI) / 5; g.lineTo(cx + rad2 * Math.cos(b), cy + rad2 * Math.sin(b)); } g.fill(); }
+  g.save(); g.translate(128, 470); g.rotate(-1.1);
+  g.beginPath(); g.ellipse(0, 0, 150, 22, 0, 0, TAU); g.fill();
+  g.beginPath(); g.moveTo(-10, 0); g.lineTo(-70, 80); g.lineTo(-40, 80); g.lineTo(40, 0); g.fill();
+  g.beginPath(); g.moveTo(-10, 0); g.lineTo(-70, -80); g.lineTo(-40, -80); g.lineTo(40, 0); g.fill();
+  g.beginPath(); g.moveTo(-120, 0); g.lineTo(-150, -50); g.lineTo(-125, -50); g.lineTo(-90, 0); g.fill();
+  g.restore();
+  g.fillStyle = k % 2 ? "#f2c94c" : "#c8323a"; g.fillRect(0, 700, 256, 68);
+});
