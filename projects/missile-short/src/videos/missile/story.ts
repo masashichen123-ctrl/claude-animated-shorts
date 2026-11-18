@@ -31,9 +31,9 @@ export type Light = "day" | "golden" | "dusk" | "interior";
 export type ShotDef = { id: number; a: number; b: number; set: SetName; light: Light; sunAz?: number; sunEl?: number };
 // frame ranges from SHOTS.md (b = exclusive end)
 export const SHOTS: ShotDef[] = [
-  { id: 1, a: 0, b: 121, set: "sea", light: "golden", sunAz: 25, sunEl: 8 },    // hook: missile over the sunrise sea, letters streaming
+  { id: 1, a: 0, b: 121, set: "sea", light: "golden", sunAz: 135, sunEl: 10 },    // hook: missile over the sunrise sea, letters streaming
   { id: 2, a: 121, b: 176, set: "postoffice", light: "interior" },              // impatient postmaster general + clerk
-  { id: 3, a: 176, b: 249, set: "subdeck", light: "golden", sunAz: 55, sunEl: 12 }, // USS Barbero at dawn, missile on the launcher
+  { id: 3, a: 176, b: 249, set: "subdeck", light: "golden", sunAz: 125, sunEl: 12 }, // USS Barbero at dawn, missile on the launcher
   { id: 4, a: 249, b: 374, set: "subdeck", light: "day" },                      // sailor on deck beside the missile
   { id: 5, a: 374, b: 463, set: "subdeck", light: "day" },                      // sailor stuffing letters into the nose
   { id: 6, a: 463, b: 497, set: "subdeck", light: "day" },                      // launch: booster flame, smoke
@@ -71,8 +71,8 @@ export const SPOT = {
   SAILOR5: [-16.6, 2.0, 1.25] as V3,  // shot 5: at the nose intake
   // post office: counter along x at z = COUNTER_Z (front face), top at 1.1 m
   COUNTER_Z: -0.5,
-  CLERK: [-0.85, 0, -1.6] as V3,
-  PMG2: [0.95, 0, 0.75] as V3,
+  CLERK: [-0.7, 0.3, -1.6] as V3,     // on the raised floor behind the counter
+  PMG2: [0.55, 0, 0.75] as V3,
   // runway: runway along x (z -15..15), missile parks at the origin facing +x
   PARK: [0, 1.35, 0] as V3,           // missile centre standing on its landing gear
   PODIUM: [2.6, 0, 9.0] as V3,        // lectern base centre (front faces +z)
@@ -81,8 +81,8 @@ export const SPOT = {
   SACKS: [3.6, 0, 4.2] as V3,         // pile of mail sacks (shot 10)
   // street: ranch house centred at the origin, front wall at z = HOUSE_Z
   HOUSE_Z: 4,
-  MAILBOX: [3.7, 0, 8.4] as V3,
-  KID: [2.75, 0, 8.95] as V3,
+  MAILBOX: [3.1, 0, 10.8] as V3,      // at the kerb side of the fence
+  KID: [2.25, 0, 11.45] as V3,
   // road: mail truck centred at the origin, cab toward +x; the launch cart of shot 13 parked behind it
   TRUCK: [0, 0, 0] as V3,
   POSTMAN12: [3.9, 0, 2.5] as V3,
@@ -92,7 +92,7 @@ export const SPOT = {
   PEDESTAL: [0, 0, 0] as V3,
   EXHIBIT: [0, 3.3, 0] as V3,         // missile centre on display
   PLAQUE: [3.4, 0, 3.4] as V3,
-  VISITOR15: [1.7, 0, 3.1] as V3,
+  VISITOR15: [1.9, 0, 4.1] as V3,     // just outside the rope ring
 };
 
 // ---------------- the missile (Regulus I): one rig, posed per shot ----------------
@@ -216,17 +216,17 @@ const rel = (P: V3, dp: V3, dl: V3, k: number, rest: Partial<Cam> = {}): Shot =>
 
 // ---- framings (f -> camera); each pushes in from the frame its key starts ----
 // shot 1 (hook): the missile comes at the lens 3/4 front over the sunrise sea, then a side MS of the letter stream
-const S1a = (f: number) => rel(SEA1(f), [12.5, 1.2, 7.5], [0.2, 0.3, 0], pushK(f, 0, 0.0025), { fov: 40 });
-const S1b = (f: number) => rel(SEA1(f), [-3.8, 1.0, 9.5], [-3.2, 0.1, 0], pushK(f, 56, 0.002), { fov: 40, roll: -0.04 });
+const S1a = (f: number) => rel(SEA1(f), [12.5, 3.6, 7.5], [0.2, -0.3, 0], pushK(f, 0, 0.0025), { fov: 40 });
+const S1b = (f: number) => rel(SEA1(f), [-4.5, 3.0, 13.5], [-3.2, -0.6, 0], pushK(f, 56, 0.002), { fov: 40, roll: -0.04 });
 const S1c = (f: number) => rel(SEA1(f), [7.5, -1.6, 6.2], [0.6, 0.6, 0], pushK(f, 86, 0.004), { fov: 40, roll: 0.04 });
 // shot 2: post office counter, postmaster general in front, clerk behind
 const S2a = (f: number) => dolly([-0.6, 1.62, 6.4], [0.15, 1.3, -0.6], pushK(f, 118, 0.0025), { fov: 40 });
 const S2b = (f: number) => dolly([0.4, 1.62, 3.9], [0.85, 1.5, 0.4], pushK(f, 145, 0.002, 0.005, 30), { fov: 40, roll: 0.035 }); // "faster mail"
 // shot 3: the sub on the dawn sea, 3/4 from the bow
-const S3a = (f: number) => zoom([46, 7.5, 24], [-4, 2.4, 0], 40, pushK(f, 173, 0.002));
-const S3b = (f: number) => zoom([46, 7.5, 24], [-9, 3.2, 0], 26, pushK(f, 214, 0.003)); // "with a missile on it"
+const S3a = (f: number) => zoom([46, 12.5, 24], [-4, 1.8, 0], 40, pushK(f, 173, 0.002));
+const S3b = (f: number) => zoom([46, 12.5, 24], [-9, 2.6, 0], 26, pushK(f, 214, 0.003)); // "with a missile on it"
 // shot 4: sailor on deck beside the missile on its launcher
-const S4a = (f: number) => dolly([-7.2, 4.2, 15.5], [-12.6, 3.2, 0.4], pushK(f, 246, 0.0022), { fov: 42 });
+const S4a = (f: number) => dolly([-8.8, 5.6, 11.5], [-13.2, 3.0, 0.8], pushK(f, 246, 0.0022), { fov: 42 });
 const S4b = (f: number) => dolly([-10.2, 3.1, 7.6], [-13.9, 3.25, 1.2], pushK(f, 316, 0.0025), { fov: 40, roll: -0.035 }); // "the submarine Barbero"
 // shot 5: at the nose: letters into the intake ("3,000 letters" punch)
 const S5a = (f: number) => dolly([-13.1, 3.3, 6.6], [-16.4, 3.55, 0.8], pushK(f, 374, 0.002), { fov: 40 });
@@ -234,16 +234,16 @@ const S5b = (f: number) => dolly([-14.3, 3.6, 4.6], [-16.5, 3.75, 0.5], pushK(f,
 // shot 6: launch, wide from abeam the stern, then the lens tilts after the climbing missile
 const S6a = (f: number): Shot => {
   const m = launchPos(Math.max(f, LAUNCH_F)), u = smooth((f - LAUNCH_F) / 22);
-  return { pos: [-5.5, 4.2, 22], look: [lerp(-12.5, m[0] * 0.55 - 6, u), lerp(4.2, m[1] * 0.75 + 1.2, u), 0], fov: 46 };
+  return { pos: [-5.5, 7.0, 22], look: [lerp(-12.5, m[0] * 0.55 - 6, u), lerp(4.2, m[1] * 0.75 + 1.2, u), 0], fov: 46 };
 };
 // shot 7: chase from behind and abeam toward the coast, then the missile pulls away ("22 minutes later")
-const S7a = (f: number) => rel(SEA7(f), [-13.5, 2.2, 7.5], [6, -0.6, 0], pushK(f, 494, 0.002), { fov: 40 });
-const S7b = (f: number) => { const P = SEA7(Math.min(f, 545)); return rel(P, [-13.5, 2.2, 7.5], [6, -0.6, 0], 1, { fov: 40 }); }; // camera stops, missile flies on
+const S7a = (f: number) => rel(SEA7(f), [-13.5, 3.2, 7.5], [6, -2.0, 0], pushK(f, 494, 0.002), { fov: 40 });
+const S7b = (f: number) => { const P = SEA7(Math.min(f, 545)); return rel(P, [-13.5, 3.2, 7.5], [6, -2.0, 0], 1, { fov: 40 }); }; // camera stops, missile flies on
 const S7look = (f: number): Shot => { const s = S7b(f), m = SEA7(f); return { ...s, look: [lerp(s.look[0], m[0] + 6, 0.55), s.look[1], s.look[2]] }; };
 // shot 8: the runway from beside the palms; the lens pans with the landing missile
 const S8a = (f: number): Shot => {
   const m = landPos(f), k = pushK(f, 571, 0.0015);
-  return dolly([16, 3.2, 26], [Math.max(-40, m[0]) * 0.75 + 2, 1.9 + (m[1] - SPOT.PARK[1]) * 0.6, 0], k, { fov: 40 });
+  return dolly([9, 2.8, 19], [Math.max(-34, m[0]) * 0.9 + 2.5, 0.7 + (m[1] - SPOT.PARK[1]) * 0.6, 0], k, { fov: 40 });
 };
 // shot 9: the postmaster general at the podium, the sailor beside him, the missile behind
 const S9a = (f: number) => dolly([3.1, 1.9, 15.8], [3.0, 2.0, 6.0], pushK(f, 656, 0.0018), { fov: 40 });
@@ -251,8 +251,8 @@ const S9b = (f: number) => dolly([2.75, 1.8, 12.0], [2.7, 1.85, 8.0], pushK(f, 7
 // shot 10: unloading the sacks beside the missile
 const S10a = (f: number) => dolly([8.5, 2.6, 12.5], [2.2, 1.5, 2.6], pushK(f, 782, 0.0025), { fov: 42 });
 // shot 11: the missile in the house, the kid at the mailbox (kick on the hit)
-const S11a = (f: number) => dolly([5.6, 1.7, 17.5], [0.6, 2.4, 5.6], pushK(f, 845, 0.0022), { fov: 42 });
-const S11b = (f: number) => dolly([4.6, 1.3, 13.0], [2.0, 1.75, 7.6], pushK(f, 900, 0.0018), { fov: 40, roll: 0.035 }); // "needed a missile"
+const S11a = (f: number) => dolly([5.4, 1.7, 18.5], [0.6, 2.2, 6.5], pushK(f, 845, 0.0022), { fov: 42 });
+const S11b = (f: number) => dolly([3.6, 1.2, 16.0], [1.8, 1.4, 10.0], pushK(f, 900, 0.0018), { fov: 40, roll: 0.035 }); // "needed a missile"
 // shot 12: the overloaded truck, postman in front; glide up to the sacks on "thousands of letters"
 const S12a = (f: number) => dolly([7.4, 1.6, 11.2], [1.6, 2.0, 0.8], pushK(f, 928, 0.0022), { fov: 42 });
 const S12b = (f: number) => dolly([6.0, 3.6, 10.0], [0.2, 3.6, 0], pushK(f, 985, 0.0018), { fov: 42 });
@@ -265,10 +265,10 @@ const S13b = (f: number): Shot => {
 };
 const S13c = (f: number) => zoom([-2.6, 1.5, 14.2], BOOM_AT, 54, pushK(f, BOOM_F - 6, 0.002, 0.004, 24));
 // shot 14: the museum hall, the missile on its pedestal
-const S14a = (f: number) => dolly([8.4, 2.3, 18.5], [0.6, 3.0, 0.5], pushK(f, 1186, 0.002), { fov: 42 });
+const S14a = (f: number) => dolly([6.8, 2.2, 15.5], [1.0, 2.7, 1.5], pushK(f, 1186, 0.002), { fov: 42 });
 // shot 15: close on a visitor looking up at the missile overhead
-const S15a = (f: number) => dolly([2.5, 1.25, 7.0], [1.35, 2.35, 2.4], pushK(f, 1264, 0.0022), { fov: 44 });
-const S15b = (f: number) => dolly([2.5, 1.25, 7.0], [1.3, 2.6, 2.4], pushK(f, 1300, 0.0015, 0.005, 30), { fov: 44, roll: -0.035 }); // "America's mail"
+const S15a = (f: number) => dolly([2.7, 1.25, 8.0], [1.55, 2.4, 3.3], pushK(f, 1264, 0.0022), { fov: 44 });
+const S15b = (f: number) => dolly([2.7, 1.25, 8.0], [1.5, 2.6, 3.3], pushK(f, 1300, 0.0015, 0.005, 30), { fov: 44, roll: -0.035 }); // "America's mail"
 
 const CAMS: Record<number, Key[]> = {
   1: [

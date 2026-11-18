@@ -500,7 +500,7 @@ export const roofHD = (col: string, slate = false) => ctex("roofHD" + col, 1024,
  *  Ours had the right hue (#6dad37) but only fine uniform noise (autocorrelation 6 px). */
 export const grassHD = () => ctex("grassHD", 1024, 1024, (g, r) => {
   const S = 1024;
-  g.fillStyle = "#73b23d"; g.fillRect(0, 0, S, S);
+  g.fillStyle = "#7cb35a"; g.fillRect(0, 0, S, S);
   for (let i = 0; i < 16; i++) {
     const x = U(r, 0, S), y = U(r, 0, S), rad = U(r, 120, 320), light = r() > 0.5;
     wrap2(S, S, x, y, rad * 1.4, (xx, yy) => blotch(g, xx, yy, rad, 1.4, light ? "140,198,80" : "92,154,48", 0.35));
@@ -784,7 +784,7 @@ export const wingHD = () => ctex("wingHD", 512, 512, (g, r) => {
 /** submarine hull plating (planar uv: 1 tile = 4 m): dark navy-grey, welded plate seams, salt streaks */
 export const hullHD = () => ctex("hullHD", 1024, 1024, (g, r) => {
   const S = 1024;
-  g.fillStyle = "#3c4350"; g.fillRect(0, 0, S, S);
+  g.fillStyle = "#4a5868"; g.fillRect(0, 0, S, S);
   for (let i = 0; i < 18; i++) { const x = U(r, 0, S), y = U(r, 0, S), rad = U(r, 80, 220); wrap2(S, S, x, y, rad * 2, (xx, yy) => blotch(g, xx, yy, rad, 2, r() > 0.5 ? "90,98,115" : "25,28,36", 0.18)); }
   for (let y = 0; y < S; y += 256) seamLine(g, 0, y + 2, S, y + 2, 3, 0.4, "15,18,25");
   for (let row = 0; row < 4; row++) for (let x = (row % 2) * 256; x < S + 256; x += 512) seamLine(g, x % S, row * 256, x % S, row * 256 + 256, 3, 0.35, "15,18,25");
@@ -1050,4 +1050,26 @@ export const museumBannerHD = (k: number) => ctex("musBanner" + k, 256, 768, (g)
   g.beginPath(); g.moveTo(-120, 0); g.lineTo(-150, -50); g.lineTo(-125, -50); g.lineTo(-90, 0); g.fill();
   g.restore();
   g.fillStyle = k % 2 ? "#f2c94c" : "#c8323a"; g.fillRect(0, 700, 256, 68);
+});
+/** impact crack + scorch decal around the missile's entry hole (512 x 512, alpha) */
+export const crackHD = () => ctex("crackHD", 512, 512, (g, r) => {
+  const c = 256;
+  const gr = g.createRadialGradient(c, c, 30, c, c, 240); gr.addColorStop(0, "rgba(40,30,30,0.85)"); gr.addColorStop(0.45, "rgba(60,45,40,0.35)"); gr.addColorStop(1, "rgba(60,45,40,0)");
+  g.fillStyle = gr; g.fillRect(0, 0, 512, 512);
+  g.strokeStyle = "rgba(30,20,25,0.9)"; g.lineCap = "round";
+  for (let i = 0; i < 11; i++) {
+    let a = (i / 11) * TAU + U(r, -0.2, 0.2), d = 70, x = c + Math.cos(a) * d, y = c + Math.sin(a) * d;
+    g.lineWidth = 7; g.beginPath(); g.moveTo(x, y);
+    while (d < 230) { d += U(r, 20, 45); a += U(r, -0.35, 0.35); x = c + Math.cos(a) * d; y = c + Math.sin(a) * d; g.lineTo(x, y); g.lineWidth = Math.max(2, g.lineWidth - 1); }
+    g.stroke();
+  }
+});
+/** wall clock face (256 x 256) */
+export const clockHD = () => ctex("clockHD", 256, 256, (g) => {
+  g.fillStyle = "#f7f1e1"; g.strokeStyle = "#3a2a1c"; g.lineWidth = 14;
+  g.beginPath(); g.arc(128, 128, 112, 0, TAU); g.fill(); g.stroke();
+  g.lineCap = "round"; g.strokeStyle = "#221f2e";
+  for (let i = 0; i < 12; i++) { const a = (i * Math.PI) / 6; g.lineWidth = 7; g.beginPath(); g.moveTo(128 + 80 * Math.cos(a), 128 + 80 * Math.sin(a)); g.lineTo(128 + 96 * Math.cos(a), 128 + 96 * Math.sin(a)); g.stroke(); }
+  g.lineWidth = 11; g.beginPath(); g.moveTo(128, 128); g.lineTo(128, 60); g.stroke();
+  g.lineWidth = 8; g.beginPath(); g.moveTo(128, 128); g.lineTo(180, 140); g.stroke();
 });

@@ -1,5 +1,6 @@
-// "The Bridge That Fell for a Song": our original 67 s short in the flat-characters-in-a-3D-toon-world style.
-// One three.js world (world.ts) posed per frame from the story timeline (story.ts). Post chain (look-match pass):
+// "Missile Mail" (1959): 45 s vertical short in the flat-characters-in-a-3D-toon-world style, rebuilt on the bridge
+// template's look stack (owner: post, with ink.ts / lensblur.ts / grade.ts).
+// One three.js world (world.ts) posed per frame from the story timeline (story.ts). Post chain:
 //   InkPass (world ink lines, own pass) -> lens blur pre + main (thin-lens DOF per shot from dofAt) ->
 //   [bloom (emissive only) + NEUTRAL tone mapping + colour grade] (one merged EffectPass), MSAA 4.
 // Ink runs before the DOF so lines blur with what they belong to; bloom after the DOF so glows defocus with their
@@ -8,7 +9,7 @@
 // Place changes crossfade by stacking a second canvas for the fade frames; the hook ends on a 4-frame white flash.
 import React, { useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
-import { AbsoluteFill, continueRender, delayRender, getInputProps, useCurrentFrame } from "remotion";
+import { AbsoluteFill, Audio, continueRender, delayRender, getInputProps, staticFile, useCurrentFrame } from "remotion";
 import { ThreeCanvas } from "@remotion/three";
 import { useThree } from "@react-three/fiber";
 import { EffectComposer } from "@react-three/postprocessing";
@@ -17,10 +18,9 @@ import { World, loadKit } from "./world";
 import { InkPass, noInkFallback } from "./ink";
 import { LensBlur, GrainEffect } from "./lensblur";
 import { GradeEffect, GRADES, GRADE_STRENGTH, gradeFor } from "./grade";
-import { Kit } from "./build";
 import { TOTAL, FLASH_AT, SHOTS, layersAt, dofAt } from "./story";
 
-export const BRIDGE_FRAMES = TOTAL;
+export const MISSILE_FRAMES = TOTAL;
 
 /** A/B switches for test stills only (Remotion inputProps `{ post: { ink: false, ... } }`); everything is on by default. */
 type PostToggles = { ink: boolean; lens: boolean; pre: boolean; bloom: boolean; grade: boolean; grain: boolean };
@@ -39,17 +39,18 @@ const makeBloom = () => {
 
 const fwd = new THREE.Vector3(), fpt = new THREE.Vector3();
 
+/** waits for loadKit() (procedural world: resolves at once; kept so async assets can be added without touching the comp) */
 const useKit = () => {
-  const [kit, setKit] = useState<Kit | null>(null);
-  const [handle] = useState(() => delayRender("bridge kit"));
+  const [kit, setKit] = useState<boolean | null>(null);
+  const [handle] = useState(() => delayRender("missile kit"));
   useEffect(() => { loadKit().then((k) => { setKit(k); continueRender(handle); }); }, [handle]);
   return kit;
 };
 
-const Inner: React.FC<{ id: number; kit: Kit }> = ({ id, kit }) => {
+const Inner: React.FC<{ id: number; kit: boolean }> = ({ id, kit }) => {
   const f = useCurrentFrame();
   const { camera, scene } = useThree();
-  const world = useMemo(() => new World(kit), [kit]);
+  const world = useMemo(() => new World(), [kit]); // one world per canvas (crossfades stack two)
   const target = useMemo(() => new THREE.Vector3(), []);
   const on = useMemo(toggles, []);
   const fx = useMemo(() => ({
@@ -93,22 +94,23 @@ const Inner: React.FC<{ id: number; kit: Kit }> = ({ id, kit }) => {
 
 /** test stills only: inputProps `{ post: { dpr: 0.5 } }` forces the WebGL buffer size (R3F clamps dpr to >= 1 by default) */
 const dprOverride = () => (getInputProps() as { post?: { dpr?: number } }).post?.dpr;
-const ShotView: React.FC<{ id: number; kit: Kit; alpha: number }> = ({ id, kit, alpha }) => (
+const ShotView: React.FC<{ id: number; kit: boolean; alpha: number }> = ({ id, kit, alpha }) => (
   <AbsoluteFill style={{ opacity: alpha }}>
     <ThreeCanvas width={1080} height={1920} {...(dprOverride() ? { dpr: dprOverride() } : {})} shadows gl={{ antialias: false, stencil: false, powerPreference: "high-performance", toneMappingExposure: 1.0 }}
-      camera={{ fov: 40, near: 0.2, far: 1500 }}>
+      camera={{ fov: 40, near: 0.15, far: 3000 }}>
       <Inner id={id} kit={kit} />
     </ThreeCanvas>
   </AbsoluteFill>
 );
 
-export const BridgeShort: React.FC = () => {
+export const MissileShort: React.FC = () => {
   const f = useCurrentFrame();
   const kit = useKit();
   if (!kit) return null;
   const flash = f >= FLASH_AT && f < FLASH_AT + 4 ? [1, 0.75, 0.45, 0.2][f - FLASH_AT] : 0;
   return (
     <AbsoluteFill style={{ background: "#cfe3f2" }}>
+      <Audio src={staticFile("missile/mix.wav")} />
       {layersAt(f).map((l, i) => <ShotView key={i ? "over" : "base"} id={l.id} kit={kit} alpha={l.alpha} />)}
       {flash > 0 && <AbsoluteFill style={{ background: "#ffffff", opacity: flash }} />}
     </AbsoluteFill>
