@@ -7,8 +7,9 @@
 import * as THREE from "three";
 import {
   Pen, bodyFront, bodySide, fxBurst, fxContact, fxShadow, fxLetter, fxFlame, fxSmoke, fxBoom, Outfit, Expr, FrontOpts, SideOpts,
-  SAILOR, POSTMASTER, CLERK, POSTMAN, KID59, VISITORS, Prop, ArmPose, ArmSpec, fxSparkle, fxSpeed,
+  SAILOR, POSTMASTER, CLERK, POSTMAN, KID59, VISITORS, DECK_CREW, GROUND_CREW, Prop, ArmPose, ArmSpec, fxSparkle, fxSpeed,
 } from "./toon";
+import * as STORY from "./story";
 import {
   FPS, SHOTS, SPOT, V3, Light, MissilePose, missileAt, noseDir, smooth, clamp01, LAUNCH_F, TOUCH_F, HIT_F, GO_F, BOOM_F, BOOM_AT,
 } from "./story";
@@ -448,12 +449,29 @@ export const stage = (id: number, t: number, cam: CamInfo, mis: MissileInfo): St
         const fs = LAUNCH_F + k * 3, m = missileAt(6, fs), d = noseDir(m.yaw, m.pitch);
         puff(out, [m.pos[0] - d[0] * 5, m.pos[1] - d[1] * 5 - 0.3, m.pos[2] - d[2] * 5 + (k % 2 ? 0.6 : -0.6)], t - fs / FPS, 4 + k * 0.8, 3.0, k);
       }
+      // deck crewman in the FG left third: points at the bird, covers his ears at ignition, then cheers it up and away
+      const c6: V3 = (STORY as unknown as { CREW6?: V3 }).CREW6 ?? [-9.6, SPOT.DECK, -1.7];
+      actor(out, cam, 10, DECK_CREW, "deck", c6, [
+        { f: 460, expr: "grin", armF: "point", lean: 4, look: 1 },
+        { f: LAUNCH_F - 2, expr: "pained", armF: "ears", armB: "ears", shrug: 1, lean: -7, dur: 4 }, // "launched"
+        { f: 480, expr: "shock", gaze: -1, lean: -3 },
+        { f: 489, expr: "laugh", armF: "up", armB: "up", shrug: 0, lean: 0 },                     // "flew"
+      ], t, faceTo(cam, c6, SPOT.LAUNCH), (x) => x, 1.35);
       break;
     }
     case 7: break;
     case 8: { // touchdown dust + tyre smoke
       const s0 = t - TOUCH_F / FPS;
       for (let k = 0; k < 3; k++) puff(out, [mp.pos[0] - 1.5 - k * 2.5 * Math.min(1, s0), 0.5, (k - 1) * 0.9], s0 - k * 0.08, 2.6, 1.4, k, "#e6dcc8");
+      // ground crewman marshalling the missile in with his bats: up / out signals on ones every 9 f, a point on "Mayport"
+      const c8: V3 = (STORY as unknown as { CREW8?: V3 }).CREW8 ?? [-2.4, 0, 11.5];
+      const sig: Beat[] = [];
+      for (let k = 0, g = 571; g < 632; g += 9, k++) sig.push({ f: g, armF: k % 2 ? "out" : "up", armB: k % 2 ? "out" : "up", headTilt: k % 2 ? -4 : 4, dur: 5 });
+      sig[0].expr = "grin"; sig[2].expr = "proud"; sig[4].expr = "laugh";
+      actor(out, cam, 11, GROUND_CREW, "crew8", c8, [...sig,
+        { f: 638, expr: "proud", armF: "point", armB: "hip", lean: 5, look: 1 },                  // "Mayport"
+        { f: 650, expr: "grin", armF: "up", armB: "up", lean: 0 },
+      ], t, faceTo(cam, c8, mp.pos), (fo) => ({ ...fo, prop: "paddles" }), 1.45);
       break;
     }
     case 9: { // the speech: arm up on "historic", both arms out on "entire world"; the sailor salutes, then cheers
@@ -560,7 +578,7 @@ export const stage = (id: number, t: number, cam: CamInfo, mis: MissileInfo): St
         { f: 1239, expr: "laugh", armB: "hip", headTilt: -4 },             // "one flight"
         { f: 1255, expr: "smile_closed" },
       ], t, faceTo(cam, SPOT.VISITOR15, ex));
-      const p1: V3 = [-0.35, 0, 10.4], p2: V3 = [3.5, 0, 6.3]; // mum = big FG figure, left third of the wide
+      const p1: V3 = [-0.95, 0, 10.4], p2: V3 = [3.5, 0, 6.3]; // mum = big FG figure, left third of the wide
       actor(out, cam, 7, VISITORS[1], "vis1", p1, [
         { f: 1189, expr: "smile", look: 1 },
         { f: 1203, headTilt: -6 },                                         // "of mail"
@@ -586,7 +604,6 @@ export const stage = (id: number, t: number, cam: CamInfo, mis: MissileInfo): St
         { f: 1327, headTilt: 6, lean: 3 },                                 // "gone"
         { f: 1338, expr: "laugh", lean: 0, headTilt: -3 },                 // "missile"
       ], t, faceTo(cam, SPOT.VISITOR15, mp.pos));
-      sparkle(out, [SPOT.VISITOR15[0] + 0.4, 2.3, SPOT.VISITOR15[2]], f, 1292, 0.8);
       break;
     }
   }

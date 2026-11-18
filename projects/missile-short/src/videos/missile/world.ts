@@ -7,7 +7,7 @@ import * as PAINT from "./paint";
 import { ctex, cloudHD } from "./paint";
 import { buildSets, buildMissile, poseMissile, SET_META, SetRig, MissileRig } from "./build";
 import * as B from "./build";
-import { LIGHTS, LOOK, LightPreset, LightName, lightOf, SHOT_SUN, CUR } from "./lights";
+import { LIGHTS, LOOK, LightPreset, LightName, lightOf, SHOT_SUN, SHOT_SKY, CUR } from "./lights";
 import { TONE, CHAR, LFB, HAZE, hazeShader, untone } from "./shade";
 import { NOINK } from "./ink";
 import { Pool, Actor, Fx, stage } from "./cast";
@@ -15,7 +15,10 @@ import { FPS, SHOTS, ShotDef, SetName, SPOT, BOOM_AT, camAt, missileAt, noseDir 
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 /** haze length multiplier per set (the open-sea sets look ~1 km to the horizon; the far sea must stay cyan, not white) */
-const HAZE_K: Partial<Record<SetName, number>> = { sea: 2.2, subdeck: 1.6, runway: 1.5 };
+// NOTE: hk stretches start / e-fold length, so a LARGER value means LESS haze (round 2 shrank it by mistake)
+const HAZE_K: Partial<Record<SetName, number>> = { sea: 3.4, subdeck: 2.8, runway: 2.4 };
+/** haze cap multiplier per set (Mayport: the hangar darks must reach p2 <= .12, verify_r2 #4) */
+const HAZE_MAXK: Partial<Record<SetName, number>> = { runway: 0.35, sea: 0.85, subdeck: 0.85 };
 /** shots whose sky gets the 4 view-placed hero clouds, and their [azimuth offset, elevation (rad), width m, aspect] */
 const HERO_CLOUD_SHOTS = new Set([1, 3, 7]);
 const HERO_CLOUDS: [number, number, number, number][] = [[-0.14, 0.075, 220, 3.2], [0.13, 0.11, 250, 2.8], [0.0, 0.045, 320, 6], [-0.3, 0.05, 200, 5]];
@@ -190,10 +193,10 @@ export class World {
         .replace("#include <common>", WATER_DECL)
         .replace("#include <map_fragment>", WATER_COL)
         .replace("#include <lights_fragment_begin>", "float sunVis = 1.0;\n" + LFB)
-        .replace("#include <lights_fragment_end>", "#include <lights_fragment_end>\n  reflectedLight.directDiffuse = diffuseColor.rgb * mix(wShade, vec3(1.0), sunVis) + pracD * 0.6;\n  reflectedLight.indirectDiffuse = vec3(0.0);");
+        .replace("#include <lights_fragment_end>", "#include <lights_fragment_end>\n  reflectedLight.directDiffuse = diffuseColor.rgb * mix(wShade, vec3(1.0), mix(1.0, sunVis, 0.25)) + pracD * 0.6;\n  reflectedLight.indirectDiffuse = vec3(0.0);");
       hazeShader(sh);
     };
-    waterM.customProgramCacheKey = () => "sea2";
+    waterM.customProgramCacheKey = () => "sea3";
     const g = new THREE.PlaneGeometry(5000, 5000).rotateX(-Math.PI / 2);
     const wm = new THREE.Mesh(g, waterM);
     wm.receiveShadow = true;
@@ -285,15 +288,16 @@ export class World {
     CHAR.uBodyGrad.value = L.bodyGrad; CHAR.uSideTint.value.set(...L.sideTint);
     // ---- sky, fog (colour = horizon colour), sun disc + halo, clouds ----
     const su = this.skyMat.uniforms;
-    K.sky.c.forEach((h, i) => untone(h, su["c" + i].value));
-    const e = K.sky.e.map((deg) => THREE.MathUtils.degToRad(deg));
+    const SK = SHOT_SKY[id] ?? K.sky;
+    SK.c.forEach((h, i) => untone(h, su["c" + i].value));
+    const e = SK.e.map((deg) => THREE.MathUtils.degToRad(deg));
     su.e.value.set(e[1], e[2], e[3], e[4]);
     su.sunDirW.value.copy(sunDir); untone(L.glowCol, su.glowCol.value); su.glowK.value = L.glowK; su.tex.value = K.skyTex;
     this.sky.position.copy(cam.position);
     // haze (depth.md 3.2): the open-sea sets see 1 km to the horizon, so their e-fold length is stretched
     const HZ = L.haze, hk = HAZE_K[s.set] ?? 1;
     untone(HZ.col, this.fog.color);
-    HAZE.uHaze.value.set(HZ.start * hk, HZ.len * hk, HZ.h * hk, HZ.max); HAZE.uHazeSat.value = HZ.sat; HAZE.uHazeY0.value = meta.water ?? 0;
+    HAZE.uHaze.value.set(HZ.start * hk, HZ.len * hk, HZ.h * hk, HZ.max * (HAZE_MAXK[s.set] ?? 1)); HAZE.uHazeSat.value = HZ.sat; HAZE.uHazeY0.value = meta.water ?? 0;
     // ink reads scene.fog linearly: near = haze start, far ~ where the haze reaches ~90 %
     this.fog.near = HZ.start * hk; this.fog.far = HZ.max > 0 ? HZ.start * hk + 2.3 * HZ.len * hk : 1e5;
     scene.fog = this.fog; scene.background = null;
@@ -307,10 +311,10 @@ export class World {
       (this.sunHalo.material as THREE.SpriteMaterial).color.set(L.sunDisc).multiplyScalar(1.3);
     }
     const skyAt = (elR: number, out: THREE.Color) => { // the sky stop colour at an elevation (radians), for the cloud pre-mix
-      const st = K.sky.e.map((d) => THREE.MathUtils.degToRad(d));
+      const st = SK.e.map((d) => THREE.MathUtils.degToRad(d));
       let k = 0; while (k + 1 < st.length && elR > st[k + 1]) k++;
       const u = k + 1 < st.length ? THREE.MathUtils.smoothstep(elR, st[k], st[k + 1]) : 0;
-      return untone(new THREE.Color(K.sky.c[k]).lerp(new THREE.Color(K.sky.c[Math.min(k + 1, 4)]), u), out);
+      return untone(new THREE.Color(SK.c[k]).lerp(new THREE.Color(SK.c[Math.min(k + 1, 4)]), u), out);
     };
     const heroSky = HERO_CLOUD_SHOTS.has(id);
     cam.getWorldDirection(this.v); const hx = this.v.x, hz = this.v.z, hn = Math.hypot(hx, hz) || 1;

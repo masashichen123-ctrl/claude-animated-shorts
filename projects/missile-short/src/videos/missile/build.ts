@@ -972,7 +972,7 @@ const buildSub = (): SetRig => {
 // ---- runway: NAAS Mayport, runway along x, hangars + tower behind (-z), beach + sea in front (+z far) ----
 const buildRunway = (): SetRig => {
   const b = new Batch();
-  const grass = texM("grass4", () => rep(P.grassHD(), 1, 1)), runway = texM("runwayC", () => P.runwayHD()), asph = texM("apronA", () => P.asphaltHD("apronA", "#7b7770"));
+  const grass = texM("grass4", () => rep(P.grassHD(), 1, 1)), runway = texM("runwayC", () => P.runwayHD()), asph = texM("apronA", () => P.asphaltHD("apronA2", "#5f5a54"));
   const sand = texM("sand", () => P.sandHD()), white = col("#f4f1e8"), corr = texM("corr", () => P.corrugatedHD("#b9c0c6")), cream = col("#e8e4da"), navy = col("#24407a");
   b.add(ground(-1500, 1500, -1500, 62, 0, 4), grass);
   b.add(quad(V(-1500, 0, 62), V(1500, 0, 62), V(1500, -1.6, 95), V(-1500, -1.6, 95), 750, 9), sand); // beach to the sea
@@ -980,6 +980,15 @@ const buildRunway = (): SetRig => {
   for (const s of [-1, 1]) b.add(ground(-450, 450, s * 16.12 - 0.12, s * 16.12 + 0.12, 0.025, 1), col("#5f8a45")); // darker verge band
   b.add(ground(-80, 110, -58, -22, 0.025, 4), asph); // apron
   b.add(ground(-6, 6, -22, -16, 0.028, 4), asph);    // taxiway link
+  // round 3 darks: a dark tar taxiway alongside the runway, tar-sealed seams, tyre marks + oil stains in the touchdown zone
+  const tar = texM("tarDark", () => P.asphaltHD("tarDark", "#3f3b37"));
+  b.add(ground(-450, 450, -21.6, -17.4, 0.032, 4), tar);
+  for (let x = -446; x < 450; x += 12) b.add(ground(x, x + 6, -19.65, -19.35, 0.04, 1), col("#e8b830"));
+  for (let x = -449.4; x < 450; x += 7.6) b.add(ground(x - 0.09, x + 0.09, -16, 16, 0.036, 1), col("#5e554a"));
+  for (const z of [-7.6, 7.6]) b.add(ground(-450, 450, z - 0.09, z + 0.09, 0.036, 1), col("#5e554a"));
+  { const rt = rng(91), skid = col("#34302d");
+    for (let i = 0; i < 26; i++) { const x0 = -120 + rt() * 200, len = 15 + rt() * 45, z = (rt() < 0.5 ? -1 : 1) * (0.8 + rt() * 3.2); b.add(ground(x0, x0 + len, z - 0.16, z + 0.16, 0.041 + i * 0.0002, 1), skid); }
+    for (let i = 0; i < 10; i++) b.add(cached("oilDisc", () => new THREE.CircleGeometry(1, 14).rotateX(-Math.PI / 2)), col("#3a3530"), M4(-60 + rt() * 160, 0.043, (rt() - 0.5) * 24, 0, 0, 0, [0.6 + rt() * 1.4, 1, 0.4 + rt()])); }
   b.add(ground(-0.15, 0.15, -58, -16, 0.04, 1), col("#e8b830"));
   b.add(ground(-80, 110, -22.15, -21.85, 0.04, 1), col("#e8b830"));
   // markings: centreline dashes 36 m / 24 m gaps, edge stripes, piano keys, touchdown bars, runway numbers
@@ -1011,7 +1020,10 @@ const buildRunway = (): SetRig => {
     const end = new THREE.CircleGeometry(w, 32, 0, Math.PI).scale(1, 0.75, 1);
     b.add(end, cream, M4(hx, 2.5, ze));
     b.add(rbox(w * 2, 2.5, 0.3, 0.05), cream, M4(hx, 1.25, ze));
-    b.add(rbox(w * 1.5, 9, 0.35, 0.08), texM("hangarDoor", () => P.hangarDoorHD()), M4(hx, 4.5, ze + 0.12));
+    // round 3 darks: door leaves slid open to both sides, a deep shadowed interior between them
+    for (const s of [-1, 1]) b.add(rbox(w * 0.5, 9, 0.35, 0.08), texM("hangarDoor", () => P.hangarDoorHD()), M4(hx + s * w * 0.5, 4.5, ze + 0.12));
+    b.add(rbox(w * 0.52, 8.7, 0.12, 0.02), col("#121318"), M4(hx, 4.35, ze + 0.08)); // open doorway: dark interior (in front of the gable)
+    b.add(ground(hx - w * 0.3, hx + w * 0.3, ze, ze + 3.0, 0.03, 1), col("#2a2826")); // oil-dark threshold
     b.add(rbox(w * 1.55, 0.35, 0.5, 0.06), col("#5c6874"), M4(hx, 9.15, ze + 0.2));
     signBoard(b, "hangar" + sign, sign, w * 1.1, 1.9, hx, 10.6, ze + 0.25, 0, { bg: "#f2efe6", fg: "#24407a", style: "slab", border: "#24407a" }, 0.15);
     for (let k = -1; k <= 1; k++) b.add(lathe("vent", [[0.2, 0], [0.2, 0.8], [0.65, 0.85], [0.6, 1.1], [0, 1.25]], 12), col("#9aa4ae"), M4(hx, 2.5 + w * 0.75 - 0.1, zc + k * 9));

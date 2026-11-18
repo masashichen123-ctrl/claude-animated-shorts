@@ -137,6 +137,11 @@ export const SHOT_SUN: Record<number, { az: number; el: number }> = {
   12: { az: 115, el: 13 },  // the truck's camera side lit amber (was 70: box side in shade)
   13: { az: 35, el: 4 },
 };
+/** per-shot sky stops overriding LOOK[light].sky: the launch (6) gets a deeper sunrise sky, warm horizon to a clear
+ *  blue top, instead of the pale lavender of the morning preset (verify_r2: 480 sat .25) */
+export const SHOT_SKY: Record<number, { c: string[]; e: number[] }> = {
+  6: { c: ["#ffc387", "#f5a17c", "#c98e9e", "#5f84c6", "#2b5cae"], e: [0, 3, 9, 18, 38] },
+};
 /** the shot world.ts posed last (read by grade.ts gradeFor, which is called right after world.update for the same layer) */
 export const CUR = { id: 0 };
 export const lightOf = (id: number): LightName => SHOT_LIGHT[id] ?? SHOTS[id - 1].light;

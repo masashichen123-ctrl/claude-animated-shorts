@@ -325,8 +325,8 @@ const S5b = (f: number) => P(onHead(SPOT.SAILOR5, F5b), f, 406, 0.0022, 0.006, 3
 // shot 6 (463-496): launch, low from the water off the port side; the lens follows the missile up and out at the right
 const S6a = (f: number): Shot => {
   const m = launchPos(Math.max(f, LAUNCH_F)), u = gl(f, LAUNCH_F + 2, 26);
-  const look = lerp3([-11.5, 4.3, 0], [m[0] * 0.8 - 2.6, m[1] * 0.8 + 0.9, 0], u);
-  return P({ pos: [-7.8, 2.6, -14.5], look, fov: 56, roll: lerp(0.03, -0.02, u) }, f, 460, 0.003);
+  const look = lerp3([-11.0, 2.8, 0], [m[0] * 0.92 - 1.4, m[1] * 0.85 - 0.6, 0], u);
+  return P({ pos: [-3.0, 3.4, -13.0], look, fov: 46, roll: lerp(0.03, -0.02, u) }, f, 460, 0.003);
 };
 
 // shot 7 (497-573): chase over the sea from above-behind (pitch 24 deg: the coast + lighthouse on the top edge), the
@@ -344,8 +344,8 @@ const S7b = (f: number): Shot => {
 // and the roll-out to the park spot (missile kept on the centre-left third, big); palm crowns cut the top-right corner
 const S8a = (f: number): Shot => {
   const m = follow((g) => landPos(Math.min(g, 650)), f, 3, 6);
-  const look: V3 = [m[0] - 0.9, 0.55 * m[1] + 2.0, 0];
-  const pos: V3 = [lerp(-34, 0, gl(f, 572, 80)), 7.5, 26];
+  const look: V3 = [m[0] - 0.9, 0.55 * m[1] + 6.0, 0];
+  const pos: V3 = [lerp(-32, 0, gl(f, 572, 80)), 10.0, 22];
   return P({ pos, look, fov: 50, roll: lerp(-0.03, 0.02, gl(f, 576, 72)) }, f, 571, 0.0022);
 };
 
@@ -354,7 +354,7 @@ const S8a = (f: number): Shot => {
 const PS9: V3 = [(SPOT.PMG9[0] + SPOT.SAILOR9[0]) / 2, 0, (SPOT.PMG9[2] + SPOT.SAILOR9[2]) / 2];
 const F9a: Framing = { q: 0.42, top: 0.36, xs: 0.02, az: 218, pitch: 11, fov: 46, roll: 0.025 };
 const S9a = (f: number) => P(onBody(PS9, lerpF(F9a, { ...F9a, az: 206 }, gl(f, 664, 40))), f, 656, 0.0025);
-const F9b: Framing = { q: 0.18, top: 0.24, xs: 0.0, az: 206, pitch: 11, fov: 34, roll: -0.03 };
+const F9b: Framing = { q: 0.26, top: 0.20, xs: 0.0, az: 206, pitch: 16, fov: 30, roll: -0.03 };
 const S9b = (f: number) => P(onHead(SPOT.PMG9, F9b), f, 703, 0.0018, 0.006, 32, 705);
 const F9c: Framing = { q: 0.42, top: 0.36, xs: 0.0, az: 200, pitch: 11, fov: 46, roll: 0.03 };
 const S9c = (f: number) => P(onBody(PS9, F9c), f, 738, 0.0022);
@@ -367,8 +367,8 @@ const S10a = (f: number) => P(onBody(POSTMAN10, lerpF(F10, { ...F10, az: 214, xs
 
 // shot 11 (848-930): the missile goes into the house (kick) seen low from the street over the kid (right third); glide in
 // to a comic low MS of the kid on "every delivery", punch on "missile"
-const F11a: Framing = { q: 0.30, top: 0.55, xs: 0.40, az: 197, pitch: -6, fov: 54, roll: 0.03 };
-const F11b: Framing = { q: 0.50, top: 0.31, xs: 0.34, az: 191, pitch: -4, fov: 48, roll: -0.035 };
+const F11a: Framing = { q: 0.34, top: 0.50, xs: 0.44, az: 214, pitch: -9, fov: 58, roll: 0.03 };
+const F11b: Framing = { q: 0.40, top: 0.45, xs: 0.42, az: 210, pitch: -7, fov: 56, roll: -0.035 };
 const S11a = (f: number) => P(onBody(SPOT.KID, F11a, 0.78), f, 845, 0.0025);
 const S11b = (f: number) => P(onBody(SPOT.KID, F11b, 0.78), f, 845, 0.0022, 0.006, 35, 893);
 
@@ -471,12 +471,14 @@ export const keyEnd = (id: number, f: number) => {
  *  instead (lectern in 9b, the launch cart + missile in 13b, deck stanchions in 4b) need no entry. */
 export type Fg = { a: number; b: number; kit: string; pos: V3; s?: number; yaw?: number; space?: "world" | "cam"; tilt?: number };
 /** shot 8 ground crewman with bats (cast.ts stages him): left third of the landing wide from ~f625 on */
-export const CREW8: V3 = [-2.4, 0, 11.5];
+export const CREW8: V3 = [-3.0, 0, 4.0];
+/** shot 6 deck crewman (cast.ts stages him, ears covered / arm up): on the near deck edge, left third of the launch */
+export const CREW6: V3 = [-8.3, 2.0, -1.2];
 export const FOREGROUND: Fg[] = [
   { a: 122, b: 176, kit: "letter_bundle", pos: [-0.38, -0.52, 1.5], yaw: 0.5, space: "cam" },   // post office MCU: bottom-left corner
   { a: 786, b: 848, kit: "mail_sack", pos: [-0.75, -0.95, 2.0], yaw: 0.8, space: "cam" },      // shot 10 MS: sack pile bottom-left, ~22 % of frame
   { a: 932, b: 978, kit: "mailbox_post", pos: [-0.53, -0.35, 2.1], yaw: 0.6, space: "cam" },  // shot 12a: mailbox at the left edge
-  { a: 1190, b: 1267, kit: "velvet_rope", pos: [0.9, -1.1, 2.8], yaw: -0.4, space: "cam" },    // museum wide: stanchion + rope bottom-right
+  { a: 1190, b: 1267, kit: "velvet_rope", pos: [1.2, -1.95, 2.6], yaw: -0.4, space: "cam" },    // museum wide: stanchion + rope bottom-right
 ];
 
 // ---------------- lens: depth of field ----------------
