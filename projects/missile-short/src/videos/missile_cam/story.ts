@@ -354,7 +354,7 @@ const S8a = (f: number): Shot => {
 const PS9: V3 = [(SPOT.PMG9[0] + SPOT.SAILOR9[0]) / 2, 0, (SPOT.PMG9[2] + SPOT.SAILOR9[2]) / 2];
 const F9a: Framing = { q: 0.42, top: 0.36, xs: 0.02, az: 218, pitch: 11, fov: 46, roll: 0.025 };
 const S9a = (f: number) => P(onBody(PS9, lerpF(F9a, { ...F9a, az: 206 }, gl(f, 664, 40))), f, 656, 0.0025);
-const F9b: Framing = { q: 0.24, top: 0.17, xs: 0.0, az: 206, pitch: 25, fov: 30, roll: -0.03 };
+const F9b: Framing = { q: 0.26, top: 0.20, xs: 0.0, az: 206, pitch: 16, fov: 30, roll: -0.03 };
 const S9b = (f: number) => P(onHead(SPOT.PMG9, F9b), f, 703, 0.0018, 0.006, 32, 705);
 const F9c: Framing = { q: 0.42, top: 0.36, xs: 0.0, az: 200, pitch: 11, fov: 46, roll: 0.03 };
 const S9c = (f: number) => P(onBody(PS9, F9c), f, 738, 0.0022);

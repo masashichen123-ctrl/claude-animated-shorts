@@ -1022,8 +1022,8 @@ const buildRunway = (): SetRig => {
     b.add(rbox(w * 2, 2.5, 0.3, 0.05), cream, M4(hx, 1.25, ze));
     // round 3 darks: door leaves slid open to both sides, a deep shadowed interior between them
     for (const s of [-1, 1]) b.add(rbox(w * 0.5, 9, 0.35, 0.08), texM("hangarDoor", () => P.hangarDoorHD()), M4(hx + s * w * 0.5, 4.5, ze + 0.12));
-    b.add(rbox(w * 0.52, 8.6, 0.2, 0.02), col("#17181e"), M4(hx, 4.3, ze - 0.4));
-    b.add(ground(hx - w * 0.26, hx + w * 0.26, ze - 0.4, ze + 0.3, 0.03, 1), col("#24232a"));
+    b.add(rbox(w * 0.52, 8.7, 0.12, 0.02), col("#121318"), M4(hx, 4.35, ze + 0.08)); // open doorway: dark interior (in front of the gable)
+    b.add(ground(hx - w * 0.3, hx + w * 0.3, ze, ze + 3.0, 0.03, 1), col("#2a2826")); // oil-dark threshold
     b.add(rbox(w * 1.55, 0.35, 0.5, 0.06), col("#5c6874"), M4(hx, 9.15, ze + 0.2));
     signBoard(b, "hangar" + sign, sign, w * 1.1, 1.9, hx, 10.6, ze + 0.25, 0, { bg: "#f2efe6", fg: "#24407a", style: "slab", border: "#24407a" }, 0.15);
     for (let k = -1; k <= 1; k++) b.add(lathe("vent", [[0.2, 0], [0.2, 0.8], [0.65, 0.85], [0.6, 1.1], [0, 1.25]], 12), col("#9aa4ae"), M4(hx, 2.5 + w * 0.75 - 0.1, zc + k * 9));
