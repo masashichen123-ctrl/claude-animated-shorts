@@ -27,16 +27,16 @@ const scl = (a: V3, k: number): V3 => [a[0] * k, a[1] * k, a[2] * k];
 /** one THREE.Group per set in build.ts (buildSets); only the active shot's set is visible */
 export type SetName = "sea" | "subdeck" | "postoffice" | "runway" | "museum" | "street" | "road";
 /** light presets (lights.ts LIGHTS / LOOK, grade.ts GRADES): story arc sunrise -> bright day -> golden -> dusk, warm interiors */
-export type Light = "day" | "golden" | "dusk" | "interior";
+export type Light = "day" | "golden" | "dusk" | "interior" | "morning" | "gallery";
 export type ShotDef = { id: number; a: number; b: number; set: SetName; light: Light; sunAz?: number; sunEl?: number };
 // frame ranges from SHOTS.md (b = exclusive end)
 export const SHOTS: ShotDef[] = [
-  { id: 1, a: 0, b: 121, set: "sea", light: "golden", sunAz: 135, sunEl: 10 },    // hook: missile over the sunrise sea, letters streaming
+  { id: 1, a: 0, b: 121, set: "sea", light: "morning", sunAz: 135, sunEl: 10 },    // hook: missile over the sunrise sea, letters streaming
   { id: 2, a: 121, b: 176, set: "postoffice", light: "interior" },              // impatient postmaster general + clerk
-  { id: 3, a: 176, b: 249, set: "subdeck", light: "golden", sunAz: 125, sunEl: 12 }, // USS Barbero at dawn, missile on the launcher
-  { id: 4, a: 249, b: 374, set: "subdeck", light: "day" },                      // sailor on deck beside the missile
-  { id: 5, a: 374, b: 463, set: "subdeck", light: "day" },                      // sailor stuffing letters into the nose
-  { id: 6, a: 463, b: 497, set: "subdeck", light: "day" },                      // launch: booster flame, smoke
+  { id: 3, a: 176, b: 249, set: "subdeck", light: "morning", sunAz: 125, sunEl: 12 }, // USS Barbero at dawn, missile on the launcher
+  { id: 4, a: 249, b: 374, set: "subdeck", light: "morning" },                      // sailor on deck beside the missile
+  { id: 5, a: 374, b: 463, set: "subdeck", light: "morning" },                      // sailor stuffing letters into the nose
+  { id: 6, a: 463, b: 497, set: "subdeck", light: "morning" },                      // launch: booster flame, smoke
   { id: 7, a: 497, b: 574, set: "sea", light: "day" },                          // 100 miles over the sea toward the coast
   { id: 8, a: 574, b: 659, set: "runway", light: "day" },                       // landing at NAS Mayport
   { id: 9, a: 659, b: 785, set: "runway", light: "day" },                       // postmaster general at the podium
@@ -44,8 +44,8 @@ export const SHOTS: ShotDef[] = [
   { id: 11, a: 848, b: 931, set: "street", light: "day" },                      // missile in a house, kid at the mailbox
   { id: 12, a: 931, b: 1058, set: "road", light: "golden", sunAz: 70, sunEl: 14 }, // overloaded mail truck + postman
   { id: 13, a: 1058, b: 1189, set: "road", light: "dusk", sunAz: 35, sunEl: 4 },   // missile "delivery van": one trip, puff
-  { id: 14, a: 1189, b: 1267, set: "museum", light: "interior" },               // museum hall, 1959 plaque
-  { id: 15, a: 1267, b: TOTAL, set: "museum", light: "interior" },              // visitor under the museum missile
+  { id: 14, a: 1189, b: 1267, set: "museum", light: "gallery" },               // museum hall, 1959 plaque
+  { id: 15, a: 1267, b: TOTAL, set: "museum", light: "gallery" },              // visitor under the museum missile
 ];
 /** 5-frame dissolves at every place change (and at the golden -> dusk time change on the road); a white flash after the hook */
 export const XFADE: Record<number, number> = { 2: 5, 3: 5, 7: 5, 8: 5, 11: 5, 12: 5, 13: 5, 14: 5 };
@@ -300,8 +300,8 @@ const S3a = (f: number) => {
 
 // shot 4 (249-373): the sailor beside the missile on the launcher. a) full shot from over the water, arcing toward the
 // stern; b) cut on "the submarine Barbero" to a MS low on the deck line (sailor left third, missile across the right)
-const F4a: Framing = { q: 0.30, top: 0.42, xs: -0.30, az: 206, pitch: 20, fov: 52, roll: 0.025 };
-const F4a2: Framing = { ...F4a, az: 192, pitch: 17, q: 0.33 };
+const F4a: Framing = { q: 0.30, top: 0.46, xs: -0.30, az: 206, pitch: 34, fov: 52, roll: 0.025 };
+const F4a2: Framing = { ...F4a, az: 192, pitch: 30, q: 0.33 };
 const S4a = (f: number) => P(onBody(SPOT.SAILOR4, lerpF(F4a, F4a2, gl(f, 262, 45))), f, 246, 0.0025);
 const F4b: Framing = { q: 0.52, top: 0.27, xs: 0.33, az: 132, pitch: -9, fov: 46, roll: -0.03 };
 const F4b2: Framing = { ...F4b, az: 120, xs: 0.35 };
@@ -329,7 +329,7 @@ const S6a = (f: number): Shot => {
 // offset arcs 16 deg; on "and 22 minutes later" the camera lets the missile fly on toward the coast
 const S7a = (f: number): Shot => {
   const a = lerp(146, 130, gl(f, 500, 45));
-  return P(orbit(add(follow(SEA7, f, 3, 3), [3.2, -0.6, 0]), 17, 90 + a - 180, 22, { fov: 54, roll: -0.03 }), f, 494, 0.0025);
+  return P(orbit(add(follow(SEA7, f, 3, 3), [-0.2, -0.6, -0.4]), 18, 90 + a - 180, 22, { fov: 54, roll: -0.03 }), f, 494, 0.0025);
 };
 const S7b = (f: number): Shot => {
   const s = S7a(Math.min(f, 547)), m = SEA7(f);
@@ -341,7 +341,7 @@ const S7b = (f: number): Shot => {
 const S8a = (f: number): Shot => {
   const m = follow((g) => landPos(Math.min(g, 650)), f, 3, 6);
   const look: V3 = [m[0] + 0.6, 0.55 * m[1] + 0.7, 0];
-  const pos: V3 = [lerp(-36, 2, gl(f, 572, 80)), 9.0, 34];
+  const pos: V3 = [lerp(-34, 0, gl(f, 572, 80)), 7.5, 26];
   return P({ pos, look, fov: 50, roll: lerp(-0.03, 0.02, gl(f, 576, 72)) }, f, 571, 0.0022);
 };
 

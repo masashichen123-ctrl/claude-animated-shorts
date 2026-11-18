@@ -19,6 +19,9 @@ import { InkPass, noInkFallback } from "./ink";
 import { LensBlur, GrainEffect } from "./lensblur";
 import { GradeEffect, GRADES, GRADE_STRENGTH, gradeFor } from "./grade";
 import { TOTAL, FLASH_AT, SHOTS, layersAt, dofAt } from "./story";
+import * as LXM from "./lights";
+/** lights.ts seen loosely: lightOf / bloomI / bloomR arrive with the light owner's merge */
+const LX = LXM as unknown as { LIGHTS: Record<string, unknown>; lightOf?: (id: number) => string };
 
 export const MISSILE_FRAMES = TOTAL;
 
@@ -36,7 +39,7 @@ const toggles = (): PostToggles => ({ ink: true, lens: true, pre: true, bloom: t
 // so saturated sources (red beacon, orange flame: luminance < 1.3) still bloom. Emissives need k >= 1.8 to glow fully.
 const BLOOM_T = 1.45, BLOOM_S = 0.35;
 /** per light preset bloom strength / radius (lighting.md 3.4; e-fold glow ~30 px at 1080 for radius 0.6) */
-const BLOOM_LOOK: Record<string, [number, number]> = { day: [0.6, 0.6], golden: [0.8, 0.7], dusk: [0.8, 0.7], morning: [0.8, 0.7], interior: [0.9, 0.75], night: [0.9, 0.75] };
+const BLOOM_LOOK: Record<string, [number, number]> = { day: [0.6, 0.6], golden: [0.8, 0.7], dusk: [0.8, 0.7], morning: [0.8, 0.7], interior: [0.9, 0.75], gallery: [0.9, 0.75], night: [0.9, 0.75] };
 /** vignette floor (depth.md 3.6: corner/centre luma 0.87 -> ~0.72 = k 0.28 from r0 0.45); presets that ask for more keep it */
 const VIG_K = 0.28, VIG_R0 = 0.45;
 const makeBloom = () => {
@@ -98,7 +101,12 @@ const Inner: React.FC<{ id: number; kit: boolean }> = ({ id, kit }) => {
   gradeFor(fx.grade, light);
   const vig = fx.grade.uniforms.get("gradeVig")!.value as THREE.Vector2;
   if (vig.x < VIG_K) vig.set(VIG_K, Math.min(vig.y, VIG_R0));
-  const [bi, br] = BLOOM_LOOK[light] ?? BLOOM_LOOK.day;
+  // bloom per shot: lights.ts LIGHTS[lightOf(id)].bloomI / bloomR when the light owner's version provides them,
+  // else the BLOOM_LOOK table above (optional access: compiles against both lights.ts versions)
+  const lname = (typeof LX.lightOf === "function" ? LX.lightOf(id) : light) as string;
+  const lp = (LX.LIGHTS as Record<string, { bloomI?: number; bloomR?: number } | undefined>)[lname];
+  const [bi0, br0] = BLOOM_LOOK[lname] ?? BLOOM_LOOK[light] ?? BLOOM_LOOK.day;
+  const bi = typeof lp?.bloomI === "number" ? lp.bloomI : bi0, br = typeof lp?.bloomR === "number" ? lp.bloomR : br0;
   fx.bloom.intensity = bi; fx.bloom.mipmapBlurPass.radius = br;
   fx.grain.seed = f; // deterministic per frame
   return (

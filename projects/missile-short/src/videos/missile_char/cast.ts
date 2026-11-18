@@ -203,20 +203,22 @@ const person = (cam: CamInfo, who: Who, x: number, y: number, z: number, view: {
  *  the feet (~.5 on screen at the core) so nobody floats, plus by day (cards cast no real shadow) a lighter soft tail
  *  stretched AWAY from the sun, length ~1.6 m / tan(sun elevation), capped. Golden: world.ts casts real card shadows. */
 // charshade.md 3.4: core ~.62-.70 on screen, near-neutral (B/R <= 1.12), ~0.6-0.8 body width, soft edge
-const CONTACT: Record<Light, [number, number, number]> = { day: [0.62, 0.6, 0.66], golden: [0.58, 0.54, 0.66], dusk: [0.58, 0.55, 0.66], interior: [0.64, 0.6, 0.64] };
+// keyed by string so new light presets ("morning", "gallery") work; an unknown key falls back to day
+const CONTACT: Record<string, [number, number, number]> = { day: [0.62, 0.6, 0.66], golden: [0.58, 0.54, 0.66], morning: [0.6, 0.57, 0.67],
+  dusk: [0.58, 0.55, 0.66], interior: [0.64, 0.6, 0.64], gallery: [0.64, 0.6, 0.64] };
 const TAIL: [number, number, number] = [0.72, 0.7, 0.78];
 const toSrgb = (v: number) => { const c = clamp01(v); return c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055; };
 const hexOf = (c: [number, number, number], k: number) => "#" + c.map((v) => Math.round(255 * toSrgb(1 - (1 - v) * k)).toString(16).padStart(2, "0")).join("");
 const blob = (out: Stage, x: number, y: number, z: number, sc = 1, k = 1) => {
   const hl = Math.hypot(SUN.x, SUN.z) || 1, ox = -SUN.x / hl, oz = -SUN.z / hl, rot = Math.atan2(-ox, -oz);
-  if (LNAME === "day" || LNAME === "interior") {
+  if (LNAME === "day" || LNAME === "interior" || (LNAME as string) === "gallery") {
     const el = Math.asin(Math.min(0.99, Math.max(0.1, SUN.y)));
     const len = Math.min(2.4, Math.max(0.5, 1.6 / Math.tan(el))) * sc, h = len + 0.55 * sc, c = 0.3 * h; // feet at v = .2 of the card
     const tc = hexOf(TAIL, k);
     out.fx.push({ key: `blob|shadow|${tc}`, cw: 128, ch: 256, draw: (p) => fxShadow(p, tc), x: x + ox * c, y: y + 0.018, z: z + oz * c,
       w: 0.72 * sc, h, flat: true, rot });
   }
-  const cc = hexOf(CONTACT[LNAME], k);
+  const cc = hexOf(CONTACT[LNAME] ?? CONTACT.day, k);
   out.fx.push({ key: `blob|contact|${cc}`, cw: 128, ch: 128, draw: (p) => fxContact(p, cc), x: x + ox * 0.03 * sc, y: y + 0.03, z: z + oz * 0.03 * sc,
     w: 0.4 * sc, h: 0.22 * sc, flat: true, rot });
 };
