@@ -467,9 +467,8 @@ export const keyEnd = (id: number, f: number) => {
 /** Near framing props, cut by a frame edge and blurred by the shot's DOF (cInf >= 8). space "cam": pos is in camera space
  *  (x right, y up, z forward, metres) so the prop stays framed through the push-ins; "world": a world position.
  *  Drawn by the sets owner (build.ts fgUpdate) from these kit names; unknown kits are skipped. Kits used: letter_bundle,
- *  for these kit names (simple shapes: burlap sack pile from sack(), a letter bundle box, a mailbox on a post, a brass
- *  stanchion + red rope, three white pickets). Shots that frame through real set pieces instead (lectern in 9b, the
- *  launch cart + missile in 13b, deck stanchions in 4b) need no entry. */
+ *  mail_sack, fence, mailbox_post, velvet_rope, buoy, gull, palm_fronds. Shots that frame through real set pieces
+ *  instead (lectern in 9b, the launch cart + missile in 13b, deck stanchions in 4b) need no entry. */
 export type Fg = { a: number; b: number; kit: string; pos: V3; s?: number; yaw?: number; space?: "world" | "cam"; tilt?: number };
 /** shot 8 ground crewman with bats (cast.ts stages him): left third of the landing wide from ~f625 on */
 export const CREW8: V3 = [-1.6, 0, 11];

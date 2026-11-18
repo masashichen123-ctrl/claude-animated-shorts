@@ -359,7 +359,7 @@ export const stage = (id: number, t: number, cam: CamInfo, mis: MissileInfo): St
   switch (id) {
     case 1: { // the hook: a sailor RIDES the mail missile, astride the fuselage, waving fistfuls of letters into the wind
       letterStream(out, mis.tail.clone().addScaledVector(mis.dir, 2.5), mis.dir, t, 16, 1.6);
-      const seat = new THREE.Vector3(...mp.pos).addScaledVector(mis.dir, 1.0), p1: V3 = [seat.x, seat.y + 0.52, seat.z];
+      const seat = new THREE.Vector3(...mp.pos).addScaledVector(mis.dir, -0.4), p1: V3 = [seat.x, seat.y + 0.5, seat.z];
       const nose = seat.clone().addScaledVector(mis.dir, 5), rf = faceTo(cam, p1, nose);
       const A = act([
         { f: 0, expr: "grin", armF: "wave", lean: 6 },
@@ -371,7 +371,7 @@ export const stage = (id: number, t: number, cam: CamInfo, mis: MissileInfo): St
         { f: 95, expr: "laugh", shrug: 0, armF: "up", armB: "up", lean: 4 },   // "missile"
       ], Math.round(f), rf, 9);
       const fo: FrontOpts = { ...A.fo, mode: "sit", facing: rf, prop: "letters", blink: lidAt(t, 9, A.swaps) };
-      out.places.push(person(cam, { i: 9, o: SAILOR, okey: "rider" }, p1[0], p1[1], p1[2], { side: false, mirror: false }, fo, {}, 1.25));
+      out.places.push(person(cam, { i: 9, o: SAILOR, okey: "rider" }, p1[0], p1[1], p1[2], { side: false, mirror: false }, fo, {}, 1.5));
       break;
     }
     case 2: { // post office: the postmaster general taps his watch at the clerk, then jabs a finger; the clerk sweats + shrugs
@@ -557,7 +557,7 @@ export const stage = (id: number, t: number, cam: CamInfo, mis: MissileInfo): St
         { f: 1239, expr: "laugh", armB: "hip", headTilt: -4 },             // "one flight"
         { f: 1255, expr: "smile_closed" },
       ], t, faceTo(cam, SPOT.VISITOR15, ex));
-      const p1: V3 = [0.1, 0, 10.4], p2: V3 = [3.5, 0, 6.3]; // mum = big FG figure, left third of the wide
+      const p1: V3 = [-0.35, 0, 10.4], p2: V3 = [3.5, 0, 6.3]; // mum = big FG figure, left third of the wide
       actor(out, cam, 7, VISITORS[1], "vis1", p1, [
         { f: 1189, expr: "smile", look: 1 },
         { f: 1203, headTilt: -6 },                                         // "of mail"

@@ -5,7 +5,6 @@
 import * as THREE from "three";
 import * as PAINT from "./paint";
 import { ctex, cloudHD } from "./paint";
-import * as B from "./build";
 import { buildSets, buildMissile, poseMissile, SET_META, SetRig, MissileRig } from "./build";
 import { LIGHTS, LOOK, LightPreset, LightName, lightOf, SHOT_SUN, CUR } from "./lights";
 import { TONE, CHAR, LFB, HAZE, hazeShader, untone } from "./shade";
@@ -239,7 +238,6 @@ export class World {
     cam.fov = c.fov; cam.near = 0.15; cam.far = 3000; cam.updateProjectionMatrix(); cam.updateMatrixWorld();
     const focus = V(...c.look), dist = cam.position.distanceTo(focus);
     cam.layers.enable(NOINK); // sky, clouds, cards and sun sprites live on the no-ink layer but are still rendered
-    { const me = this as unknown as { _fg?: THREE.Group }; if (!me._fg) { me._fg = new THREE.Group(); scene.add(me._fg); } (B as unknown as { fgUpdate?: (...a: unknown[]) => void }).fgUpdate?.(me._fg, id, f, cam); } // SETS SANDBOX TEST ONLY
     // ---- light rig: camera-relative sun frozen per shot, two-tone uniforms, shadow fit around the look point ----
     const sunDir = this.shotSun(id, s, L);
     this.hemi.color.set(L.sky); this.hemi.groundColor.set(L.ground); this.hemi.intensity = L.hemiI;

@@ -1237,7 +1237,7 @@ const buildRoad = (): SetRig => {
   for (let i = 0; i + 1 < poles.length; i++) for (const dz of [-0.9, 0, 0.9]) b.add(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(V(poles[i], 8.0, -7.6 + dz), V((poles[i] + poles[i + 1]) / 2, 7.1, -7.6 + dz), V(poles[i + 1], 8.0, -7.6 + dz)), 10, 0.025, 4), col("#2e3440"));
   for (const x of [-38, -14, 10, 34]) lamppost(b, x, 4.9, -Math.PI / 2);
   for (const x of [-26, -2, 22]) lamppost(b, x, -7.9, Math.PI / 2);
-  collectionBox(b, 6.6, 4.7, -Math.PI / 2 + 0.3); collectionBox(b, -12.4, -7.6, Math.PI / 2);
+  collectionBox(b, 6.6, 4.7, 0.1); collectionBox(b, -12.4, -7.6, Math.PI / 2);
   hydrant(b, 9.4, 4.4); hydrant(b, -20, -7.2); trashCan(b, 11, 4.9); trashCan(b, -16, -8.0); newsBox(b, 5.4, 5.2, -Math.PI / 2);
   bench(b, -6, 5.4, 0); bench(b, 16, -8.3, Math.PI);
   car(b, 14, 2.1, Math.PI, "#3a6ea8", 1); car(b, -24, -5.0, 0, "#f2efe6", 2); car(b, 26, -5.0, 0, "#d8352f", 3); car(b, -36, 2.1, Math.PI, "#6f7a4a", 4);
