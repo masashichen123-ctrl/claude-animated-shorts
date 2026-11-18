@@ -344,7 +344,7 @@ const S7b = (f: number): Shot => {
 // and the roll-out to the park spot (missile kept on the centre-left third, big); palm crowns cut the top-right corner
 const S8a = (f: number): Shot => {
   const m = follow((g) => landPos(Math.min(g, 650)), f, 3, 6);
-  const look: V3 = [m[0] + 0.6, 0.55 * m[1] + 0.7, 0];
+  const look: V3 = [m[0] - 0.9, 0.55 * m[1] + 2.0, 0];
   const pos: V3 = [lerp(-34, 0, gl(f, 572, 80)), 7.5, 26];
   return P({ pos, look, fov: 50, roll: lerp(-0.03, 0.02, gl(f, 576, 72)) }, f, 571, 0.0022);
 };
@@ -409,10 +409,10 @@ const S14a = (f: number) => P(orbit(L14, 10.5, lerp(170, 166.5, gl(f, 1192, 45))
 // on "America's" crane out on a curve to a high wide of the whole hall, push still running
 const F15: Framing = { q: 0.17, top: 0.40, xs: -0.30, az: 172, pitch: -6, fov: 44, roll: -0.03 };
 const S15a = (f: number): Shot => {
-  const u = gl(f, 1284, 64), a = onHead(SPOT.VISITOR15, F15), b = orbit([0.6, 2.6, 1.0], 10, 194, 22, { fov: 58 });
+  const u = gl(f, 1284, 64), a = onHead(SPOT.VISITOR15, F15), b = orbit([1.4, 2.8, 0.6], 15.5, 200, 18, { fov: 52 });
   const k = u * u * (1.6 - 0.6 * u); // the pull-back leads, the crane catches up (curved path)
   const pos: V3 = [lerp(a.pos[0], b.pos[0], u), lerp(a.pos[1], b.pos[1], k), lerp(a.pos[2], b.pos[2], u)];
-  return P({ pos, look: lerp3(a.look, b.look, u), fov: lerp(44, 58, u), roll: lerp(-0.03, 0.02, u) }, f, 1264, 0.0025);
+  return P({ pos, look: lerp3(a.look, b.look, u), fov: lerp(44, 52, u), roll: lerp(-0.03, 0.02, u) }, f, 1264, 0.0025);
 };
 
 const CAMS: Record<number, Key[]> = {
@@ -471,7 +471,7 @@ export const keyEnd = (id: number, f: number) => {
  *  instead (lectern in 9b, the launch cart + missile in 13b, deck stanchions in 4b) need no entry. */
 export type Fg = { a: number; b: number; kit: string; pos: V3; s?: number; yaw?: number; space?: "world" | "cam"; tilt?: number };
 /** shot 8 ground crewman with bats (cast.ts stages him): left third of the landing wide from ~f625 on */
-export const CREW8: V3 = [-1.6, 0, 11];
+export const CREW8: V3 = [-2.4, 0, 11.5];
 export const FOREGROUND: Fg[] = [
   { a: 177, b: 249, kit: "buoy", pos: [-1.3, -2.6, 6.0], yaw: 0.3, space: "cam" },             // sub establishing: red buoy bottom-left
   { a: 498, b: 574, kit: "gull", pos: [1.1, 1.6, 5.0], yaw: -0.5, space: "cam" },              // chase over the sea: gull top-right

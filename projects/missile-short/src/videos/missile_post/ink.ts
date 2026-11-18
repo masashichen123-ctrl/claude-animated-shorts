@@ -289,9 +289,10 @@ void main() {
   fk = max(fk, max(texture2D(tMask, vUv + vec2(0.0, texel.y)).g, texture2D(tMask, vUv - vec2(0.0, texel.y)).g));
   vec3 inkC = mix(inkColor, fogColor, fk * fogInk);
   vec3 g = pow(max(c.rgb, 0.0), vec3(1.0 / 2.2));
-  // alpha = 1 + bloom mask (the composer's HalfFloat buffers keep it; the bloom bright pass in Missile.tsx reads
-  // a - 1, the screen clamps alpha to 1). Lit surfaces never bloom however hot they are lit.
-  gl_FragColor = vec4(pow(mix(g, pow(inkC, vec3(1.0 / 2.2)), a), vec3(2.2)), 1.0 + texture2D(tMask, vUv).b * (1.0 - a));
+  // alpha = 1 - 0.5 x bloom mask (EffectPass clamps alpha to 0..1, so the mask lives below 1). The bloom bright pass
+  // in Missile.tsx reads 2 (1 - a); OpaqueEffect (lensblur.ts) restores alpha 1 at the end of the chain.
+  // Lit surfaces never bloom however hot they are lit.
+  gl_FragColor = vec4(pow(mix(g, pow(inkC, vec3(1.0 / 2.2)), a), vec3(2.2)), 1.0 - 0.5 * texture2D(tMask, vUv).b * (1.0 - a));
 }`;
 
 const COPY_FRAG = /* glsl */ `

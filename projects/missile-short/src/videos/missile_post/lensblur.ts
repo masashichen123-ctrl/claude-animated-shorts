@@ -37,7 +37,7 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth,
   float d0 = -getViewZ(depth);
   float r0 = abs(cocAt(d0, s));
   float R = r0 * SPREAD;
-  vec4 acc = inputColor; float wsum = 1.0;    // alpha = 1 + bloom mask (ink.ts): blurred with the colour
+  vec4 acc = inputColor; float wsum = 1.0;    // alpha = 1 - 0.5 x bloom mask (ink.ts): blurred with the colour
   if (R > 0.5) {
     for (int i = 0; i < TAPS; i++) {
       float rr = sqrt((float(i) + 0.5) / float(TAPS)) * R;
@@ -49,7 +49,7 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth,
       float w = clamp(rs - rr + 0.5, 0.0, 1.0); // does the sample's disc reach us?
       vec4 sc = texture2D(inputBuffer, suv);
 #if BOKEH
-      w *= 1.0 + 3.0 * smoothstep(1.6, 2.4, max(sc.r, max(sc.g, sc.b)) * clamp(sc.a - 1.0, 0.0, 1.0)); // lights -> bokeh discs
+      w *= 1.0 + 3.0 * smoothstep(1.6, 2.4, max(sc.r, max(sc.g, sc.b)) * clamp(2.0 * (1.0 - sc.a), 0.0, 1.0)); // lights -> bokeh discs
 #endif
       acc += sc * w; wsum += w;
     }
@@ -137,6 +137,13 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   g = max(g + n * (amount / 0.2145) * w, 0.0);                        // 0.2145 = std of the smoothed lattice noise
   outputColor = vec4(pow(g, vec3(2.2)), inputColor.a);
 }`;
+
+/** Last effect of the chain: alpha back to 1 (the InkPass parks the bloom mask in alpha; the canvas must stay opaque). */
+export class OpaqueEffect extends Effect {
+  constructor() {
+    super("OpaqueEffect", "void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) { outputColor = vec4(inputColor.rgb, 1.0); }", { blendFunction: BlendFunction.NORMAL });
+  }
+}
 
 export class GrainEffect extends Effect {
   constructor({ amount = 0.025, cellPx = 1.5 }: { amount?: number; cellPx?: number } = {}) {

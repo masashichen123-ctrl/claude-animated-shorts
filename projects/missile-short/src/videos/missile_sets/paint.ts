@@ -1207,9 +1207,9 @@ export const asphaltHD = (key = "asphaltHD2", base = "#7b7770") => ctex(key, 102
  *  tint, hairline cracks, tyre-skid streaks along x (world.md 4.3) */
 export const runwayHD = () => ctex("runwayHD", 1024, 1024, (g, r) => {
   const S = 1024, P = 1024 / 3.8;
-  g.fillStyle = "#a49a8a"; g.fillRect(0, 0, S, S);
+  g.fillStyle = "#9c8f7c"; g.fillRect(0, 0, S, S);
   g.fillStyle = "rgba(170,160,140,0.12)"; g.fillRect(0, 0, S / 2, S / 2); g.fillStyle = "rgba(255,250,240,0.1)"; g.fillRect(S / 2, S / 2, S / 2, S / 2);
-  octaves(g, r, S, S, P, "246,240,228", "120,110,95", 1);
+  octaves(g, r, S, S, P, "236,226,208", "100,88,72", 1.5);
   for (let i = 0; i < 9; i++) { // skid streaks
     const y = U(r, 0, S), len = U(r, 0.4, 1) * S, x = U(r, 0, S), w = U(r, 0.25, 0.35) * P;
     const lg = g.createLinearGradient(x, 0, x + len, 0); lg.addColorStop(0, "rgba(143,138,128,0)"); lg.addColorStop(0.3, "rgba(120,115,108,0.22)"); lg.addColorStop(1, "rgba(143,138,128,0)");
@@ -1220,15 +1220,16 @@ export const runwayHD = () => ctex("runwayHD", 1024, 1024, (g, r) => {
     detailLine(g, [[0, k + 2], [S, k + 2]], "#857a6a", 4, r, 0.9, 0.6); lip(g, 0, k + 5, S, k + 5, 2);
   }
   for (let i = 0; i < 6; i++) { let x = U(r, 0, S), y = U(r, 0, S); const pts: [number, number][] = [[x, y]]; for (let k = 0; k < 6; k++) { x += U(r, -40, 40); y += U(r, -40, 40); pts.push([x, y]); } detailLine(g, pts, "#a49a8a", 1.4, r, 0.5, 0.55); }
-  for (let i = 0; i < 4; i++) blotch(g, U(r, 0, S), U(r, 0, S), U(r, 30, 80), 1.3, "90,80,70", 0.18);
+  for (let i = 0; i < 9; i++) blotch(g, U(r, 0, S), U(r, 0, S), U(r, 30, 110), 1.3, "60,50,45", 0.3); // oil stains
 });
 /** poured concrete (1024 px = one tile): warm pale grey, saw-cut joints at half tile with a lit lip, 3 octaves, rust /
  *  water stains, hairline cracks (textures.md 3.3) */
-export const concreteHD = (key = "concreteHD2", base = "#b8ad9c") => ctex(key, 1024, 1024, (g, r) => {
+export const concreteHD = (key = "concreteHD2", base = "#a89c88") => ctex(key, 1024, 1024, (g, r) => {
   const S = 1024;
   g.fillStyle = base; g.fillRect(0, 0, S, S);
   for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) { g.fillStyle = jit(r, base, 0.04, 3, 0.1) + "40"; g.fillRect(i * 512, j * 512, 512, 512); }
-  octaves(g, r, S, S, 256, "246,242,232", "110,100,88", 1);
+  octaves(g, r, S, S, 256, "240,232,215", "95,85,70", 1.4);
+  for (let i = 0; i < 4; i++) blotch(g, U(r, 80, S - 80), U(r, 80, S - 80), U(r, 30, 90), 1.3, "60,50,45", 0.26); // oil stains
   for (let i = 0; i < 3; i++) { const x = U(r, 0, S), y = U(r, 0, S * 0.6), lg = g.createLinearGradient(0, y, 0, y + 200); lg.addColorStop(0, "rgba(165,138,106,0.14)"); lg.addColorStop(1, "rgba(165,138,106,0)"); g.fillStyle = lg; g.fillRect(x, y, U(r, 20, 60), 200); }
   for (let i = 0; i < 6; i++) { let x = U(r, 0, S), y = U(r, 0, S); const pts: [number, number][] = [[x, y]]; for (let k = 0; k < 6; k++) { x += U(r, -35, 35); y += U(r, -35, 35); pts.push([x, y]); } detailLine(g, pts, base, 1.3, r, 0.5, 0.55); }
   for (const k of [0, 512]) {

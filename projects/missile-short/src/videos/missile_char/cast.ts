@@ -301,10 +301,13 @@ const rollAlong = (cam: CamInfo, v: THREE.Vector3) => Math.atan2(v.dot(cam.right
 const _v = new THREE.Vector3();
 
 /** exhaust flame at a nozzle, plume along -dir */
-const flame = (out: Stage, cam: CamInfo, at3: THREE.Vector3, dir: THREE.Vector3, t: number, len: number) => {
+const flame = (out: Stage, cam: CamInfo, at3: THREE.Vector3, dir: THREE.Vector3, t: number, len0: number) => {
   const back = _v.copy(dir).multiplyScalar(-1);
   const ph = q((t * 3.7) % 1, 6);
-  out.fx.push({ key: `flame${ph}`, cw: 300, ch: 600, draw: (p) => fxFlame(p, ph), x: at3.x - dir.x * len * 0.45, y: at3.y - dir.y * len * 0.45, z: at3.z - dir.z * len * 0.45,
+  // foreshortened flights (toward / away from the lens) get a smaller plume, so the card never covers the airframe;
+  // the card starts strictly behind the nozzle (its top edge 0.08 len aft of the tail)
+  const proj = Math.hypot(dir.dot(cam.up), dir.dot(cam.right)), len = len0 * (0.35 + 0.65 * proj), c = len * 0.58;
+  out.fx.push({ key: `flame${ph}`, cw: 300, ch: 600, draw: (p) => fxFlame(p, ph), x: at3.x - dir.x * c, y: at3.y - dir.y * c, z: at3.z - dir.z * c,
     w: len * 0.5, h: len, rot: rollAlong(cam, back), glow: 2.2 });
 };
 /** letters streaming back from a point (missile-relative: the camera rides along, so they peel away behind it) */
@@ -346,7 +349,7 @@ export const stage = (id: number, t: number, cam: CamInfo, mis: MissileInfo): St
   findSun(cam, SUN);
   // engine flames wherever the missile is burning
   if (mp.visible && mp.flame > 0) {
-    flame(out, cam, mis.tail, mis.dir, t, 2.6 * mp.flame + 0.6);
+    flame(out, cam, mis.tail, mis.dir, t, id === 13 ? 1.6 * mp.flame + 0.4 : 2.6 * mp.flame + 0.6);
     if (mp.booster) for (const bt of mis.boosterTails) flame(out, cam, bt, mis.dir, t + 0.3, 4.2 * mp.flame);
   }
   // thin translucent speed lines behind the tail, only where the flight is side-on (verify_r1 #4/#5: none on 1 / 13)

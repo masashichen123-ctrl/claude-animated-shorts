@@ -17,7 +17,7 @@ import { EffectComposer } from "@react-three/postprocessing";
 import { BlendFunction, BloomEffect, ToneMappingEffect, ToneMappingMode } from "postprocessing";
 import { World, loadKit } from "./world";
 import { InkPass, noInkFallback } from "./ink";
-import { LensBlur, GrainEffect } from "./lensblur";
+import { LensBlur, GrainEffect, OpaqueEffect } from "./lensblur";
 import { GradeEffect, GRADES, GRADE_STRENGTH, gradeFor } from "./grade";
 import { TOTAL, FLASH_AT, SHOTS, layersAt, dofAt } from "./story";
 import * as LXM from "./lights";
@@ -51,7 +51,7 @@ const makeBloom = () => {
   const b = new BloomEffect({ blendFunction: BlendFunction.ADD, intensity: 0.6, luminanceThreshold: BLOOM_T, luminanceSmoothing: BLOOM_S, mipmapBlur: true, levels: 6, radius: 0.6 });
   // bright pass = max channel x the bloom mask the InkPass writes into alpha (1 + mask): only glow materials, the sky /
   // sun and NOINK fx cards (flames, booms) can bloom; lit floors and walls never do, however hot (verify_r1 #1)
-  b.luminanceMaterial.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace("float l=luminance(texel.rgb);", "float l=max(texel.r,max(texel.g,texel.b))*clamp(texel.a-1.0,0.0,1.0);"); };
+  b.luminanceMaterial.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace("float l=luminance(texel.rgb);", "float l=max(texel.r,max(texel.g,texel.b))*clamp(2.0*(1.0-texel.a),0.0,1.0);"); };
   const mip = b.mipmapBlurPass;
   const setSize = mip.setSize.bind(mip);
   mip.setSize = (w: number, h: number) => setSize(Math.round((1920 * w) / Math.max(h, 1)), 1920);
@@ -80,6 +80,7 @@ const Inner: React.FC<{ id: number; kit: boolean }> = ({ id, kit }) => {
     bloom: makeBloom(),
     tone: new ToneMappingEffect({ mode: ToneMappingMode.NEUTRAL }),
     grade: new GradeEffect(GRADES.day, GRADE_STRENGTH.day),
+    opaque: new OpaqueEffect(),
     grain: new GrainEffect({ amount: 0.025, cellPx: 1.5 }), // film grain, OFF by default (inputProps post.grain): the reference measures no grain and it quadruples the file size
   }), [camera, scene]);
   useEffect(() => () => fx.ink.dispose(), [fx]);
@@ -93,6 +94,7 @@ const Inner: React.FC<{ id: number; kit: boolean }> = ({ id, kit }) => {
       <primitive object={fx.tone} dispose={null} />
       {on.grade ? <primitive object={fx.grade} dispose={null} /> : null}
       {on.grain ? <primitive object={fx.grain} dispose={null} /> : null}
+      <primitive object={fx.opaque} dispose={null} />
     </EffectComposer>
   ), [fx, on]);
   const cam = camera as THREE.PerspectiveCamera;
