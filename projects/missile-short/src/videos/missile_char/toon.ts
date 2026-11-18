@@ -28,6 +28,8 @@ export type Outfit = {
   glasses?: boolean; tie?: string; collar?: "sailor" | "suit" | "shirt" | "chambray"; bag?: string;
   /** v3 heads: skull archetype, hairdo (hat "hair" / "visor"), beard colour */
   headType?: HeadKind; hairStyle?: HairStyle; beard?: string;
+  /** ear protectors (deck crew): cup colour */
+  earmuffs?: string;
 };
 type P2 = [number, number];
 
@@ -80,6 +82,12 @@ export const POSTMAN: Outfit = { jacket: "#5f7ea6", pants: "#3e4f6c", boots: "#2
   bag: "#9a6234", buttons: "#d8c070", headType: "standard" };
 export const KID59: Outfit = { jacket: "#e8533f", pants: "#3b5b9a", boots: "#f4f1ea", hat: "hair", hairStyle: "spiky", hair: "#c9862f", build: "kid", collar: "shirt",
   buttons: "none", headType: "bun" };
+/** deck crew at the launch: red ordnance jersey, ear protectors over a crop */
+export const DECK_CREW: Outfit = { jacket: "#c8443a", pants: "#2c3d66", boots: INK, hat: "hair", hairStyle: "crop", hair: "#2a201a", earmuffs: "#f2c230",
+  collar: "chambray", buttons: "none", headType: "bean" };
+/** air station ground crewman: yellow vest over a white shirt, navy ball cap, marshalling paddles */
+export const GROUND_CREW: Outfit = { jacket: "#f0b62e", pants: "#3e4a5c", boots: "#2a2020", hat: "cap", cap: "#24345a", hair: "#5a3b2a", collar: "shirt",
+  buttons: "none", headType: "standard", build: "slim" };
 export const VISITORS: Outfit[] = [
   { jacket: "#2f8a7a", pants: "#3b3f52", boots: "#4a3426", hat: "hair", hairStyle: "bowl", hair: "#6a4428", glasses: true, collar: "shirt", tie: "#c9473c",
     buttons: "none", headType: "standard" },
@@ -270,7 +278,7 @@ type HeadSpec = { R: P2; C: P2; L: P2; T: P2; nJf: number; nJb: number };
 const HEADS: Record<HeadKind, HeadSpec> = {
   // verify_r1: egg, not circle -> taller tapered crown (kT 1.55), fuller jaw on the front side; H/W ~1.0 / 0.9 / 1.12
   standard: { R: [1.04, 0.04], C: [0.08, 0.92], L: [-0.98, 0.0], T: [0.04, -1.12], nJf: 2.45, nJb: 2.0 },
-  bun: { R: [1.06, 0.04], C: [0.08, 0.82], L: [-0.98, 0.0], T: [0.03, -0.98], nJf: 2.5, nJb: 2.1 },
+  bun: { R: [1.06, 0.06], C: [0.08, 0.86], L: [-0.98, 0.02], T: [0.03, -1.06], nJf: 2.55, nJb: 2.15 },
   bean: { R: [1.0, 0.03], C: [0.07, 1.02], L: [-0.97, 0.0], T: [0.04, -1.24], nJf: 2.3, nJb: 1.95 },
 };
 /** Bezier handle factor that makes a quarter segment pass through the superellipse(n) 45-degree point (n = 2: 0.552) */
@@ -609,7 +617,7 @@ const hatOn = (p: Pen, o: Outfit, hd: Head, light: number, thick: number, seed: 
 // ---------------- bodies ----------------
 export type Arms = [P2[], P2[]];
 /** held prop; for the hammer the number is the strike 0 (raised) .. 1 (struck) */
-export type Prop = null | "icecream" | "shako" | ["hammer", number] | "letter" | "letters" | "sack" | "watch";
+export type Prop = null | "icecream" | "shako" | ["hammer", number] | "letter" | "letters" | "sack" | "watch" | "paddles";
 
 const BUILD: Record<Build, { a: number; torso: number; legs: number; tw: number }> = {
   adult: { a: 118, torso: 1.1, legs: 1.4, tw: 0.7 },
@@ -619,7 +627,7 @@ const BUILD: Record<Build, { a: number; torso: number; legs: number; tw: number 
 };
 
 /** arm poses (motion.md 3.3); "wave" uses the wave amount, "point" adds an index finger */
-export type ArmPose = "hang" | "wave" | "point" | "hip" | "up" | "out" | "shrug" | "hold";
+export type ArmPose = "hang" | "wave" | "point" | "hip" | "up" | "out" | "shrug" | "hold" | "ears";
 /** a pose, or [from, to, k]: blend from one pose to another (k 0..1, eased by the caller) */
 export type ArmSpec = ArmPose | [ArmPose, ArmPose, number];
 export type FrontOpts = {
@@ -690,6 +698,13 @@ const drawHead = (p: Pen, o: Outfit, hd: Head, light: number, thick: number, see
   p.inkRing(hd.pts, ow, thick);
   hairOn(p, o, hd, light, thick, ow);
   hatOn(p, o, hd, light, thick, seed, side);
+  if (o.earmuffs) { // headband over the crown + a cup on each side (only the back cup shows in profile)
+    const u = hd.W / 100, ct = (hd.crown - hd.wy) / hd.a;
+    const arcP: P2[] = [];
+    for (let i = 0; i <= 16; i++) { const th = (Math.PI * i) / 16; arcP.push(hu(hd, -1.0 * Math.cos(th), (ct - 0.06) * Math.sin(th) + 0.0)); }
+    p.band(arcP, "#3a3d47", 5 * u, 1.4 * u, "round");
+    for (const x of side ? [-0.98] : [-1.02, 1.04]) { const [ex, ey] = hu(hd, x, 0.02); p.ell(ex, ey, 0.2 * hd.a, 0.27 * hd.a, o.earmuffs, 2.6 * u); }
+  }
   face();
 };
 
@@ -761,6 +776,7 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
     switch (ps) {
       case "wave": return [S, X(0.3 + 0.03 * wv, -0.2), X(0.36 + 0.14 * wv, -0.62)];
       case "up": return [S, X(0.36, -0.3), X(0.54, -0.76)];
+      case "ears": return [S, X(0.52, -0.12), X(0.3, -0.6)];
       case "out": return [S, X(0.4, -0.1), X(0.8, -0.36)];
       case "point": return [S, X(0.44, 0.06), X(0.9, -0.1)];
       case "shrug": return [S, X(0.36, 0.34), X(0.64, 0.12)];
@@ -912,6 +928,13 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
     p.poly([[hx - 14 * u, hy + 3 * u], [hx + 14 * u, hy + 3 * u], [hx + 16 * u, hy + 30 * u], [hx - 16 * u, hy + 30 * u]], "#3a3d47", 2.2 * u);
     p.ell(hx, hy + 31 * u, 3.5 * u, 3.5 * u, "#2b7a4b", 1.5 * u);
     p.dot(hx, hy, 5.5 * u);
+  }
+  if (prop === "paddles") for (const a of arms) { // marshalling bats: orange disc on a short handle, held up from each hand
+    const [E, Hh] = [a.pts[1], a.pts[2]], dx = Hh[0] - E[0], dy = Hh[1] - E[1], l = Math.hypot(dx, dy) || 1;
+    const c: P2 = [Hh[0] + (dx / l) * 22 * u, Hh[1] + (dy / l) * 22 * u];
+    p.stroke([Hh, c], 4 * u, "#3a3030");
+    p.ell(c[0], c[1], 17 * u, 17 * u, "#ff7a1e", 2.6 * u); p.ell(c[0], c[1], 9 * u, 9 * u, "#ffd23a", 0);
+    p.dot(Hh[0], Hh[1], 6 * u);
   }
   // ---- head: rotates with the body, plus its own tilt about the chin ----
   const Ah = A + headTilt, [cpx, cpy] = rotAbout([300, chin], rad(A), [300, hipY]);
