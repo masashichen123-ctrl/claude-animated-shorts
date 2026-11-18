@@ -6,7 +6,8 @@
 // Ink runs before the DOF so lines blur with what they belong to; bloom after the DOF so glows defocus with their
 // source; the grade is display-referred, so it comes after tone mapping. Every pixel-sized parameter is specified at
 // 1080x1920 and scaled with the output size, so stills at --scale 0.5 and the 1440x2560 final match.
-// Place changes crossfade by stacking a second canvas for the fade frames; the hook ends on a 4-frame white flash.
+// Place changes crossfade by stacking a second canvas for the fade frames; the hook ends on a 4-frame white flash that
+// hides a straight cut to shot 2 (layersFlash).
 import React, { useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
 import { AbsoluteFill, Audio, continueRender, delayRender, getInputProps, staticFile, useCurrentFrame } from "remotion";
@@ -92,7 +93,10 @@ const Inner: React.FC<{ id: number; kit: boolean }> = ({ id, kit }) => {
   target.copy(world.update(id, f, cam, scene));
   noInkFallback(world.root);
   // thin-lens focus: distance along the view axis to the shot's focus point (default: the camera's look target)
-  const d = dofAt(f);
+  // DOF of THIS canvas's shot: during a dissolve / the flash cut, a shot drawn outside its own range keeps its first
+  // (or last) frame's lens instead of the other shot's (the postmaster was blurred by the hook's focus at 118-120)
+  const sd = SHOTS[id - 1];
+  const d = dofAt(Math.min(Math.max(f, sd.a), sd.b - 1));
   cam.getWorldDirection(fwd);
   if (d.focus) fpt.set(...d.focus(f)); else fpt.copy(target);
   fx.lens.focus = Math.max(0.3, fpt.sub(cam.position).dot(fwd));
@@ -128,6 +132,17 @@ const ShotView: React.FC<{ id: number; kit: boolean; alpha: number }> = ({ id, k
   </AbsoluteFill>
 );
 
+/** The white flash IS the hook's transition: the dissolve into the next shot that overlaps it (story.ts XFADE) left a
+ *  ghost of the hook (the missile's red band over the postmaster, frames 119-123) after the white had faded. So from
+ *  the frame after the flash peak until that dissolve would have ended, show only the next shot (a cut under the
+ *  white). All other dissolves are untouched. */
+const layersFlash = (f: number) => {
+  const L = layersAt(f);
+  const nxt = SHOTS.find((s) => s.a > FLASH_AT);
+  if (!nxt || f <= FLASH_AT || f >= nxt.a + 3) return L;
+  return [{ id: nxt.id, alpha: 1 }];
+};
+
 export const MissileShort: React.FC = () => {
   const f = useCurrentFrame();
   const kit = useKit();
@@ -136,7 +151,7 @@ export const MissileShort: React.FC = () => {
   return (
     <AbsoluteFill style={{ background: "#cfe3f2" }}>
       <Audio src={staticFile("missile/mix.wav")} />
-      {layersAt(f).map((l, i) => <ShotView key={i ? "over" : "base"} id={l.id} kit={kit} alpha={l.alpha} />)}
+      {layersFlash(f).map((l, i) => <ShotView key={i ? "over" : "base"} id={l.id} kit={kit} alpha={l.alpha} />)}
       {flash > 0 && <AbsoluteFill style={{ background: "#ffffff", opacity: flash }} />}
     </AbsoluteFill>
   );

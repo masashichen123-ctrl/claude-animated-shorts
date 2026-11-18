@@ -348,11 +348,11 @@ const S8a = (f: number): Shot => {
 // shot 9 (659-784): a) two-shot MS (postmaster general + saluting sailor) with the missile behind; b) cut on "historic"
 // to a low MCU over the lectern (FG), punch; c) arc back out to the two-shot on "the entire world"
 const PS9: V3 = [(SPOT.PMG9[0] + SPOT.SAILOR9[0]) / 2, 0, (SPOT.PMG9[2] + SPOT.SAILOR9[2]) / 2];
-const F9a: Framing = { q: 0.40, top: 0.29, xs: 0.02, az: 218, pitch: 7, fov: 46, roll: 0.025 };
+const F9a: Framing = { q: 0.42, top: 0.36, xs: 0.02, az: 218, pitch: 11, fov: 46, roll: 0.025 };
 const S9a = (f: number) => P(onBody(PS9, lerpF(F9a, { ...F9a, az: 206 }, gl(f, 664, 40))), f, 656, 0.0025);
-const F9b: Framing = { q: 0.15, top: 0.24, xs: -0.12, az: 174, pitch: 5, fov: 44, roll: -0.03 };
+const F9b: Framing = { q: 0.22, top: 0.30, xs: 0.0, az: 200, pitch: 6, fov: 30, roll: -0.03 };
 const S9b = (f: number) => P(onHead(SPOT.PMG9, F9b), f, 703, 0.0018, 0.006, 32, 705);
-const F9c: Framing = { q: 0.42, top: 0.27, xs: 0.0, az: 194, pitch: 3, fov: 46, roll: 0.03 };
+const F9c: Framing = { q: 0.42, top: 0.36, xs: 0.0, az: 200, pitch: 11, fov: 46, roll: 0.03 };
 const S9c = (f: number) => P(onBody(PS9, F9c), f, 738, 0.0022);
 
 // shot 10 (785-847): MS of the postman by the sack pile, the sailor bringing a sack from the missile behind; a truck left
@@ -493,7 +493,7 @@ export const DOF: Dof[] = [
   { f: 497, cInf: 0 },                               // chase over the sea (wide)
   { f: 574, cInf: 0 },                               // landing wide
   { f: 659, cInf: 8, focus: () => eyes(SPOT.PMG9) }, // two-shot MS, missile + hangars behind
-  { f: 703, cInf: 11, focus: () => eyes(SPOT.PMG9) }, // low MCU over the lectern
+  { f: 703, cInf: 11, focus: () => eyes(SPOT.PMG9) }, // CU on a long lens, hangars + missile behind
   { f: 738, dur: 40, cInf: 8, focus: () => eyes(SPOT.PMG9) },
   { f: 785, cInf: 8, focus: () => eyes(POSTMAN10) }, // MS by the sacks
   { f: 848, cInf: 0 },                               // the hit: house wide
