@@ -46,7 +46,7 @@ const BLOOM_LOOK: Record<string, [number, number]> = { day: [0.6, 0.6], golden: 
  *  A lights.ts preset may carry its own `bloomT`, which wins. */
 const BLOOM_TH: Record<string, number> = { gallery: 2.0, interior: 1.8 };
 /** per-shot bloom intensity factor: 13 (dusk puff) - the flame glow burned the missile to white (verify_r1 #4) */
-const SHOT_BLOOM_K: Record<number, number> = { 13: 0.45 };
+const SHOT_BLOOM_K: Record<number, number> = { 13: 0.35 };
 const makeBloom = () => {
   const b = new BloomEffect({ blendFunction: BlendFunction.ADD, intensity: 0.6, luminanceThreshold: BLOOM_T, luminanceSmoothing: BLOOM_S, mipmapBlur: true, levels: 6, radius: 0.6 });
   // bright pass = max channel x the bloom mask the InkPass writes into alpha (1 + mask): only glow materials, the sky /

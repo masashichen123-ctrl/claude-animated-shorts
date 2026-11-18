@@ -27,6 +27,8 @@ import { Pass } from "postprocessing";
 
 /** Layer for things that must never be outlined (camera-facing sprites, sky, clouds, smoke). */
 export const NOINK = 3;
+/** scratch layer for the InkPass's character-only depth render (never used by the scene) */
+const ACTOR_TMP = 30;
 
 export type InkOptions = {
   color?: THREE.ColorRepresentation; // sRGB hex of the ink
@@ -143,6 +145,7 @@ const MASK_FRAG = /* glsl */ `
 uniform sampler2D tNormal;
 uniform sampler2D tDepth;
 uniform sampler2D tMainDepth;
+uniform sampler2D tActorDepth; // character cards only (bloom mask: characters never bloom)
 uniform vec2 texel;
 uniform float cNear;
 uniform float cFar;
@@ -201,12 +204,20 @@ float matEdge(float id0, bool up0, float zc, vec4 nq, float zq) {
   return 1.0;
 }
 
+// bloom mask for a pixel the world pass does not show (sky, sun, fx cards, characters): 1 unless a character card is
+// the nearest thing here
+float offWorld() {
+  if (useMain < 0.5) return 1.0;
+  float zm = dist(tMainDepth, vUv), za = dist(tActorDepth, vUv);
+  return za < zm * 1.02 + 0.02 ? 0.0 : 1.0;
+}
+
 void main() {
   vec4 nc = textureLod(tNormal, vUv, 0.0);
   float em = nc.a < -0.5 ? 1.0 : 0.0;                          // unlit glow material
   nc.a = abs(nc.a);
   // b = bloom mask: glow materials, and everything the world pass does not cover (sky, sun, flame / fx cards)
-  if (nc.a < 0.5) { gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0); return; }          // sky / empty: ink lives on the near object only
+  if (nc.a < 0.5) { gl_FragColor = vec4(0.0, 0.0, offWorld(), 1.0); return; }   // sky / empty: ink lives on the near object only
   float zc = dist(tDepth, vUv);
 
   // characters, cards etc. (not in the world buffer) in front of this pixel: no world ink over them
@@ -216,7 +227,7 @@ void main() {
     zm = min(zm, dist(tMainDepth, vUv - vec2(texel.x, 0.0)));
     zm = min(zm, dist(tMainDepth, vUv + vec2(0.0, texel.y)));
     zm = min(zm, dist(tMainDepth, vUv - vec2(0.0, texel.y)));
-    if (zm < zc * 0.985 - 0.03) { gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0); return; } // a NOINK card in front
+    if (zm < zc * 0.985 - 0.03) { gl_FragColor = vec4(0.0, 0.0, offWorld(), 1.0); return; } // a NOINK card in front
   }
 
   float t = clamp(log(zc / dNear) / log(dFar / dNear), 0.0, 1.0);
@@ -277,6 +288,7 @@ void main() {
   vec4 c = texture2D(inputBuffer, vUv);
   if (debug == 1) { gl_FragColor = vec4(vec3(1.0 - a), 1.0); return; }               // mask only
   if (debug == 2) { gl_FragColor = vec4(texture2D(tNormal, vUv).xyz * 0.5 + 0.5, 1.0); return; } // world normals
+  if (debug == 4) { gl_FragColor = vec4(c.rgb * (0.25 + 0.75 * texture2D(tMask, vUv).b), 1.0); return; } // bloom mask
   if (debug == 3) {                                                                                   // material ids
     float id = floor(abs(texture2D(tNormal, vUv).a) + 0.25) - 1.0;
     vec3 h = fract(sin(vec3(id * 12.9898, id * 78.233, id * 37.719)) * 43758.5453);
@@ -309,6 +321,8 @@ export class InkPass extends Pass {
   private world: THREE.Scene;
   private cam: THREE.PerspectiveCamera;
   private rt: THREE.WebGLRenderTarget;
+  private actorRT: THREE.WebGLRenderTarget; // depth of the character cards only (bloom mask)
+  private actors: { o: THREE.Object3D; mask: number }[] = [];
   private maskRT: THREE.WebGLRenderTarget;
   private tmpRT: THREE.WebGLRenderTarget;
   private normalMat: THREE.ShaderMaterial;
@@ -331,6 +345,11 @@ export class InkPass extends Pass {
 
     this.rt = new THREE.WebGLRenderTarget(1, 1, {
       type: THREE.HalfFloatType, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter,
+      generateMipmaps: false, depthBuffer: true, samples: 0,
+      depthTexture: new THREE.DepthTexture(1, 1, THREE.UnsignedIntType),
+    });
+    this.actorRT = new THREE.WebGLRenderTarget(1, 1, {
+      type: THREE.UnsignedByteType, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter,
       generateMipmaps: false, depthBuffer: true, samples: 0,
       depthTexture: new THREE.DepthTexture(1, 1, THREE.UnsignedIntType),
     });
@@ -364,7 +383,7 @@ export class InkPass extends Pass {
       new THREE.ShaderMaterial({ vertexShader: FS_VERT, fragmentShader, uniforms, depthTest: false, depthWrite: false });
     const texel = new THREE.Vector2(1, 1);
     this.maskMat = fs(MASK_FRAG, {
-      tNormal: { value: this.rt.texture }, tDepth: { value: this.rt.depthTexture }, tMainDepth: { value: null },
+      tNormal: { value: this.rt.texture }, tDepth: { value: this.rt.depthTexture }, tMainDepth: { value: null }, tActorDepth: { value: this.actorRT.depthTexture },
       texel: { value: texel }, cNear: { value: 0.2 }, cFar: { value: 1500 }, p00: { value: 1 }, p11: { value: 1 },
       wNear: { value: o.widthNear }, wFar: { value: o.widthFar }, dNear: { value: o.distNear }, dFar: { value: o.distFar },
       creaseScale: { value: o.creaseScale }, depthLo: { value: o.depthLo }, depthHi: { value: o.depthHi },
@@ -405,6 +424,7 @@ export class InkPass extends Pass {
 
   override setSize(width: number, height: number) {
     this.rt.setSize(width, height);
+    this.actorRT.setSize(width, height);
     this.maskRT.setSize(width, height);
     this.tmpRT.setSize(width, height);
     (this.maskMat.uniforms.texel.value as THREE.Vector2).set(1 / width, 1 / height);
@@ -432,6 +452,22 @@ export class InkPass extends Pass {
     scene.overrideMaterial = override;
     scene.background = background;
     renderer.shadowMap.autoUpdate = shadowAuto;
+    renderer.setClearColor(this.clearCol, clearAlpha);
+
+    // 1b) character cards only (meshes with a customDepthMaterial cut-out = cast actors), depth for the bloom mask
+    this.actors.length = 0;
+    scene.traverseVisible((o) => { if ((o as THREE.Mesh).isMesh && (o as THREE.Mesh).customDepthMaterial) this.actors.push({ o, mask: o.layers.mask }); });
+    renderer.setRenderTarget(this.actorRT);
+    renderer.setClearColor(0x000000, 0);
+    renderer.clear(true, true, false);
+    if (this.actors.length) {
+      for (const a of this.actors) a.o.layers.set(ACTOR_TMP);
+      cam.layers.set(ACTOR_TMP);
+      scene.overrideMaterial = this.normalMat; scene.background = null; renderer.shadowMap.autoUpdate = false;
+      renderer.render(scene, cam);
+      for (const a of this.actors) a.o.layers.mask = a.mask;
+      cam.layers.mask = mask; scene.overrideMaterial = override; scene.background = background; renderer.shadowMap.autoUpdate = shadowAuto;
+    }
     renderer.setClearColor(this.clearCol, clearAlpha);
 
     // 2) edge mask
@@ -462,6 +498,7 @@ export class InkPass extends Pass {
 
   override dispose() {
     this.rt.depthTexture?.dispose();
+    this.actorRT.depthTexture?.dispose(); this.actorRT.dispose();
     this.rt.dispose(); this.maskRT.dispose(); this.tmpRT.dispose();
     this.normalMat.dispose(); this.maskMat.dispose(); this.compMat.dispose(); this.copyMat.dispose();
     this.quad.geometry.dispose();

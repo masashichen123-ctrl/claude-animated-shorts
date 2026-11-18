@@ -285,9 +285,9 @@ const S1a = (f: number): Shot => {
 };
 const S1b = (f: number): Shot => {
   const m = SEA1(f), u = gl(f, 58, 26);
-  return P(rel(m, [lerp(-5.5, -1.5, u), 1.9, 11.5], [lerp(-3.6, -0.6, u), -0.6, 0], 1, { fov: 44, roll: -0.035 }), f, 56, 0.0025);
+  return P(rel(m, [lerp(-3.4, -2.2, u), 1.9, 11.5], [lerp(-1.9, -0.7, u), 0.1, 0], 1, { fov: 44, roll: -0.035 }), f, 56, 0.0025);
 };
-const S1c = (f: number): Shot => P(rel(SEA1(f), [11, 3.2, 8.5], [2.0, -0.3, 0], 1, { fov: 44, roll: 0.045 }), f, 84, 0.0025, 0.006, 30);
+const S1c = (f: number): Shot => P(rel(SEA1(f), [10, 3.2, 9.0], [0.4, 0.2, 0], 1, { fov: 44, roll: 0.045 }), f, 84, 0.0025, 0.006, 30);
 
 // shot 2 (121-175): MCU of the impatient postmaster general (right third), the clerk behind the counter on the left;
 // arcs 10 deg and punches on "faster"
@@ -476,10 +476,10 @@ export const FOREGROUND: Fg[] = [
   { a: 177, b: 249, kit: "buoy", pos: [-1.3, -2.6, 6.0], yaw: 0.3, space: "cam" },             // sub establishing: red buoy bottom-left
   { a: 498, b: 574, kit: "gull", pos: [1.1, 1.6, 5.0], yaw: -0.5, space: "cam" },              // chase over the sea: gull top-right
   { a: 575, b: 659, kit: "palm_fronds", pos: [1.6, 2.4, 5.5], yaw: 0.6, space: "cam" },        // landing wide: fronds over the top-right corner
-  { a: 122, b: 176, kit: "letter_bundle", pos: [-0.62, -0.78, 1.5], yaw: 0.5, space: "cam" },   // post office MCU: bottom-left corner
+  { a: 122, b: 176, kit: "letter_bundle", pos: [-0.38, -0.52, 1.5], yaw: 0.5, space: "cam" },   // post office MCU: bottom-left corner
   { a: 786, b: 848, kit: "mail_sack", pos: [-0.75, -0.95, 2.0], yaw: 0.8, space: "cam" },      // shot 10 MS: sack pile bottom-left, ~22 % of frame
   { a: 849, b: 931, kit: "fence", pos: [0.62, -0.62, 1.6], yaw: 0.2, space: "cam" },           // shot 11 low MS: pickets bottom-right
-  { a: 932, b: 978, kit: "mailbox_post", pos: [-0.78, -0.35, 2.2], yaw: 0.6, space: "cam" },  // shot 12a: mailbox at the left edge
+  { a: 932, b: 978, kit: "mailbox_post", pos: [-0.53, -0.35, 2.1], yaw: 0.6, space: "cam" },  // shot 12a: mailbox at the left edge
   { a: 1190, b: 1267, kit: "velvet_rope", pos: [0.9, -1.1, 2.8], yaw: -0.4, space: "cam" },    // museum wide: stanchion + rope bottom-right
 ];
 
