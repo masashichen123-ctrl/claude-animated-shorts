@@ -22,7 +22,7 @@ const inputProps = process.env.STILLS_PROPS ? JSON.parse(process.env.STILLS_PROP
 const browserExecutable = process.env.STILLS_BROWSER ?? "/opt/pw-browsers/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell";
 
 const t0 = Date.now();
-const serveUrl = await bundle({ entryPoint: path.join(root, process.env.STILLS_ENTRY ?? "src/index.tsx"), outDir: path.join(tmp, "bundle") });
+const serveUrl = await bundle({ entryPoint: path.join(root, process.env.STILLS_ENTRY ?? "src/index.tsx"), outDir: path.join(tmp, "bundle_" + (process.env.STILLS_ENTRY ?? "main").replace(/[^a-z0-9]/gi, "_")) });
 console.log(`bundled in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
 const chromiumOptions = { gl: "swiftshader" };
 const composition = await selectComposition({ serveUrl, id: comp, inputProps, browserExecutable, chromiumOptions, timeoutInMilliseconds: 240000 });
