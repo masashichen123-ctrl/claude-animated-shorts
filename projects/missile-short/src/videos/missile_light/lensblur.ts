@@ -37,7 +37,7 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth,
   float d0 = -getViewZ(depth);
   float r0 = abs(cocAt(d0, s));
   float R = r0 * SPREAD;
-  vec3 acc = inputColor.rgb; float wsum = 1.0;
+  vec4 acc = inputColor; float wsum = 1.0;    // alpha = 1 - 0.5 x bloom mask (ink.ts): blurred with the colour
   if (R > 0.5) {
     for (int i = 0; i < TAPS; i++) {
       float rr = sqrt((float(i) + 0.5) / float(TAPS)) * R;
@@ -47,17 +47,17 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth,
       float rs = abs(cocAt(ds, s)) * SPREAD;
       if (ds > d0) rs = min(rs, R);            // background never bleeds over a nearer pixel
       float w = clamp(rs - rr + 0.5, 0.0, 1.0); // does the sample's disc reach us?
-      vec3 sc = texture2D(inputBuffer, suv).rgb;
+      vec4 sc = texture2D(inputBuffer, suv);
 #if BOKEH
-      w *= 1.0 + 3.0 * smoothstep(1.6, 2.4, max(sc.r, max(sc.g, sc.b))); // bright lights -> bokeh discs
+      w *= 1.0 + 3.0 * smoothstep(1.6, 2.4, max(sc.r, max(sc.g, sc.b)) * clamp(2.0 * (1.0 - sc.a), 0.0, 1.0)); // lights -> bokeh discs
 #endif
       acc += sc * w; wsum += w;
     }
   }
-  vec3 col = acc / wsum;
+  vec4 col = acc / wsum;
 #if NEAR_TAPS > 0
   float M = maxNear * s;
-  vec3 fg = vec3(0.0); float fw = 0.0, cov = 0.0;
+  vec4 fg = vec4(0.0); float fw = 0.0, cov = 0.0;
   for (int i = 0; i < NEAR_TAPS; i++) {
     float rr = sqrt((float(i) + 0.5) / float(NEAR_TAPS)) * M;
     if (rr <= R) continue;                      // already covered by the disc gather
@@ -67,12 +67,12 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth,
     if (ds >= d0 * 0.97) continue;              // only things in front of us
     float rs = abs(cocAt(ds, s));
     float w = clamp(rs - rr + 0.5, 0.0, 1.0);
-    fg += texture2D(inputBuffer, suv).rgb * w; fw += w;
+    fg += texture2D(inputBuffer, suv) * w; fw += w;
     cov += w * (M * M) / max(rs * rs, 1.0);
   }
   if (fw > 0.0) col = mix(col, fg / fw, clamp(cov / float(NEAR_TAPS), 0.0, 1.0));
 #endif
-  outputColor = vec4(col, inputColor.a);
+  outputColor = col;
 }`;
 
 type Stage = { taps: number; spread: number; nearTaps: number; rot: number; bokeh: boolean };
@@ -137,6 +137,13 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   g = max(g + n * (amount / 0.2145) * w, 0.0);                        // 0.2145 = std of the smoothed lattice noise
   outputColor = vec4(pow(g, vec3(2.2)), inputColor.a);
 }`;
+
+/** Last effect of the chain: alpha back to 1 (the InkPass parks the bloom mask in alpha; the canvas must stay opaque). */
+export class OpaqueEffect extends Effect {
+  constructor() {
+    super("OpaqueEffect", "void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) { outputColor = vec4(inputColor.rgb, 1.0); }", { blendFunction: BlendFunction.NORMAL });
+  }
+}
 
 export class GrainEffect extends Effect {
   constructor({ amount = 0.025, cellPx = 1.5 }: { amount?: number; cellPx?: number } = {}) {

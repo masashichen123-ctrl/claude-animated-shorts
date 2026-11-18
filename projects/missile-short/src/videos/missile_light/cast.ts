@@ -301,10 +301,13 @@ const rollAlong = (cam: CamInfo, v: THREE.Vector3) => Math.atan2(v.dot(cam.right
 const _v = new THREE.Vector3();
 
 /** exhaust flame at a nozzle, plume along -dir */
-const flame = (out: Stage, cam: CamInfo, at3: THREE.Vector3, dir: THREE.Vector3, t: number, len: number) => {
+const flame = (out: Stage, cam: CamInfo, at3: THREE.Vector3, dir: THREE.Vector3, t: number, len0: number) => {
   const back = _v.copy(dir).multiplyScalar(-1);
   const ph = q((t * 3.7) % 1, 6);
-  out.fx.push({ key: `flame${ph}`, cw: 300, ch: 600, draw: (p) => fxFlame(p, ph), x: at3.x - dir.x * len * 0.45, y: at3.y - dir.y * len * 0.45, z: at3.z - dir.z * len * 0.45,
+  // foreshortened flights (toward / away from the lens) get a smaller plume, so the card never covers the airframe;
+  // the card starts strictly behind the nozzle (its top edge 0.08 len aft of the tail)
+  const proj = Math.hypot(dir.dot(cam.up), dir.dot(cam.right)), len = len0 * (0.35 + 0.65 * proj), c = len * 0.58;
+  out.fx.push({ key: `flame${ph}`, cw: 300, ch: 600, draw: (p) => fxFlame(p, ph), x: at3.x - dir.x * c, y: at3.y - dir.y * c, z: at3.z - dir.z * c,
     w: len * 0.5, h: len, rot: rollAlong(cam, back), glow: 2.2 });
 };
 /** letters streaming back from a point (missile-relative: the camera rides along, so they peel away behind it) */
@@ -346,18 +349,34 @@ export const stage = (id: number, t: number, cam: CamInfo, mis: MissileInfo): St
   findSun(cam, SUN);
   // engine flames wherever the missile is burning
   if (mp.visible && mp.flame > 0) {
-    flame(out, cam, mis.tail, mis.dir, t, 2.6 * mp.flame + 0.6);
+    flame(out, cam, mis.tail, mis.dir, t, id === 13 ? 1.6 * mp.flame + 0.4 : 2.6 * mp.flame + 0.6);
     if (mp.booster) for (const bt of mis.boosterTails) flame(out, cam, bt, mis.dir, t + 0.3, 4.2 * mp.flame);
   }
-  if (mp.visible && (id === 1 || id === 7 || (id === 13 && f > GO_F + 6 && mp.boom < 0))) {
-    const ph = q((t * 30) % 30 / 30, 30), c = mis.tail.clone().addScaledVector(mis.dir, -2.2);
+  // thin translucent speed lines behind the tail, only where the flight is side-on (verify_r1 #4/#5: none on 1 / 13)
+  const sideOn = Math.hypot(mis.dir.dot(cam.up), mis.dir.dot(cam.right)) > 0.5;
+  if (mp.visible && id === 7 && sideOn) {
+    const ph = q((t * 30) % 30 / 30, 30), c = mis.tail.clone().addScaledVector(mis.dir, -4.5);
     out.fx.push({ key: `speed${ph}`, cw: 600, ch: 300, draw: (p) => fxSpeed(p, ph), x: c.x, y: c.y, z: c.z, w: 7, h: 2.6,
       rot: Math.atan2(mis.dir.dot(cam.up), mis.dir.dot(cam.right)) });
   }
   switch (id) {
-    case 1: // the hook: letters streaming out of the mail hatch area
+    case 1: { // the hook: a sailor RIDES the mail missile, astride the fuselage, waving fistfuls of letters into the wind
       letterStream(out, mis.tail.clone().addScaledVector(mis.dir, 2.5), mis.dir, t, 16, 1.6);
+      const seat = new THREE.Vector3(...mp.pos).addScaledVector(mis.dir, -0.4), p1: V3 = [seat.x, seat.y + 0.5, seat.z];
+      const nose = seat.clone().addScaledVector(mis.dir, 5), rf = faceTo(cam, p1, nose);
+      const A = act([
+        { f: 0, expr: "grin", armF: "wave", lean: 6 },
+        { f: 7, expr: "laugh", headTilt: 6 },                                  // "1959"
+        { f: 40, armB: "up", headTilt: -4, expr: "grin" },                     // "United States"
+        { f: 58, expr: "proud", armB: "hang", lean: 9 },                       // "delivered"
+        { f: 74, expr: "grin", armF: "up", headTilt: 5 },                      // "mail"
+        { f: 86, expr: "shock", shrug: 1, lean: -4, armF: "hang", dur: 4 },    // "cruise": a gust
+        { f: 95, expr: "laugh", shrug: 0, armF: "up", armB: "up", lean: 4 },   // "missile"
+      ], Math.round(f), rf, 9);
+      const fo: FrontOpts = { ...A.fo, mode: "sit", facing: rf, prop: "letters", blink: lidAt(t, 9, A.swaps) };
+      out.places.push(person(cam, { i: 9, o: SAILOR, okey: "rider" }, p1[0], p1[1], p1[2], { side: false, mirror: false }, fo, {}, 1.5));
       break;
+    }
     case 2: { // post office: the postmaster general taps his watch at the clerk, then jabs a finger; the clerk sweats + shrugs
       const pf = faceTo(cam, SPOT.PMG2, SPOT.CLERK), cf = faceTo(cam, SPOT.CLERK, SPOT.PMG2);
       actor(out, cam, 1, POSTMASTER, "pmg", SPOT.PMG2, [
@@ -541,7 +560,7 @@ export const stage = (id: number, t: number, cam: CamInfo, mis: MissileInfo): St
         { f: 1239, expr: "laugh", armB: "hip", headTilt: -4 },             // "one flight"
         { f: 1255, expr: "smile_closed" },
       ], t, faceTo(cam, SPOT.VISITOR15, ex));
-      const p1: V3 = [-0.3, 0, 7.4], p2: V3 = [3.5, 0, 6.3];
+      const p1: V3 = [-0.35, 0, 10.4], p2: V3 = [3.5, 0, 6.3]; // mum = big FG figure, left third of the wide
       actor(out, cam, 7, VISITORS[1], "vis1", p1, [
         { f: 1189, expr: "smile", look: 1 },
         { f: 1203, headTilt: -6 },                                         // "of mail"

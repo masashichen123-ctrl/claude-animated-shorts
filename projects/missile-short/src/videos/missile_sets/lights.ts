@@ -31,7 +31,8 @@ export type LightPreset = {
   ao: number; aoR: number; // corner AO depth (fraction) and reach (m) near floor / ceiling lines
   prac: number;      // multiplier on point / spot "practical" lights inside the two-tone shader
   pracCol: string;   // colour of the practical lamps world.ts adds for this mood
-  bloomI: number; bloomR: number; // suggested bloom intensity / radius (Missile.tsx owns the effect)
+  bloomI: number; bloomR: number; // bloom intensity / radius (Missile.tsx reads them per shot)
+  bloomT?: number;   // bloom MAX-channel threshold for this mood (Missile.tsx default 1.45; gallery 2.0 so only bulbs bloom)
   softM: number;     // shadow penumbra in world metres (world.ts sizes the PCF-soft shadow map from it)
   haze: Haze;        // exponential, height-pooled, saturation-keeping haze (replaces the linear fog in shade.ts)
   glowCol: string; glowK: number; // sky glow toward the sun (painted sky, world.ts)
@@ -41,11 +42,11 @@ export const LIGHTS: Record<LightName, LightPreset> = {
   day: {
     // warm key (lit neutrals hue 60-85 deg), low-chroma blue-violet shade, from behind the camera's right shoulder
     az: 122, el: 46,
-    lit: [1.6, 1.43, 1.14], shade: [0.33, 0.31, 0.36], lift: [0.04, 0.045, 0.07], lambert: 0.35, sideK: 0.84, term: 0.2,
+    lit: [1.38, 1.24, 1.0], shade: [0.31, 0.29, 0.35], lift: [0.04, 0.045, 0.07], lambert: 0.35, sideK: 0.84, term: 0.2,
     charTint: [1.0, 0.95, 0.88], charShade: 0.86, charGrad: 0.07, bodyGrad: 0.2, sideTint: [0.92, 0.90, 0.96],
     blob: [0.62, 0.58, 0.6], actorShadow: false,
     top: "#3576d0", hor: "#bfe3fb", skyCurve: [0.0, 0.5, 0.6], fog: "#a9cdf0", fogNear: 25, fogFar: 300, sunDisc: "#000000",
-    sunCol: "#fff3e0", sunI: 2.8, sky: "#dcecff", ground: "#b49a78", hemiI: 0.55,
+    sunCol: "#fff3e0", sunI: 2.8, sky: "#dcecff", ground: "#b49a78", hemiI: 0.4,
     bias: -0.00025, normalBias: 0.015,
     albFloor: [0.03, 0.03, 0.042], gobo: 0.6, goboScale: 5, rim: [0, 0, 0], ao: 0.1, aoR: 0.7, prac: 1, pracCol: "#fff2c8",
     bloomI: 0.6, bloomR: 0.6, softM: 0.16,
@@ -62,7 +63,7 @@ export const LIGHTS: Record<LightName, LightPreset> = {
     bias: -0.0005, normalBias: 0.025,
     albFloor: [0.03, 0.03, 0.045], gobo: 0, goboScale: 9, rim: [1.25, 0.85, 0.62], ao: 0.08, aoR: 0.7, prac: 1.2, pracCol: "#ffb060",
     bloomI: 0.8, bloomR: 0.7, softM: 0.22,
-    haze: H("#f2c4a2", 30, 160, 50, 0.8), glowCol: "#fff0c0", glowK: 0.38,
+    haze: H("#f2c4a2", 30, 220, 50, 0.5), glowCol: "#fff0c0", glowK: 0.38,
   },
   golden: {
     // late afternoon on the road: amber key low from the side, violet shade
@@ -107,14 +108,14 @@ export const LIGHTS: Record<LightName, LightPreset> = {
     // museum epilogue: no sun in frame; the directional key is a high skylight / spot, warm spot pools on the exhibit,
     // the hall falls off to violet (border/inner L* ~.6)
     az: 90, el: 78,
-    lit: [0.86, 0.75, 0.6], shade: [0.27, 0.25, 0.4], lift: [0.03, 0.03, 0.07], lambert: 0.6, sideK: 0.8, term: 0.4,
+    lit: [0.7, 0.6, 0.5], shade: [0.22, 0.2, 0.33], lift: [0.015, 0.015, 0.04], lambert: 0.6, sideK: 0.8, term: 0.4,
     charTint: [1.0, 0.9, 0.8], charShade: 0.86, charGrad: 0.1, bodyGrad: 0.22, sideTint: [0.88, 0.86, 0.96],
     blob: [0.55, 0.52, 0.6], actorShadow: false,
     top: "#2a2433", hor: "#3b3140", skyCurve: [0, 0, 0], fog: "#2e2836", fogNear: 200, fogFar: 2000, sunDisc: "#000000",
-    sunCol: "#ffe2bc", sunI: 2.4, sky: "#6a6080", ground: "#4a3a34", hemiI: 0.3,
+    sunCol: "#ffe2bc", sunI: 0.9, sky: "#6a6080", ground: "#4a3a34", hemiI: 0.18,
     bias: -0.0003, normalBias: 0.015,
-    albFloor: [0.025, 0.025, 0.035], gobo: 0, goboScale: 9, rim: [0, 0, 0], ao: 0.16, aoR: 1.6, prac: 2.0, pracCol: "#ffdcb0",
-    bloomI: 0.9, bloomR: 0.75, softM: 0.12,
+    albFloor: [0.012, 0.012, 0.018], gobo: 0, goboScale: 9, rim: [0, 0, 0], ao: 0.2, aoR: 1.8, prac: 1.0, pracCol: "#ffdcb0",
+    bloomI: 0.35, bloomR: 0.5, bloomT: 2.0, softM: 0.12,
     haze: H("#3a3046", 14, 60, 1000, 0.35, 0.2), glowCol: "#ffffff", glowK: 0,
   },
 };
@@ -159,7 +160,7 @@ export const LOOK: Record<LightName, WorldLook> = {
     water: SEA_DAY,
     cloud: { lit: "#fbf8f1", mid: "#e1e7f3", shade: "#b9c6ee" },
     bounce: [0.02, 0.012, 0],
-    sat: 1.0,
+    sat: 1.2,
     skyTex: 0.05,
   },
   morning: {
@@ -168,8 +169,8 @@ export const LOOK: Record<LightName, WorldLook> = {
     water: { near: "#0c5674", mid: "#2a7f98", far: "#e2bea4", crest: "#ffd8b8", trough: "#093e58", glint: "#fff2d6", shade: [0.46, 0.5, 0.72] },
     cloud: { lit: "#ffe0c0", mid: "#f0b6a8", shade: "#a99ac8" },
     bounce: [0.04, 0.025, 0.0],
-    sat: 1.0,
-    skyTex: 0.06,
+    sat: 1.04,
+    skyTex: 0.09,
   },
   golden: {
     sky: { c: ["#ffc47c", "#f7ae78", "#e8967c", "#c4848e", "#8a6f8a"], e: [0, 4, 10, 20, 40] },

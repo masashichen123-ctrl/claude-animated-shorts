@@ -473,12 +473,8 @@ export type Fg = { a: number; b: number; kit: string; pos: V3; s?: number; yaw?:
 /** shot 8 ground crewman with bats (cast.ts stages him): left third of the landing wide from ~f625 on */
 export const CREW8: V3 = [-2.4, 0, 11.5];
 export const FOREGROUND: Fg[] = [
-  { a: 177, b: 249, kit: "buoy", pos: [-1.3, -2.6, 6.0], yaw: 0.3, space: "cam" },             // sub establishing: red buoy bottom-left
-  { a: 498, b: 574, kit: "gull", pos: [1.1, 1.6, 5.0], yaw: -0.5, space: "cam" },              // chase over the sea: gull top-right
-  { a: 575, b: 659, kit: "palm_fronds", pos: [1.6, 2.4, 5.5], yaw: 0.6, space: "cam" },        // landing wide: fronds over the top-right corner
   { a: 122, b: 176, kit: "letter_bundle", pos: [-0.38, -0.52, 1.5], yaw: 0.5, space: "cam" },   // post office MCU: bottom-left corner
   { a: 786, b: 848, kit: "mail_sack", pos: [-0.75, -0.95, 2.0], yaw: 0.8, space: "cam" },      // shot 10 MS: sack pile bottom-left, ~22 % of frame
-  { a: 849, b: 931, kit: "fence", pos: [0.62, -0.62, 1.6], yaw: 0.2, space: "cam" },           // shot 11 low MS: pickets bottom-right
   { a: 932, b: 978, kit: "mailbox_post", pos: [-0.53, -0.35, 2.1], yaw: 0.6, space: "cam" },  // shot 12a: mailbox at the left edge
   { a: 1190, b: 1267, kit: "velvet_rope", pos: [0.9, -1.1, 2.8], yaw: -0.4, space: "cam" },    // museum wide: stanchion + rope bottom-right
 ];

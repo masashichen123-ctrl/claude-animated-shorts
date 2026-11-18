@@ -268,9 +268,10 @@ export const headBlob = (seed: number, a = 118, facing = 0): Blob => ({
 export type HeadKind = "bun" | "standard" | "bean";
 type HeadSpec = { R: P2; C: P2; L: P2; T: P2; nJf: number; nJb: number };
 const HEADS: Record<HeadKind, HeadSpec> = {
-  standard: { R: [1.03, 0], C: [0.08, 0.89], L: [-0.97, -0.02], T: [0.02, -0.98], nJf: 2.2, nJb: 1.9 },
-  bun: { R: [1.05, 0], C: [0.08, 0.78], L: [-0.97, -0.02], T: [0.02, -0.88], nJf: 2.35, nJb: 2.05 },
-  bean: { R: [1.0, 0], C: [0.07, 1.0], L: [-0.97, -0.02], T: [0.03, -1.08], nJf: 2.1, nJb: 1.85 },
+  // verify_r1: egg, not circle -> taller tapered crown (kT 1.55), fuller jaw on the front side; H/W ~1.0 / 0.9 / 1.12
+  standard: { R: [1.04, 0.04], C: [0.08, 0.92], L: [-0.98, 0.0], T: [0.04, -1.12], nJf: 2.45, nJb: 2.0 },
+  bun: { R: [1.06, 0.04], C: [0.08, 0.82], L: [-0.98, 0.0], T: [0.03, -0.98], nJf: 2.5, nJb: 2.1 },
+  bean: { R: [1.0, 0.03], C: [0.07, 1.02], L: [-0.97, 0.0], T: [0.04, -1.24], nJf: 2.3, nJb: 1.95 },
 };
 /** Bezier handle factor that makes a quarter segment pass through the superellipse(n) 45-degree point (n = 2: 0.552) */
 const kap = (n: number) => (2 ** (-1 / n) - 0.5) / 0.375;
@@ -304,7 +305,7 @@ export const headPath = (seed: number, a: number, facing: number, cx: number, ch
   const S = HEADS[kind], f = facing || (rnd(seed, 6) < 0.5 ? -1 : 1);
   const R: P2 = side ? [1.08, 0] : S.R, C: P2 = side ? [0.3, 0.86] : [S.C[0] + 0.08 * (rnd(seed, 31) - 0.5), S.C[1]];
   const L = S.L, T: P2 = [S.T[0] + 0.1 * (rnd(seed, 32) - 0.5), S.T[1]];
-  const kF = kap(S.nJf), kB = kap(S.nJb + 0.2 * (rnd(seed, 33) - 0.5)), kT = kap(1.75);
+  const kF = kap(S.nJf), kB = kap(S.nJb + 0.2 * (rnd(seed, 33) - 0.5)), kT = kap(1.55);
   const segs: [P2, P2, P2, P2][] = [
     [R, [R[0], R[1] + (C[1] - R[1]) * kF], [C[0] + (R[0] - C[0]) * kF, C[1]], C],
     [C, [C[0] + (L[0] - C[0]) * kB, C[1]], [L[0], L[1] + (C[1] - L[1]) * kB], L],
@@ -707,7 +708,7 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
   const f = facing || hd.f, crown = hd.crown;
   const thick = thickAngle(light), ow = 5 * u;
   const legCol = limbCol(o.pants, 0.85), armCol = limbCol(o.jacket, 0.88), footCol = o.boots;
-  const legW = 5.8 * u, footW = 7.5 * u;
+  const legW = 7.4 * u, footW = 8.5 * u; // verify_r1: ~1.3x the old stick legs
   // ---- legs + feet (not rotated) ----
   p.rot = null;
   if (mode === "sit") {
@@ -784,7 +785,11 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
   const rifle = !!o.rifle && (mode === "march" || mode === "stand" || mode === "stroll");
   const arms: Arm[] = [];
   const S1 = sh(1);
-  if (mode === "sit") for (const side of [-1, 1]) arms.push({ pts: [sh(side), [tcx + side * (1.1 * T.a + 6 * u), sh(side)[1] + 0.4 * HH], [tcx + side * (1.2 * T.a + 10 * u), torsoBot + 0.04 * HH]], front: false });
+  if (mode === "sit") for (const side of [-1, 1]) {
+    const sp = side > 0 ? opts.armR : opts.armL;
+    if (sp) { const a = spec(sp, side); if (side > 0 && (prop === "letter" || prop === "letters")) a.front = true; arms.push(a); }
+    else arms.push({ pts: [sh(side), [tcx + side * (1.1 * T.a + 6 * u), sh(side)[1] + 0.4 * HH], [tcx + side * (1.2 * T.a + 10 * u), torsoBot + 0.04 * HH]], front: false });
+  }
   else if (mode === "fall") for (const side of [-1, 1]) arms.push({ pts: [sh(side), [tcx + side * (1.15 * T.a + 12 * u), sh(side)[1] - 0.25 * HH], [tcx + side * (1.3 * T.a + 24 * u), sh(side)[1] - 0.68 * HH]], front: false });
   else {
     arms.push(opts.armL ? spec(opts.armL, -1) : { pts: pose("hang", -1), front: false });
@@ -816,7 +821,7 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
     } else arms.push({ pts: pose("hang", 1), front: false });
   }
   const drawArm = (a: Arm) => {
-    p.stroke(curve(a.pts[0], a.pts[1], a.pts[2]), 5.2 * u, armCol);
+    p.stroke(curve(a.pts[0], a.pts[1], a.pts[2]), 6.2 * u, armCol);
     if (a.finger) {
       const [E, Hh] = [a.pts[1], a.pts[2]], dx = Hh[0] - E[0], dy = Hh[1] - E[1], l = Math.hypot(dx, dy) || 1;
       p.stroke([Hh, [Hh[0] + (dx / l) * 12 * u * a.finger, Hh[1] + (dy / l) * 12 * u * a.finger]], 3.4 * u);
@@ -854,6 +859,10 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
       }
       if (o.sash) p.band([[tcx - 1.3 * T.a, torsoBot - 0.32 * HH], [tcx + 1.3 * T.a, torsoBot - 0.32 * HH]], o.sash, 0.13 * HH, 1.8 * u);
       collarFront(p, o, tcx + 0.12 * T.a * f, chin, torsoBot, T.a, HH, u);
+      // cloth fold on the shadow side + a hem crease (verify_r1: volume, not a sticker)
+      const fs = -(Math.sign(Math.cos(light)) || 1), fc = mul(o.jacket, [0.72, 0.72, 0.8]);
+      p.stroke(curve([tcx + fs * 0.62 * T.a, chin + 0.5 * HH], [tcx + fs * 0.42 * T.a, torsoBot - 0.45 * HH], [tcx + fs * 0.55 * T.a, torsoBot - 0.12 * HH]), 1.6 * u, fc);
+      p.stroke(curve([tcx - fs * 0.1 * T.a, torsoBot - 0.1 * HH], [tcx + fs * 0.2 * T.a, torsoBot - 0.16 * HH], [tcx + fs * 0.4 * T.a, torsoBot - 0.08 * HH]), 1.3 * u, fc);
       for (let i = 0; i < 4 && o.buttons !== "none"; i++) {
         const y = chin + 0.12 * HH + i * 0.2 * HH;
         if (o.collar === "suit" && i < 2) continue;
@@ -925,7 +934,7 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
     p.rot = A ? [rad(A), 300, hipY] : null;
     // right hand flat at the right brow, elbow out to the side
     const Hd: P2 = [hd.cx + 0.5 * W, hd.wy - 0.5 * hd.a], E: P2 = [tcx + 1.2 * T.a + 34 * u, S1[1] - 0.02 * HH];
-    p.stroke([S1, E, Hd], 5.2 * u, armCol); p.dot(Hd[0], Hd[1], 5.5 * u);
+    p.stroke([S1, E, Hd], 6.2 * u, armCol); p.dot(Hd[0], Hd[1], 6 * u);
     p.stroke([Hd, [Hd[0] - 16 * u, Hd[1] - 7 * u]], 4.2 * u);
   }
   p.rot = null;
@@ -1303,9 +1312,10 @@ export const fxSparkle = (p: Pen, t: number, col = "#fff2a8") => {
   });
 };
 /** speed lines on a 600 x 300 canvas (the object travels toward +x): 6 ink lines, offsets jittered per frame */
-export const fxSpeed = (p: Pen, ph: number, col = INK) => {
-  for (let i = 0; i < 6; i++) {
-    const j = rnd(Math.floor(ph * 30) + 1, i), y = 30 + i * 46 + 10 * (j - 0.5), x1 = 560 - 90 * j, len = 160 + 220 * rnd(i + 3, Math.floor(ph * 30));
-    p.stroke([[x1 - len, y], [x1, y]], 5 + 3 * j, col);
+export const fxSpeed = (p: Pen, ph: number, col = "rgba(255,255,255,0.7)") => {
+  for (let i = 0; i < 4; i++) {
+    const j = rnd(Math.floor(ph * 30) + 1, i), y = 50 + i * 66 + 12 * (j - 0.5), x1 = 560 - 90 * j, len = 140 + 200 * rnd(i + 3, Math.floor(ph * 30));
+    p.stroke([[x1 - len, y], [x1, y]], 2 + 1.5 * j, col);
   }
 };
+

@@ -187,8 +187,8 @@ export class GradeEffect extends Effect {
 const HUE_DAY =         [1.15, 1.12, 1.0,  0.78, 0.78, 0.8,  0.78, 0.92, 1.0,  1.0,  1.0,  1.1];
 const HUE_WARM =        [1.1,  1.0,  0.95, 0.8,  0.8,  0.85, 0.9,  1.0,  1.1,  1.15, 1.1,  1.1];
 export const GRADE_DAY2: GradeParams = {
-  ky: [0.05, 0.12, 0.29, 0.575, 0.82, 0.94, 1],
-  sat: [0.85, 1.0, 1.05],
+  ky: [0.05, 0.115, 0.27, 0.535, 0.79, 0.93, 1],
+  sat: [0.9, 1.12, 1.1],
   tintS: [0.0, 0.022], tintM: [-0.012, 0.006], tintH: [-0.018, 0.006],
   vig: [0.16, 0.45],
   hueSat: HUE_DAY,
@@ -222,8 +222,8 @@ export const GRADE_INTERIOR: GradeParams = {   // post office: warm, gentle S, c
   hueSat: [1.1, 0.95, 1.0, 0.9, 0.9, 0.95, 1.0, 1.05, 1.1, 1.08, 1.0, 1.05],
 };
 export const GRADE_GALLERY: GradeParams = {   // museum (grade.md A3 interior): orange -10 %, blue / violet +10-15 %, deep falloff
-  ky: [0.03, 0.11, 0.27, 0.54, 0.8, 0.93, 1],
-  sat: [0.55, 0.8, 0.95],
+  ky: [0.0, 0.075, 0.23, 0.5, 0.78, 0.92, 1],
+  sat: [0.85, 1.0, 1.0],
   tintS: [0.035, 0.012], tintM: [0.012, 0.004], tintH: [-0.02, 0.006],
   vig: [0.4, 0.34],
   hueSat: [1.1, 0.9, 1.0, 1, 1, 1, 1, 1.1, 1.15, 1.1, 1.0, 1.05],
