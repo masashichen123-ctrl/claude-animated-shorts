@@ -1,68 +1,55 @@
-// Timeline of the bridge short: shots timed to the the voice words (~/bridge-short/voice/words.json),
-// story physics (column position, march phase, deck bounce, collapse) and the camera grammar measured in the
-// reference study: continuous slow push-ins; symmetric ease-in-out moves ~23 f (10 in / 10 out), peak ~15 px/f at 720p;
-// big reframes are cuts; impacts are 7-frame kicks that flip sign every frame; no hand-held float.
+// Timeline of the missile short ("Missile Mail", 1959): 15 shots timed to the original voice + music mix
+// (voice/words.json, SHOTS.md), the missile's choreography (one rig shared by every set, posed per frame), set anchors
+// shared by sets / cast / cameras, the camera grammar of the bridge template (continuous slow push-ins; symmetric
+// smootherstep glides 18-40 f; big reframes are cuts; impacts are 7-frame flip kicks; no hand-held float) and the
+// per-shot depth of field.
+//
+// CONTRACTS (other owners import these; change them only together with the readers):
+//   SetName, Light, ShotDef, SHOTS, XFADE, FLASH_AT, layersAt      -> Missile.tsx, world.ts, cast.ts, build.ts
+//   SPOT (set anchors in each set's own local frame; every set sits at the world origin, only one is visible)
+//                                                                  -> build.ts places pieces there, cast.ts stands actors there
+//   missileAt(id, f): MissilePose                                  -> world.ts poses the rig, cast.ts hangs fx on it
+//   camAt, keyEnd, kickAt, dofAt, focusAt                          -> world.ts, Missile.tsx
 export const FPS = 30;
-export const TOTAL = 2025;
-export const D0 = 6.0; // bank top + deck height (m)
-export const HALF = 27; // towers at z = +-27, span 54 m
-export const FILES = [-1.65, -0.55, 0.55, 1.65];
-export const ROW_GAP = 1.3;
-export const COUNT = 74;
-export const PARK: V3 = [70, D0, -75]; // swing pivot base (x, ground y, z)
+export const TOTAL = 1352;
 export type V3 = [number, number, number];
 
 export const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 export const smooth = (x: number) => { const u = clamp01(x); return u * u * (3 - 2 * u); };
 export const easeOut = (u: number) => 1 - (1 - clamp01(u)) ** 4;
-const lin = (pts: [number, number][], x: number) => {
-  if (x <= pts[0][0]) return pts[0][1];
-  for (let i = 1; i < pts.length; i++) if (x <= pts[i][0]) {
-    const [x0, y0] = pts[i - 1], [x1, y1] = pts[i];
-    return y0 + ((y1 - y0) * (x - x0)) / (x1 - x0);
-  }
-  return pts[pts.length - 1][1];
-};
-
-// ---------------- story physics (tau = story time in seconds) ----------------
-export const front = (tau: number) => 26 - 1.6 * (tau - 4.4); // z of the front row, marching toward -z
-export const marchPhase = (tau: number) => ((tau % 1) + 1) % 1; // 1 Hz cycle = 2 steps/s, footfalls at 0 and 0.5
-export const SNAP = 34.62, DROP0 = 36.35, DROP1 = 36.95;
-export const amp = (tau: number) =>
-  lin([[14.85, 0], [17.8, 0.07], [21.4, 0.13], [27.4, 0.26], [33.0, 0.46], [SNAP, 0.55], [SNAP + 0.35, 0.0]], tau);
-export const stomp = (tau: number) => lin([[21.4, 1.0], [27.4, 1.35], [33, 1.5]], tau); // "a little harder every step"
-export const shapeZ = (z: number) => (Math.abs(z) < HALF ? Math.cos((Math.PI * z) / (2 * HALF)) : 0);
-export const dropW = (z: number) => smooth((20 - z) / 26); // 1 on the near half, 0 at the far tower
-export const dropU = (tau: number) => (tau < DROP0 ? 0 : Math.min(1, ((tau - DROP0) / (DROP1 - DROP0)) ** 2));
-export const DROP_H = 6.6;
-
-export type BridgeState = { bounce: number; drop: number; snap: number; collapsed: boolean };
-export const deckY = (z: number, b: BridgeState) => D0 + b.bounce * shapeZ(z) - b.drop * DROP_H * dropW(z);
+/** reference camera ease: symmetric smootherstep (attack = release) */
+export const glide = (u: number) => { const x = clamp01(u); return x * x * x * (x * (6 * x - 15) + 10); };
+const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
+const add = (a: V3, b: V3): V3 => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+const scl = (a: V3, k: number): V3 => [a[0] * k, a[1] * k, a[2] * k];
 
 // ---------------- shots ----------------
-export type Light = "day" | "golden";
-export type Crowd = "march" | "fall" | "water" | "bank" | "tourists" | "none";
-export type ShotDef = { id: number; a: number; b: number; light: Light; crowd: Crowd; tau: (t: number) => number; towns?: boolean };
+/** one THREE.Group per set in build.ts (buildSets); only the active shot's set is visible */
+export type SetName = "sea" | "subdeck" | "postoffice" | "runway" | "museum" | "street" | "road";
+/** light presets (lights.ts LIGHTS / LOOK, grade.ts GRADES): story arc sunrise -> bright day -> golden -> dusk, warm interiors */
+export type Light = "day" | "golden" | "dusk" | "interior";
+export type ShotDef = { id: number; a: number; b: number; set: SetName; light: Light; sunAz?: number; sunEl?: number };
+// frame ranges from SHOTS.md (b = exclusive end)
 export const SHOTS: ShotDef[] = [
-  { id: 1, a: 0, b: 130, light: "day", crowd: "march", tau: (t) => 29.5 + t },
-  { id: 2, a: 130, b: 283, light: "day", crowd: "march", tau: (t) => t, towns: true },
-  { id: 3, a: 283, b: 444, light: "day", crowd: "march", tau: (t) => t },
-  { id: 4, a: 444, b: 534, light: "day", crowd: "march", tau: (t) => t },
-  { id: 5, a: 534, b: 643, light: "day", crowd: "march", tau: (t) => t },
-  { id: 6, a: 643, b: 823, light: "day", crowd: "march", tau: (t) => t },
-  { id: 7, a: 823, b: 987, light: "day", crowd: "march", tau: (t) => t },
-  { id: 8, a: 987, b: 1134, light: "day", crowd: "fall", tau: (t) => t },
-  { id: 9, a: 1134, b: 1212, light: "day", crowd: "water", tau: (t) => t },
-  { id: 10, a: 1212, b: 1303, light: "day", crowd: "water", tau: (t) => t },
-  { id: 11, a: 1303, b: 1411, light: "golden", crowd: "none", tau: (t) => t },
-  { id: 12, a: 1411, b: 1620, light: "golden", crowd: "none", tau: (t) => t },
-  { id: 13, a: 1620, b: 1735, light: "golden", crowd: "march", tau: (t) => t - 31 },
-  { id: 14, a: 1735, b: 1863, light: "day", crowd: "bank", tau: (t) => t },
-  { id: 15, a: 1863, b: TOTAL, light: "day", crowd: "tourists", tau: (t) => t, towns: true },
+  { id: 1, a: 0, b: 121, set: "sea", light: "golden", sunAz: 25, sunEl: 8 },    // hook: missile over the sunrise sea, letters streaming
+  { id: 2, a: 121, b: 176, set: "postoffice", light: "interior" },              // impatient postmaster general + clerk
+  { id: 3, a: 176, b: 249, set: "subdeck", light: "golden", sunAz: 55, sunEl: 12 }, // USS Barbero at dawn, missile on the launcher
+  { id: 4, a: 249, b: 374, set: "subdeck", light: "day" },                      // sailor on deck beside the missile
+  { id: 5, a: 374, b: 463, set: "subdeck", light: "day" },                      // sailor stuffing letters into the nose
+  { id: 6, a: 463, b: 497, set: "subdeck", light: "day" },                      // launch: booster flame, smoke
+  { id: 7, a: 497, b: 574, set: "sea", light: "day" },                          // 100 miles over the sea toward the coast
+  { id: 8, a: 574, b: 659, set: "runway", light: "day" },                       // landing at NAS Mayport
+  { id: 9, a: 659, b: 785, set: "runway", light: "day" },                       // postmaster general at the podium
+  { id: 10, a: 785, b: 848, set: "runway", light: "day" },                      // mail sacks unloaded
+  { id: 11, a: 848, b: 931, set: "street", light: "day" },                      // missile in a house, kid at the mailbox
+  { id: 12, a: 931, b: 1055, set: "road", light: "golden", sunAz: 70, sunEl: 14 }, // overloaded mail truck + postman
+  { id: 13, a: 1055, b: 1189, set: "road", light: "dusk", sunAz: 35, sunEl: 4 },   // missile "delivery van": one trip, puff
+  { id: 14, a: 1189, b: 1267, set: "museum", light: "interior" },               // museum hall, 1959 plaque
+  { id: 15, a: 1267, b: TOTAL, set: "museum", light: "interior" },              // visitor under the museum missile
 ];
-/** crossfades (frames) at place/time changes; a white 4-frame flash after the hook */
-export const XFADE: Record<number, number> = { 9: 6, 11: 8, 12: 8, 13: 8, 14: 8, 15: 8 };
-export const FLASH_AT = 130;
+/** 5-frame dissolves at every place change (and at the golden -> dusk time change on the road); a white flash after the hook */
+export const XFADE: Record<number, number> = { 2: 5, 3: 5, 7: 5, 8: 5, 11: 5, 12: 5, 13: 5, 14: 5 };
+export const FLASH_AT = 117;
 
 export const shotAt = (f: number) => SHOTS.find((s) => f >= s.a && f < s.b) ?? SHOTS[SHOTS.length - 1];
 /** layers to draw at frame f: base shot, plus the next shot fading in during a crossfade */
@@ -74,29 +61,128 @@ export const layersAt = (f: number): { id: number; alpha: number }[] => {
   return [{ id: shotAt(f).id, alpha: 1 }];
 };
 
-export const bridgeState = (id: number, t: number): BridgeState => {
-  const s = SHOTS[id - 1];
-  const tau = s.tau(t);
-  if (id === 9 || id === 10 || id === 14) return { bounce: 0, drop: 1, snap: 1, collapsed: true };
-  if (id === 11) return { bounce: 0.75 * Math.sin(2 * Math.PI * 0.7 * (t - 43.4)), drop: 0, snap: 0, collapsed: false };
-  if (id === 12 || id === 15) return { bounce: 0, drop: 0, snap: 0, collapsed: false };
-  const bounce = -amp(tau) * Math.cos(4 * Math.PI * marchPhase(tau));
-  if (id === 8) return { bounce, drop: dropU(tau), snap: clamp01((tau - SNAP) / 0.7), collapsed: tau >= DROP1 };
-  return { bounce, drop: 0, snap: 0, collapsed: false };
+// ---------------- set anchors (each set's local frame = world frame; ground y = 0, sea level y = 0) ----------------
+export const SPOT = {
+  // subdeck: hull along x, bow at +x, deck top at y = DECK
+  DECK: 2.0,
+  LAUNCH: [-11, 3.3, 0] as V3,        // missile centre on the launcher rail (nose aft, toward -x)
+  LAUNCH_PITCH: 0.1,                  // rad, nose up on the rail
+  SAILOR4: [-14.2, 2.0, 1.75] as V3,  // shot 4: beside the forward fuselage
+  SAILOR5: [-16.6, 2.0, 1.25] as V3,  // shot 5: at the nose intake
+  // post office: counter along x at z = COUNTER_Z (front face), top at 1.1 m
+  COUNTER_Z: -0.5,
+  CLERK: [-0.85, 0, -1.6] as V3,
+  PMG2: [0.95, 0, 0.75] as V3,
+  // runway: runway along x (z -15..15), missile parks at the origin facing +x
+  PARK: [0, 1.35, 0] as V3,           // missile centre standing on its landing gear
+  PODIUM: [2.6, 0, 9.0] as V3,        // lectern base centre (front faces +z)
+  PMG9: [2.6, 0, 8.45] as V3,
+  SAILOR9: [4.25, 0, 8.2] as V3,
+  SACKS: [3.6, 0, 4.2] as V3,         // pile of mail sacks (shot 10)
+  // street: ranch house centred at the origin, front wall at z = HOUSE_Z
+  HOUSE_Z: 4,
+  MAILBOX: [3.7, 0, 8.4] as V3,
+  KID: [2.75, 0, 8.95] as V3,
+  // road: mail truck centred at the origin, cab toward +x; the launch cart of shot 13 parked behind it
+  TRUCK: [0, 0, 0] as V3,
+  POSTMAN12: [3.9, 0, 2.5] as V3,
+  CART: [-8.6, 0, 1.4] as V3,
+  POSTMAN13: [-5.6, 0, 3.6] as V3,
+  // museum: pedestal at the origin, plaque stand in front-right
+  PEDESTAL: [0, 0, 0] as V3,
+  EXHIBIT: [0, 3.3, 0] as V3,         // missile centre on display
+  PLAQUE: [3.4, 0, 3.4] as V3,
+  VISITOR15: [1.7, 0, 3.1] as V3,
+};
+
+// ---------------- the missile (Regulus I): one rig, posed per shot ----------------
+/** rig frame: nose along local +x, fin up (+y); yaw about world y (three: +x -> (cos, 0, -sin)), pitch nose-up about local z */
+export type MissilePose = {
+  visible: boolean; pos: V3; yaw: number; pitch: number; roll: number;
+  booster: boolean;  // twin JATO boosters under the tail (until they burn out after launch)
+  gear: boolean;     // landing gear down (runway, museum)
+  flame: number;     // 0..1 exhaust flame (booster + sustainer)
+  trail: number;     // 0..1 letters fluttering out behind it (hook)
+  boom: number;      // >= 0: seconds since it blew up (shot 13); -1 = intact
+};
+const HIDE: MissilePose = { visible: false, pos: [0, -50, 0], yaw: 0, pitch: 0, roll: 0, booster: false, gear: false, flame: 0, trail: 0, boom: -1 };
+const pose = (p: Partial<MissilePose> & { pos: V3 }): MissilePose => ({ ...HIDE, visible: true, ...p });
+/** nose direction for yaw / pitch */
+export const noseDir = (yaw: number, pitch: number): V3 => [Math.cos(pitch) * Math.cos(yaw), Math.sin(pitch), -Math.cos(pitch) * Math.sin(yaw)];
+
+/** sea flights (shots 1 and 7): straight and level along +x, a little porpoise */
+const SEA1 = (f: number): V3 => [-60 + (28 * f) / FPS, 5.2 + 0.25 * Math.sin(f * 0.07), 0];
+const SEA7 = (f: number): V3 => [-40 + (34 * (f - 497)) / FPS, 7.5 + 0.2 * Math.sin(f * 0.06), 0];
+// launch (shot 6): rides the rail aft and climbs away
+export const LAUNCH_F = 469;
+const launchPos = (f: number): V3 => {
+  const s = Math.max(0, (f - LAUNCH_F) / FPS), d = 0.5 * 55 * s * s;
+  const n = noseDir(Math.PI, SPOT.LAUNCH_PITCH + 0.35 * smooth(s / 0.6));
+  return add(SPOT.LAUNCH, scl(n, d));
+};
+// landing (shot 8): flare in along +x, touch down, roll out to the park spot
+export const TOUCH_F = 591;
+const V_TD = 60, ROLL = 52; // touchdown speed (m/s), roll-out length (m)
+const landPos = (f: number): V3 => {
+  const x0 = SPOT.PARK[0] - ROLL, s = (f - TOUCH_F) / FPS;
+  if (s < 0) return [x0 + V_TD * s, SPOT.PARK[1] + 16 * Math.min(1, (-s / 0.6)) ** 1.6, 0];
+  const dec = (V_TD * V_TD) / (2 * ROLL), st = Math.min(s, V_TD / dec);
+  return [x0 + V_TD * st - 0.5 * dec * st * st, SPOT.PARK[1], 0];
+};
+// house (shot 11): nose down into the front wall of the house
+export const HIT_F = 852;
+const HOUSE_DIR = noseDir(Math.PI / 2, -0.35);
+const HOUSE_C: V3 = [-1.7, 2.95, SPOT.HOUSE_Z + 1.95];
+// shot 13: off a little launch cart beside the postman, up into the dusk sky, then one big puff
+export const GO_F = 1088, BOOM_F = 1160;
+const CART_YAW = 0.42, CART_PITCH = 0.36;
+export const CART_MISSILE: V3 = [SPOT.CART[0], 1.55, SPOT.CART[2]];
+const flyOff = (f: number): V3 => {
+  const s = Math.max(0, (f - GO_F) / FPS), d = 0.5 * 26 * s * s;
+  return add(CART_MISSILE, scl(noseDir(CART_YAW, CART_PITCH + 0.3 * smooth(s / 1.2)), d));
+};
+export const BOOM_AT: V3 = flyOff(BOOM_F);
+
+export const missileAt = (id: number, f: number): MissilePose => {
+  const t = f / FPS;
+  switch (id) {
+    case 1: return pose({ pos: SEA1(f), yaw: 0, pitch: 0.02, roll: 0.06 * Math.sin(t * 1.3), flame: 0.55, trail: 1 });
+    case 2: return HIDE;
+    case 3: case 4: case 5:
+      return pose({ pos: SPOT.LAUNCH, yaw: Math.PI, pitch: SPOT.LAUNCH_PITCH, booster: true });
+    case 6: {
+      const s = (f - LAUNCH_F) / FPS;
+      return pose({ pos: launchPos(f), yaw: Math.PI, pitch: SPOT.LAUNCH_PITCH + 0.35 * smooth(s / 0.6), booster: true, flame: f < LAUNCH_F - 2 ? 0 : 1 });
+    }
+    case 7: return pose({ pos: SEA7(f), yaw: 0, pitch: 0.0, roll: 0.05 * Math.sin(t * 1.1), flame: 0.5 });
+    case 8: {
+      const s = (f - TOUCH_F) / FPS;
+      return pose({ pos: landPos(f), yaw: 0, pitch: s < 0 ? 0.09 : 0.09 * Math.max(0, 1 - s / 0.25), gear: true, flame: s < 0.6 ? 0.35 : 0 });
+    }
+    case 9: case 10: return pose({ pos: SPOT.PARK, yaw: 0, pitch: 0, gear: true });
+    case 11: {
+      const d = Math.max(0, (HIT_F - f) / FPS) * 70; // 70 m/s on the way in
+      return pose({ pos: add(HOUSE_C, scl(HOUSE_DIR, -d)), yaw: Math.PI / 2, pitch: -0.35, flame: f < HIT_F ? 1 : 0 });
+    }
+    case 12: return HIDE;
+    case 13: {
+      if (f >= BOOM_F) return { ...HIDE, boom: (f - BOOM_F) / FPS, pos: BOOM_AT };
+      const s = Math.max(0, (f - GO_F) / FPS);
+      return pose({ pos: flyOff(f), yaw: CART_YAW, pitch: CART_PITCH + 0.3 * smooth(s / 1.2), flame: f >= GO_F - 2 ? 1 : 0 });
+    }
+    case 14: case 15: return pose({ pos: SPOT.EXHIBIT, yaw: -0.38, pitch: 0.2, gear: true });
+  }
+  return HIDE;
 };
 
 // ---------------- camera ----------------
-// Grammar (motion.md): every move is a symmetric smootherstep glide of 18-40 f (peak speed = 1.875 x distance / dur,
-// so dur >= 0.075 x the move in 720p px keeps the peak near the reference 14-25 px/f); a reframe bigger than about
-// half a frame width or 40 % zoom is a hard cut on its key frame. Glides are centred on the old key frame (the
-// whoosh in the sound mix peaks there), so a glide key starts dur/2 earlier. Holds push in (dolly toward the look
-// point or a fov zoom near walls/towers): 0.15-0.35 %/f, ~0.6 %/f for ~35 f on the punch words. Rolls of 4-8 deg
-// over >= 18 f on emphasis beats, held tilt <= 0.07 rad.
+// Grammar (motion.md of the bridge template): every move is a symmetric smootherstep glide of 18-40 f; a reframe bigger
+// than about half a frame width or 40 % zoom is a hard cut. Holds push in (dolly toward the look point or a fov zoom):
+// 0.15-0.35 %/f, ~0.6 %/f for ~35 f on the punch words. Rolls of 4-5 deg over >= 18 f on emphasis beats.
+// Moving subjects (missile) are framed in the subject's frame: framings add the subject position every frame.
 export type Cam = { pos: V3; look: V3; fov: number; roll: number };
 type Shot = Partial<Cam> & { pos: V3; look: V3 };
 type Key = { f: number; dur?: number; cut?: boolean; s: (f: number) => Shot };
-/** reference camera ease: symmetric smootherstep (attack = release, ~10 f each on a 23 f move) */
-export const glide = (u: number) => { const x = clamp01(u); return x * x * x * (x * (6 * x - 15) + 10); };
 const mix = (a: Cam, b: Cam, k: number): Cam => ({
   pos: a.pos.map((v, i) => v + (b.pos[i] - v) * k) as V3, look: a.look.map((v, i) => v + (b.look[i] - v) * k) as V3,
   fov: a.fov + (b.fov - a.fov) * k, roll: a.roll + (b.roll - a.roll) * k,
@@ -112,8 +198,7 @@ const run = (keys: Key[], f: number) => {
   return cur;
 };
 const T = (f: number) => f / FPS;
-const Fz = (id: number, f: number) => front(SHOTS[id - 1].tau(T(f)));
-/** push-in factor since f0: the subject grows ~rate per frame; `punch` raises it (with 8 f soft edges) for the first n frames */
+/** push-in factor since f0: the subject grows ~rate per frame; `punch` raises it (8 f soft edges) for the first n frames */
 const pushK = (f: number, f0: number, rate: number, punch = 0, n = 35) => {
   const x = Math.max(0, f - f0);
   let s = rate * x;
@@ -123,147 +208,93 @@ const pushK = (f: number, f0: number, rate: number, punch = 0, n = 35) => {
 /** dolly push: camera slides toward the look point by factor k */
 const dolly = (pos: V3, look: V3, k: number, rest: Partial<Cam> = {}): Shot =>
   ({ pos: [look[0] + (pos[0] - look[0]) * k, look[1] + (pos[1] - look[1]) * k, look[2] + (pos[2] - look[2]) * k], look, ...rest });
-/** zoom push (camera stays put, for lenses next to towers / houses): tan(fov/2) shrinks by k */
+/** zoom push (camera stays put, for lenses next to walls): tan(fov/2) shrinks by k */
 const zoom = (pos: V3, look: V3, fov: number, k: number, rest: Partial<Cam> = {}): Shot =>
   ({ pos, look, fov: (360 / Math.PI) * Math.atan(Math.tan((fov * Math.PI) / 360) * k), ...rest });
-/** a roll-only move on top of an existing framing */
-const rolled = (s: (f: number) => Shot, roll: number) => (f: number): Shot => ({ ...s(f), roll });
-
-// near-left anchorage where the bolt lives, and the free end of the snapped backstay
-export const ANCHOR: V3 = [-2.7, D0 + 0.62, -37];
-export const snapEnd = (snap: number): V3 => {
-  const u = easeOut(snap);
-  return [ANCHOR[0] - 0.6 * u, ANCHOR[1] + 5.5 * u - 2.0 * u * u, ANCHOR[2] + 4.5 * u];
-};
+/** framing relative to a moving point P */
+const rel = (P: V3, dp: V3, dl: V3, k: number, rest: Partial<Cam> = {}): Shot => dolly(add(P, dp), add(P, dl), k, rest);
 
 // ---- framings (f -> camera); each pushes in from the frame its key starts ----
-// shot 1 (hook, flash-forward): wide 3/4 front -> eye-level MS of the front row (was 0.6 m, now 1.4 m) -> boot level
-const S1a = (f: number) => { const F = Fz(1, f); return dolly([7.5, D0 + 2.6, F - 13], [0, D0 + 2.4, F + 5], pushK(f, 0, 0.0025), { fov: 44 }); };
-const S1b = (f: number) => { const F = Fz(1, f); return dolly([1.4, D0 + 1.4, F - 7.2], [0, D0 + 1.7, F + 1.5], pushK(f, 30, 0.002), { fov: 40, roll: -0.04 }); };
-const S1c = (f: number) => { const F = Fz(1, f); return dolly([-0.9, D0 + 0.4, F - 4.2], [0, D0 + 0.55, F + 0.8], pushK(f, 72, 0.003), { fov: 38, roll: 0.04 }); };
-// shot 2 (town aerial): zoom pushes (the last framing sits just behind the near tower); punch on "pride of the whole town"
-const S2a = (f: number) => zoom([17, 13, -52], [0, 9, 4], 44, pushK(f, 126, 0.002));
-const S2b = (f: number) => zoom([10, 10.5, -42], [0, 8, 8], 42, pushK(f, 181, 0.002));
-const S2c = (f: number) => zoom([5, 10, -31], [0, 8.6, 30], 40, pushK(f, 237, 0.0015, 0.006, 35));
-// shot 3: low front of the column -> boots CU ("every boot")
-const S3a = (f: number) => { const F = Fz(3, f); return dolly([1.1, D0 + 1.45, F - 6.2], [0, D0 + 1.3, F + 0.6], pushK(f, 283, 0.0025)); };
-const S3b = (f: number) => { const F = Fz(3, f); return dolly([0.5, D0 + 0.36, F - 3.5], [0, D0 + 0.3, F + 0.4], pushK(f, 333, 0.0018), { fov: 36 }); };
-// shot 4: side view, then lower and closer on "bouncing" (punch push + roll)
-const S4a = (f: number) => { const F = Fz(4, f); return dolly([13, D0 + 2.4, F + 7], [0, D0 + 1.2, F + 7], pushK(f, 444, 0.002)); };
-const S4b = (f: number) => { const F = Fz(4, f); return dolly([9.5, D0 + 1.2, F + 5.5], [0, D0 + 0.95, F + 5.5], pushK(f, 497, 0.0015, 0.006, 30), { fov: 38, roll: -0.035 }); };
-// shot 5: MS of the front row faces, closer on "these guys think it's hilarious" (roll)
-const S5a = (f: number) => { const F = Fz(5, f); return dolly([0.3, D0 + 1.8, F - 4.7], [0, D0 + 1.55, F + 1.2], pushK(f, 534, 0.0025), { fov: 38 }); };
-const S5b = (f: number) => { const F = Fz(5, f); return dolly([-0.5, D0 + 1.7, F - 3.5], [0, D0 + 1.6, F + 0.6], pushK(f, 576, 0.002), { fov: 36, roll: 0.04 }); };
-// shot 6: whistler CU -> high wide over the column -> low 3/4 front ("a little harder every step")
-const S6a = (f: number) => { const F = Fz(6, f); return dolly([0.8, D0 + 1.95, F - 2.5], [0.55, D0 + 1.85, F], pushK(f, 643, 0.003), { fov: 34 }); };
-const S6b = (f: number) => { const F = Fz(6, f); return dolly([5.5, D0 + 5.5, F - 9], [0, D0 + 0.8, F + 7], pushK(f, 717, 0.002), { fov: 44, roll: -0.03 }); };
-const S6c = (f: number) => { const F = Fz(6, f); return zoom([3, D0 + 1.1, F - 6.2], [0, D0 + 0.8, F + 2], 40, pushK(f, 754, 0.003), { roll: 0.04 }); }; // zoom: the lens rides 0.38 m outside the hangers
-// shot 7: wide ahead of the column (was 0.7 m, now 1.4 m) -> chain close-up -> MS of the nervous front row
-const S7a = (f: number) => { const F = Fz(7, f); return zoom([-3.0, D0 + 1.4, F - 11], [0, D0 + 1.7, F + 3], 46, pushK(f, 823, 0.002), { roll: -0.03 }); }; // zoom: outside the hangers
-const S7b = (f: number) => { const F = Fz(7, f); return dolly([-5.4, D0 + 4.6, F - 2.0], [-2.7, D0 + 3.4, F + 2.5], pushK(f, 871, 0.003), { fov: 40, roll: 0.02 }); };
-const S7c = (f: number) => { const F = Fz(7, f); return dolly([0, D0 + 1.8, F - 3.7], [0, D0 + 1.75, F + 0.3], pushK(f, 925, 0.0025), { fov: 36 }); };
-// shot 8: anchor insert (punch on "a single bolt"), snap follow, aerial, down at the water
-const S8a = (f: number) => dolly([-2.35, D0 + 1.25, -38.9], [ANCHOR[0], ANCHOR[1] + 0.3, ANCHOR[2]], pushK(f, 987, 0.0025, 0.006, 35), { fov: 34 });
-const S8b = (f: number) => { const u = glide((f - 1039) / 22); return { pos: [0.9, D0 + 2.2 + 0.3 * u, -41.2 - 0.4 * u] as V3, look: [-2.9 - 0.2 * u, ANCHOR[1] + 1.6 + 1.0 * u, -35 + 1.2 * u] as V3, fov: 38, roll: 0.04 }; };
-const S8c = (f: number) => dolly([4.5, 15, -45], [0, 3.2, -14], pushK(f, 1062, 0.0025), { fov: 42 });
-const S8d = (f: number) => dolly([7.5, 2.4, -25], [0, 2.0, -17.5], pushK(f, 1099, 0.002), { fov: 44, roll: -0.04 });
-// shots 9-10 share one camera (no visible cut at 1212): sitters in the river, closer on "Unluckily" (roll)
-const S9a = (f: number) => dolly([1.5, 0.55, -24.6], [0, 0.62, -18], pushK(f, 1128, 0.0018), { fov: 40, roll: -0.03 }); // lens at face height, 3 m from the first row
-const S10a = (f: number) => dolly([0.9, 0.5, -24.2], [0, 0.65, -19], pushK(f, 1208, 0.0018), { fov: 37, roll: 0.04 });
-// shot 11: golden sway wide (zoom: the lens sits just behind the riverfront houses)
-const S11a = (f: number) => zoom([14, 10.5, -47], [-1, 7, -4], 40, pushK(f, 1295, 0.0016));
-// shot 12: the park swing
-const S12a = (f: number) => dolly([PARK[0] + 0.55, D0 + 1.5, PARK[2] - 8], [PARK[0] + 0.55, D0 + 1.75, PARK[2]], pushK(f, 1405, 0.001), { fov: 40 });
-// 3/4 from the parent's side so the swing's near A-frame passes behind the parent, not across them
-const S12b = (f: number) => dolly([PARK[0] - 1.6, D0 + 1.9, PARK[2] - 9.5], [PARK[0] + 0.4, D0 + 1.95, PARK[2]], pushK(f, 1546, 0.0015), { fov: 42 });
-// shot 13: golden march side view, lens ~2.45 m over the deck and 3-4 m outside the rail: the near rail crosses the near
-// file at 0.5-0.8 m (legs) and misses the far file; the chain (2.5 m at mid-span) passes over the shakos
-// then closer on "pushing"
-const S13a = (f: number) => { const F = Fz(13, f); return dolly([5.75, D0 + 2.45, F + 3.1], [0, D0 + 1.5, F + 6.5], pushK(f, 1614, 0.002), { fov: 44 }); }; // 3/4 from ahead: files spread, no hat totem
-const S13b = (f: number) => { const F = Fz(13, f); return dolly([4.8, D0 + 2.45, F + 4], [0, D0 + 1.3, F + 4], pushK(f, 1685, 0.0025), { fov: 40 }); };
-// shot 14: dazed soldiers on the bank, then the officer at the sign (kicks on the hammer blows)
-const S14a = (f: number) => dolly([-4.7, D0 + 1.5, -40.4], [-4.6, D0 + 0.85, -33], pushK(f, 1729, 0.002), { fov: 42 });
-const S14b = (f: number) => zoom([1.3, D0 + 1.6, -36.6], [2.9, D0 + 1.3, -31.2], 42, pushK(f, 1770, 0.0025, 0.004, 24)); // 0.4 %/f push eased (8 f) into a 0.25 %/f creep by the first blow: no frozen hold between the blows
-// shot 15: tourists on the rebuilt bridge, punch on "the best drilled soldiers", crane out to the end
-const S15a = (f: number) => dolly([1.7, D0 + 1.75, -15.5], [0, D0 + 1.5, -9], pushK(f, 1857, 0.0025), { fov: 40 });
-const S15b = (f: number) => dolly([-1.3, D0 + 1.6, -13], [0, D0 + 1.5, -7.5], pushK(f, 1890, 0.0015, 0.006, 32), { fov: 38 });
-/** crane out: a curved path (quadratic Bezier over the near chain, 1.2 m above it) so the lens never threads the hangers */
-const CRANE: V3[] = [[0, 18, -16], [17, 15, -44], [0, 7, 2]];
-const S15c = (f: number): Shot => {
-  const a = S15b(1932), s = glide((f - 1932) / 93), r = 1 - s, [C, B, L] = CRANE;
-  return { pos: [0, 1, 2].map((i) => r * r * a.pos[i] + 2 * s * r * C[i] + s * s * B[i]) as V3,
-    look: [0, 1, 2].map((i) => a.look[i] + (L[i] - a.look[i]) * s) as V3, fov: (a.fov ?? 40) + (44 - (a.fov ?? 40)) * s, roll: 0 };
+// shot 1 (hook): the missile comes at the lens 3/4 front over the sunrise sea, then a side MS of the letter stream
+const S1a = (f: number) => rel(SEA1(f), [12.5, 1.2, 7.5], [0.2, 0.3, 0], pushK(f, 0, 0.0025), { fov: 40 });
+const S1b = (f: number) => rel(SEA1(f), [-3.8, 1.0, 9.5], [-3.2, 0.1, 0], pushK(f, 56, 0.002), { fov: 40, roll: -0.04 });
+const S1c = (f: number) => rel(SEA1(f), [7.5, -1.6, 6.2], [0.6, 0.6, 0], pushK(f, 86, 0.004), { fov: 40, roll: 0.04 });
+// shot 2: post office counter, postmaster general in front, clerk behind
+const S2a = (f: number) => dolly([-0.6, 1.62, 6.4], [0.15, 1.3, -0.6], pushK(f, 118, 0.0025), { fov: 40 });
+const S2b = (f: number) => dolly([0.4, 1.62, 3.9], [0.85, 1.5, 0.4], pushK(f, 145, 0.002, 0.005, 30), { fov: 40, roll: 0.035 }); // "faster mail"
+// shot 3: the sub on the dawn sea, 3/4 from the bow
+const S3a = (f: number) => zoom([46, 7.5, 24], [-4, 2.4, 0], 40, pushK(f, 173, 0.002));
+const S3b = (f: number) => zoom([46, 7.5, 24], [-9, 3.2, 0], 26, pushK(f, 214, 0.003)); // "with a missile on it"
+// shot 4: sailor on deck beside the missile on its launcher
+const S4a = (f: number) => dolly([-7.2, 4.2, 15.5], [-12.6, 3.2, 0.4], pushK(f, 246, 0.0022), { fov: 42 });
+const S4b = (f: number) => dolly([-10.2, 3.1, 7.6], [-13.9, 3.25, 1.2], pushK(f, 316, 0.0025), { fov: 40, roll: -0.035 }); // "the submarine Barbero"
+// shot 5: at the nose: letters into the intake ("3,000 letters" punch)
+const S5a = (f: number) => dolly([-13.1, 3.3, 6.6], [-16.4, 3.55, 0.8], pushK(f, 374, 0.002), { fov: 40 });
+const S5b = (f: number) => dolly([-14.3, 3.6, 4.6], [-16.5, 3.75, 0.5], pushK(f, 416, 0.0018, 0.006, 30), { fov: 40, roll: 0.035 });
+// shot 6: launch, wide from abeam the stern, then the lens tilts after the climbing missile
+const S6a = (f: number): Shot => {
+  const m = launchPos(Math.max(f, LAUNCH_F)), u = smooth((f - LAUNCH_F) / 22);
+  return { pos: [-5.5, 4.2, 22], look: [lerp(-12.5, m[0] * 0.55 - 6, u), lerp(4.2, m[1] * 0.75 + 1.2, u), 0], fov: 46 };
 };
+// shot 7: chase from behind and abeam toward the coast, then the missile pulls away ("22 minutes later")
+const S7a = (f: number) => rel(SEA7(f), [-13.5, 2.2, 7.5], [6, -0.6, 0], pushK(f, 494, 0.002), { fov: 40 });
+const S7b = (f: number) => { const P = SEA7(Math.min(f, 545)); return rel(P, [-13.5, 2.2, 7.5], [6, -0.6, 0], 1, { fov: 40 }); }; // camera stops, missile flies on
+const S7look = (f: number): Shot => { const s = S7b(f), m = SEA7(f); return { ...s, look: [lerp(s.look[0], m[0] + 6, 0.55), s.look[1], s.look[2]] }; };
+// shot 8: the runway from beside the palms; the lens pans with the landing missile
+const S8a = (f: number): Shot => {
+  const m = landPos(f), k = pushK(f, 571, 0.0015);
+  return dolly([16, 3.2, 26], [Math.max(-40, m[0]) * 0.75 + 2, 1.9 + (m[1] - SPOT.PARK[1]) * 0.6, 0], k, { fov: 40 });
+};
+// shot 9: the postmaster general at the podium, the sailor beside him, the missile behind
+const S9a = (f: number) => dolly([3.1, 1.9, 15.8], [3.0, 2.0, 6.0], pushK(f, 656, 0.0018), { fov: 40 });
+const S9b = (f: number) => dolly([2.75, 1.8, 12.0], [2.7, 1.85, 8.0], pushK(f, 706, 0.0015, 0.006, 32), { fov: 40, roll: -0.035 }); // "historic"
+// shot 10: unloading the sacks beside the missile
+const S10a = (f: number) => dolly([8.5, 2.6, 12.5], [2.2, 1.5, 2.6], pushK(f, 782, 0.0025), { fov: 42 });
+// shot 11: the missile in the house, the kid at the mailbox (kick on the hit)
+const S11a = (f: number) => dolly([5.6, 1.7, 17.5], [0.6, 2.4, 5.6], pushK(f, 845, 0.0022), { fov: 42 });
+const S11b = (f: number) => dolly([4.6, 1.3, 13.0], [2.0, 1.75, 7.6], pushK(f, 900, 0.0018), { fov: 40, roll: 0.035 }); // "needed a missile"
+// shot 12: the overloaded truck, postman in front; glide up to the sacks on "thousands of letters"
+const S12a = (f: number) => dolly([7.4, 1.6, 11.2], [1.6, 2.0, 0.8], pushK(f, 928, 0.0022), { fov: 42 });
+const S12b = (f: number) => dolly([6.0, 3.6, 10.0], [0.2, 3.6, 0], pushK(f, 985, 0.0018), { fov: 42 });
+// shot 13: missile on its cart beside the postman; tilt up after it; the puff
+const S13a = (f: number) => dolly([-3.4, 1.65, 12.6], [-6.7, 1.9, 2.0], pushK(f, 1052, 0.002), { fov: 42 });
+const S13b = (f: number): Shot => {
+  const m = missileAt(13, Math.min(f, BOOM_F - 1)).pos, u = smooth((f - GO_F) / 30);
+  const look: V3 = [lerp(-6.7, m[0], u), lerp(1.9, m[1], u), lerp(2.0, m[2], u)];
+  return { pos: [-2.6, 1.5, 14.2], look, fov: lerp(42, 54, smooth((f - GO_F) / 50)) };
+};
+const S13c = (f: number) => zoom([-2.6, 1.5, 14.2], BOOM_AT, 54, pushK(f, BOOM_F - 6, 0.002, 0.004, 24));
+// shot 14: the museum hall, the missile on its pedestal
+const S14a = (f: number) => dolly([8.4, 2.3, 18.5], [0.6, 3.0, 0.5], pushK(f, 1186, 0.002), { fov: 42 });
+// shot 15: close on a visitor looking up at the missile overhead
+const S15a = (f: number) => dolly([2.5, 1.25, 7.0], [1.35, 2.35, 2.4], pushK(f, 1264, 0.0022), { fov: 44 });
+const S15b = (f: number) => dolly([2.5, 1.25, 7.0], [1.3, 2.6, 2.4], pushK(f, 1300, 0.0015, 0.005, 30), { fov: 44, roll: -0.035 }); // "America's mail"
 
 const CAMS: Record<number, Key[]> = {
   1: [
     { f: 0, s: S1a },
-    { f: 30, dur: 37, s: S1b }, // centred on 48 ("knock down"), 129 px + 64 % zoom
-    { f: 72, dur: 32, s: S1c }, // centred on 88 ("just"), roll -0.04 -> +0.04 (4.6 deg)
+    { f: 56, cut: true, s: S1b },        // cut on "delivered the mail": side MS of the letter stream
+    { f: 84, cut: true, s: S1c },        // cut on "cruise missile": low hero angle, punch
   ],
-  2: [
-    { f: 126, s: S2a },
-    { f: 181, dur: 18, s: S2b },
-    { f: 237, dur: 18, s: S2c },
-  ],
-  3: [
-    { f: 283, s: S3a }, // cut (the copy of shot 2's framing is gone)
-    { f: 333, dur: 40, s: S3b }, // centred on 353 ("every boot")
-  ],
-  4: [
-    { f: 444, s: S4a }, // cut on "Halfway"
-    { f: 497, cut: true, s: S4b }, // cut on "bouncing"
-    { f: 497, dur: 20, s: rolled(S4b, 0.035) }, // roll 4 deg through level
-  ],
-  5: [
-    { f: 534, s: S5a }, // cut on "A normal person"
-    { f: 576, dur: 18, s: S5b }, // centred on 585, roll 0 -> 0.04
-    { f: 600, dur: 20, s: rolled(S5b, -0.035) }, // "think it's hilarious": roll back 4.3 deg
-  ],
-  6: [
-    { f: 643, s: S6a }, // cut to the whistler
-    { f: 717, cut: true, s: S6b }, // cut up over the column on "whole column"
-    { f: 754, dur: 29, s: S6c }, // centred on 768
-  ],
-  7: [
-    { f: 823, s: S7a }, // cut on "The bounce gets bigger"
-    { f: 871, cut: true, s: S7b }, // cut on "chains"
-    { f: 925, cut: true, s: S7c }, // cut on "nobody"
-  ],
-  8: [
-    { f: 987, s: S8a }, // cut to the bolt
-    { f: 1039, cut: true, s: S8b }, // cut on the snap (+ kick); the end whips up through the frame, the lens tilts after it
-    { f: 1062, cut: true, s: S8c }, // cut to the aerial
-    { f: 1099, cut: true, s: S8d }, // "drops": down to the water (+ kick at the slam)
-  ],
-  9: [
-    { f: 1128, s: S9a },
-    { f: 1208, dur: 18, s: S10a }, // centred on 1217 ("Unluckily"), runs across the invisible 9 -> 10 change
-  ],
-  11: [{ f: 1295, s: S11a }],
-  12: [
-    { f: 1405, s: S12a },
-    { f: 1546, dur: 28, s: S12b }, // centred on 1560 ("higher and higher" pull-back)
-  ],
-  13: [
-    { f: 1614, s: S13a },
-    { f: 1685, cut: true, s: S13b }, // cut on "pushing"
-  ],
-  14: [
-    { f: 1729, s: S14a },
-    { f: 1770, cut: true, s: S14b }, // cut to the officer
-  ],
-  15: [
-    { f: 1857, s: S15a },
-    { f: 1890, dur: 30, s: S15b }, // centred on 1905 ("best drilled")
-    { f: 1932, cut: true, s: S15c }, // crane pull-out on its own curved path, starts where S15b is (fastest ~1978, whoosh at 1962 mid-acceleration)
-  ],
+  2: [{ f: 118, s: S2a }, { f: 143, dur: 22, s: S2b }],
+  3: [{ f: 173, s: S3a }, { f: 210, dur: 26, s: S3b }],
+  4: [{ f: 246, s: S4a }, { f: 316, cut: true, s: S4b }],
+  5: [{ f: 371, s: S5a }, { f: 416, dur: 22, s: S5b }],
+  6: [{ f: 460, s: S6a }],
+  7: [{ f: 494, s: S7a }, { f: 545, dur: 20, s: S7look }],
+  8: [{ f: 571, s: S8a }],
+  9: [{ f: 656, s: S9a }, { f: 705, cut: true, s: S9b }],
+  10: [{ f: 782, s: S10a }],
+  11: [{ f: 845, s: S11a }, { f: 899, cut: true, s: S11b }],
+  12: [{ f: 928, s: S12a }, { f: 984, dur: 30, s: S12b }],
+  13: [{ f: 1052, s: S13a }, { f: GO_F - 4, cut: true, s: S13b }, { f: BOOM_F - 6, dur: 18, s: S13c }],
+  14: [{ f: 1186, s: S14a }],
+  15: [{ f: 1264, s: S15a }, { f: 1300, dur: 24, s: S15b }],
 };
-CAMS[10] = CAMS[9];
 
-// impact kicks (reference v14): the image offset flips sign every frame (~3 px at 720p per unit), decays to 0 in
-// 7 f, roll +-0.23 deg per unit; they start on the first frame at/after the event. No hand-held float.
-const KICKS: [number, number][] = [[SNAP, 1], [DROP1, 1.6], [59.79, 0.5], [60.33, 0.5], [61.69, 0.7]];
+// impact kicks: the image offset flips sign every frame (~3 px at 720p per unit), decays to 0 in 7 f,
+// roll +-0.23 deg per unit; they start on the first frame at/after the event. No hand-held float.
+export const KICKS: [number, number][] = [[(LAUNCH_F + 1) / FPS, 1.0], [TOUCH_F / FPS, 0.6], [HIT_F / FPS, 1.4], [BOOM_F / FPS, 0.9]];
 export const kickAt = (t: number) => {
   let a = 0;
   for (const [t0, g] of KICKS) {
@@ -287,37 +318,35 @@ export const keyEnd = (id: number, f: number) => {
   return Math.max(f, e);
 };
 
-// ---------------- lens: depth of field + foreground framing ----------------
-/** Lens blur per shot (thin lens). cInf = blur-disc radius in px at 1080x1920 for things at infinity; 0 = all sharp.
- *  Reference: DOF on in ~1/3 of shots; when on, background sigma720 CU 4.2, MS 4.0, FS 2.7, WS 1.9,
- *  foreground objects 4-8 (disc radius at 1080p = 3 x sigma720). Establishing/wide/most full shots stay sharp.
- *  Entries switch on cuts (no dur) or ramp with the camera glide they share f/dur with. focus = world point (else the
- *  camera look point). */
+// ---------------- lens: depth of field ----------------
+/** Lens blur per beat (thin lens). cInf = blur-disc radius in px at 1080x1920 for things at infinity; 0 = all sharp.
+ *  Bridge reference: CU 12-16, MS 10-12, wides/aerials 0. Entries switch on cuts (no dur) or ramp with the camera glide
+ *  they share f/dur with. focus = world point (else the camera look point). */
 export type Dof = { f: number; dur?: number; cInf: number; focus?: (f: number) => V3 };
-const eyes = (id: number) => (f: number): V3 => [0, D0 + 1.6, Fz(id, f)];
-const boots = (id: number) => (f: number): V3 => [0, D0 + 0.3, Fz(id, f)];
+const onMissile = (id: number) => (f: number): V3 => missileAt(id, f).pos;
 export const DOF: Dof[] = [
-  { f: 0, cInf: 15, focus: eyes(1) }, // hook wide: front row sharp, town as soft as the f650 close-up (~13 px)
-  { f: 30, dur: 37, cInf: 15, focus: eyes(1) }, // eye-level MS of the front row
-  { f: 72, dur: 32, cInf: 15, focus: boots(1) }, // boot level
-  { f: 130, cInf: 0 }, // town aerial (establishing, under the flash)
-  { f: 333, dur: 40, cInf: 14, focus: boots(3) }, // boots CU (ramps with the glide down)
-  { f: 444, cInf: 0 }, // side views
-  { f: 534, cInf: 10, focus: eyes(5) }, // MS faces "a normal person would slow down"
-  { f: 576, dur: 18, cInf: 12, focus: eyes(5) }, // closer MS "these guys think it's hilarious"
-  { f: 643, cInf: 14 }, // whistler CU, focus = look (his face)
-  { f: 717, cInf: 0 }, // high wide, low 3/4, wide ahead, chain close-up
-  { f: 925, cInf: 12, focus: eyes(7) }, // MS "nobody wants to be the one who breaks step"
-  { f: 987, cInf: 14 }, // anchor insert, focus = look (the bolt)
-  { f: 1039, cInf: 10 }, // snap insert
-  { f: 1062, cInf: 0 }, // aerial + water-level drop: kept readable
-  { f: 1134, cInf: 16, focus: () => [0.6, 0.6, -21.6] }, // river sitters (shots 9-10): first-row faces sharp, quay ~13 px
-  { f: 1303, cInf: 5 }, // golden sway: mild, focus = look (mid-span)
-  { f: 1411, cInf: 7 }, // park: focus = look (the swing plane: kid + parent), bush in front; mild so the facade ink holds
-  { f: 1620, cInf: 0 }, // golden march (riding with the column)
-  { f: 1735, cInf: 8 }, // bank, dazed soldiers behind a foreground cart, focus = look
-  { f: 1770, cInf: 12, focus: () => [3.35, D0 + 1.6, -31.55] }, // officer MS at the sign (his eyes), bush in front
-  { f: 1863, cInf: 0 }, // tourists (busy crowd beat, kept sharp), crane out
+  { f: 0, cInf: 9, focus: onMissile(1) },            // hook: missile sharp, horizon soft
+  { f: 56, cInf: 12, focus: (f) => add(SEA1(f), [-3.2, 0.1, 0]) }, // side MS of the letter stream
+  { f: 84, cInf: 10, focus: onMissile(1) },
+  { f: 121, cInf: 10, focus: () => [SPOT.PMG2[0], 1.55, SPOT.PMG2[2]] }, // post office: postmaster's eyes, slots soft
+  { f: 176, cInf: 0 },                               // sub establishing
+  { f: 249, cInf: 7, focus: () => [SPOT.SAILOR4[0], 3.6, SPOT.SAILOR4[2]] },
+  { f: 316, cInf: 11, focus: () => [SPOT.SAILOR4[0], 3.6, SPOT.SAILOR4[2]] },
+  { f: 374, cInf: 12, focus: () => [SPOT.SAILOR5[0], 3.6, SPOT.SAILOR5[2]] }, // letters into the nose
+  { f: 463, cInf: 0 },                               // launch wide
+  { f: 497, cInf: 6, focus: onMissile(7) },          // chase over the sea
+  { f: 574, cInf: 0 },                               // landing wide
+  { f: 659, cInf: 9, focus: () => [SPOT.PMG9[0], 1.6, SPOT.PMG9[2]] }, // podium
+  { f: 705, cInf: 12, focus: () => [SPOT.PMG9[0], 1.6, SPOT.PMG9[2]] },
+  { f: 785, cInf: 6, focus: () => [SPOT.SACKS[0], 1.2, SPOT.SACKS[2]] },
+  { f: 848, cInf: 0 },                               // house wide
+  { f: 899, cInf: 9, focus: () => [SPOT.KID[0], 1.0, SPOT.KID[2]] },
+  { f: 931, cInf: 7, focus: () => [SPOT.POSTMAN12[0], 1.55, SPOT.POSTMAN12[2]] },
+  { f: 984, dur: 30, cInf: 0 },
+  { f: 1055, cInf: 7, focus: () => [SPOT.POSTMAN13[0], 1.55, SPOT.POSTMAN13[2]] },
+  { f: GO_F - 4, cInf: 0 },                          // tilt up after the missile, the puff
+  { f: 1189, cInf: 0 },                              // museum wide
+  { f: 1267, cInf: 12, focus: () => [SPOT.VISITOR15[0], 1.55, SPOT.VISITOR15[2]] }, // visitor CU
 ];
 export const dofAt = (f: number) => {
   let i = 0; while (i + 1 < DOF.length && f >= DOF[i + 1].f) i++;
@@ -330,19 +359,3 @@ export const focusAt = (id: number, f: number): V3 => {
   const d = dofAt(f);
   return d.focus ? d.focus(f) : camAt(id, f).look;
 };
-
-/** near framing objects: visible while a <= f < b; kit = a GLB name accepted by build.ts prop() */
-// pos = base point (prop()'s x, y, z: the model's base sits on y), s = height in metres (prop()'s h), yaw in radians.
-// They sit at 0.3-0.5 x the focus distance and cover 10-25 % of one frame edge, never a face; they are meant to be
-// in front of the lens, so build them outside prop()'s sight-line test.
-export type Fg = { a: number; b: number; kit: string; pos: V3; s?: number; yaw?: number };
-export const FOREGROUND: Fg[] = [
-  // ranges stay inside one shot (world.ts shows an entry only inside its own shot, so crossfade layers never see it).
-  // sizes fitted to the silhouette (Kenney bushes are sparse: ellipsoid at 0.55 x bbox width matched the renders).
-  // river sitters (shots 9-10): no prop since round 4 (the lens sits 2-3 m from the first row; CHAR floats hats/planks there)
-  // bank, dazed soldiers (S14a, focus ~7.4 m): a cart in the bottom-left corner at ~2.6 m
-  { a: 1735, b: 1770, kit: "cart", pos: [-3.8, D0, -38.0], s: 0.85, yaw: 0.6 },
-  // officer at the sign (S14b, focus 5.7 m): a bush in the bottom-right corner under the sign post, clear of the officer
-  // park swing (S12a/b, focus 7-9.5 m): a bush in the bottom-right corner, below the kid's arc
-  { a: 1411, b: 1620, kit: "plant_bushDetailed", pos: [69.65, D0, -79.4], s: 1.2, yaw: 0.4 }, // w 15-27 %, h 18-31 %, 0.36-0.52 x focus
-];

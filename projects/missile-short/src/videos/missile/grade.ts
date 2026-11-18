@@ -1,4 +1,4 @@
-// Colour grade for the bridge short (post agent): references/grade/GradeEffect.ts (reports/grade.md) verbatim,
+// Colour grade (post agent; copied from the bridge short, presets extended to the missile short's four lights): references/grade/GradeEffect.ts (reports/grade.md) verbatim,
 // plus GRADES / GRADE_STRENGTH / gradeFor() so the lead can re-fit the presets after the lighting merge.
 // The presets were fitted to the OLD unlit stills: after the WORLD lighting lands they will over-correct; re-fit
 // (grade.md 5.C) or lower GRADE_STRENGTH. Each Inner (crossfade layer) grades with its own shot's light, so the DOM
@@ -166,13 +166,27 @@ export const GRADE_GOLDEN2: GradeParams = {
   tintS: [0.02, 0.002], tintM: [0, 0], tintH: [-0.012, 0.006],
   vig: [0.2, 0.4],
 };
-export const GRADES: Record<"day" | "golden", GradeParams> = { day: GRADE_DAY2, golden: GRADE_GOLDEN2 };
+// missile short: dusk = deeper S, violet shadows, warm highlights; interior = warm, low-contrast, soft vignette
+export const GRADE_DUSK: GradeParams = {
+  ky: [0, 0.085, 0.235, 0.52, 0.79, 0.93, 1],
+  sat: [1.0, 1.1, 1.12],
+  tintS: [0.03, 0.006], tintM: [0.006, 0.004], tintH: [-0.014, 0.01],
+  vig: [0.24, 0.38],
+};
+export const GRADE_INTERIOR: GradeParams = {
+  ky: [0, 0.1, 0.28, 0.6, 0.84, 0.95, 1],
+  sat: [1.0, 1.06, 1.0],
+  tintS: [0.006, 0.006], tintM: [-0.006, 0.004], tintH: [-0.008, 0.004],
+  vig: [0.18, 0.42],
+};
+export type GradeName = "day" | "golden" | "dusk" | "interior";
+export const GRADES: Record<GradeName, GradeParams> = { day: GRADE_DAY2, golden: GRADE_GOLDEN2, dusk: GRADE_DUSK, interior: GRADE_INTERIOR };
 /** One strength (0..1, the effect's `amount`) per preset, set against the NEW world (bridge_world, 2026-10-31): full-strength
  *  presets overshot (day median Y' .59-.67 vs target .571, golden .58 vs .52); day 0.65 / golden 0.45 land at
  *  .54-.62 / ~.52. Re-fit the presets (grade.md 5.C) after the merge and raise these again. */
-export const GRADE_STRENGTH: Record<"day" | "golden", number> = { day: 1, golden: 1 };
+export const GRADE_STRENGTH: Record<GradeName, number> = { day: 1, golden: 1, dusk: 1, interior: 1 };
 /** Apply the preset of a light to the effect (only touches uniforms when the light changes). */
-export function gradeFor(fx: GradeEffect, light: "day" | "golden") {
+export function gradeFor(fx: GradeEffect, light: GradeName) {
   const tag = fx as unknown as { _light?: string };
   if (tag._light !== light) { fx.set(GRADES[light]); tag._light = light; }
   fx.amount = GRADE_STRENGTH[light];
