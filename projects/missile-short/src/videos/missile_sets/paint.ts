@@ -505,6 +505,10 @@ export const grassHD = () => ctex("grassHD", 1024, 1024, (g, r) => {
     const x = U(r, 0, S), y = U(r, 0, S), rad = U(r, 120, 320), light = r() > 0.5;
     wrap2(S, S, x, y, rad * 1.4, (xx, yy) => blotch(g, xx, yy, rad, 1.4, light ? "140,198,80" : "92,154,48", 0.35));
   }
+  for (let i = 0; i < 6; i++) { // warm dry patches #b9b46a (world.md 4.0)
+    const x = U(r, 0, S), y = U(r, 0, S), rad = U(r, 60, 150);
+    wrap2(S, S, x, y, rad * 1.6, (xx, yy) => blotch(g, xx, yy, rad, 1.6, "185,180,106", 0.4));
+  }
   g.lineWidth = 2; g.lineCap = "round"; g.lineJoin = "round";
   for (let i = 0; i < 1400; i++) { // tufts ~90 per m2
     const x = U(r, 0, S), y = U(r, 0, S), h = U(r, 7, 16), lean = U(r, -3, 3), light = r() < 0.4;
@@ -1118,9 +1122,9 @@ export const wingHD = () => ctex("wingHD2", 512, 512, (g, r) => {
  *  with a lit lip above, rivet rows every 0.15 m, salt and rust streaks running down from the seams (textures.md 3.4) */
 export const hullHD = () => ctex("hullHD2", 1024, 1024, (g, r) => {
   const S = 1024, PW = 512, PH = 256;
-  g.fillStyle = "#4d586b"; g.fillRect(0, 0, S, S);
+  g.fillStyle = "#5a6676"; g.fillRect(0, 0, S, S);
   for (let row = 0; row < S / PH; row++) for (let k = -1; k < S / PW + 1; k++) {
-    const x = k * PW + (row % 2) * (PW / 2), c = jit(r, "#4d586b", 0.06, 3, 0.1);
+    const x = k * PW + (row % 2) * (PW / 2), c = jit(r, "#5a6676", 0.06, 3, 0.1);
     g.fillStyle = c; g.fillRect(x, row * PH, PW, PH);
   }
   octaves(g, r, S, S, 256, "120,132,150", "30,36,48", 0.8);
@@ -1146,8 +1150,8 @@ export const hullHD = () => ctex("hullHD2", 1024, 1024, (g, r) => {
  *  0.55 m), dark insides with a lit lower lip, weld seams, salt streaks */
 export const casingHD = () => ctex("casingHD", 1024, 256, (g, r) => {
   const W = 1024, H = 256, P = 128;
-  g.fillStyle = "#6c7884"; g.fillRect(0, 0, W, H);
-  octaves(g, r, W, H, P, "150,160,172", "40,46,58", 0.8);
+  g.fillStyle = "#7f8a92"; g.fillRect(0, 0, W, H);
+  octaves(g, r, W, H, P, "170,165,150", "40,46,58", 0.8);
   for (const [row, y] of [[0, 0.62], [1, 0.82]] as const) for (let x = row * 0.275 * P; x < W; x += 0.55 * P) {
     const hw = 0.36 * P, hh = 0.12 * P, yy = y * H;
     wrapX(W, x, hw, (xx) => { rr(g, xx, yy, hw, hh, hh / 2); g.fillStyle = "#2e3742"; g.fill(); g.fillStyle = "rgba(190,200,215,0.3)"; g.fillRect(xx + 4, yy + hh - 2, hw - 8, 2); });
@@ -1254,11 +1258,11 @@ export const sidingHD = (col: string) => ctex("sidingHD2" + col, 512, 512, (g, r
  *  "U.S. MAIL" stencil on two opposite sides (u 0.25, 0.75), darker gathered top, soil at the bottom */
 export const burlapHD = () => ctex("canvasSack", 1024, 512, (g, r) => {
   const W = 1024, H = 512;
-  g.fillStyle = "#c8b48a"; g.fillRect(0, 0, W, H);
+  g.fillStyle = "#d9b27a"; g.fillRect(0, 0, W, H);
   for (let y = 0; y < H; y += 4) { g.fillStyle = `rgba(120,95,60,${0.05 + 0.06 * r()})`; g.fillRect(0, y, W, 1.5); }
   for (let x = 0; x < W; x += 4) { g.fillStyle = `rgba(250,238,205,${0.04 + 0.06 * r()})`; g.fillRect(x, 0, 1.5, H); }
   octaves(g, r, W, H, 400, "240,228,195", "110,85,50", 1);
-  for (const x of [4, W / 2]) { detailLine(g, [[x, 0], [x, H]], "#c8b48a", 3, r, 0.8, 0.5); for (let y = 6; y < H; y += 14) detailLine(g, [[x - 5, y], [x + 5, y + 5]], "#c8b48a", 1.5, r, 0.6, 0.5); }
+  for (const x of [4, W / 2]) { detailLine(g, [[x, 0], [x, H]], "#d9b27a", 3, r, 0.8, 0.5); for (let y = 6; y < H; y += 14) detailLine(g, [[x - 5, y], [x + 5, y + 5]], "#d9b27a", 1.5, r, 0.6, 0.5); }
   const tg = g.createLinearGradient(0, 0, 0, H * 0.22); tg.addColorStop(0, "rgba(90,70,40,0.35)"); tg.addColorStop(1, "rgba(90,70,40,0)"); g.fillStyle = tg; g.fillRect(0, 0, W, H * 0.22);
   const bg = g.createLinearGradient(0, H, 0, H * 0.8); bg.addColorStop(0, "rgba(90,70,45,0.35)"); bg.addColorStop(1, "rgba(90,70,45,0)"); g.fillStyle = bg; g.fillRect(0, H * 0.8, W, H * 0.2);
   for (const u of [0.25, 0.75]) {
@@ -1274,7 +1278,7 @@ export const truckHD = () => ctex("truckSide2", 1024, 512, (g, r) => {
   const W = 1024, H = 512, PX = W / 4.3, PY = H / 2.55, split = H - 0.9 * PY;
   g.fillStyle = "#f2efe6"; g.fillRect(0, 0, W, H);
   octaves(g, r, W, H, PX, "255,252,244", "150,140,125", 0.7);
-  g.fillStyle = "#24407a"; g.fillRect(0, split, W, H - split);
+  g.fillStyle = "#34558f"; g.fillRect(0, split, W, H - split);
   octaves(g, r, W, H - split, PX, "80,110,170", "15,25,55", 0.3);
   for (let x = 0.35 * PX; x < W; x += 0.35 * PX) {
     detailLine(g, [[x, 6], [x, H - 4]], x < W ? "#d8d2c4" : "#24407a", 2.2, r, 0.6, 0.6); lip(g, x + 3, 6, x + 3, split - 4, 2, 0.4);

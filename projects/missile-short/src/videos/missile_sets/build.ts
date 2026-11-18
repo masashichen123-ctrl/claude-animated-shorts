@@ -851,8 +851,8 @@ const buildSea = (): SetRig => {
 // ---- subdeck: USS Barbero (Balao class, Regulus conversion): hull along x, bow +x ----
 const buildSub = (): SetRig => {
   const b = new Batch();
-  const hull = texM("hull", () => P.hullHD()), deck = texM("subDeck", () => P.subDeckHD()), slate = col("#4a5868"), dk = col("#5c6874"), steel = col("#8b97a3");
-  const haze = col("#7d8a96"), casingM = texM("casing", () => P.casingHD()), rail = col("#c9d3dc"), yellow = col("#e8b830");
+  const hull = texM("hull", () => P.hullHD()), deck = texM("subDeck", () => P.subDeckHD()), slate = col("#56636f"), dk = col("#666b70"), steel = col("#8b97a3");
+  const haze = col("#8a929a"), casingM = texM("casing", () => P.casingHD()), rail = col("#c9d3dc"), yellow = col("#e8b830");
   const prof: [number, number][] = [[0.15, -23], [0.9, -21.5], [1.7, -18], [2.2, -12], [2.3, -4], [2.3, 8], [2.1, 14], [1.5, 19], [0.6, 22.3], [0.1, 23]];
   const lathe0 = new THREE.LatheGeometry(prof.map(([r, y]) => new THREE.Vector2(r, y)), 36);
   lathe0.rotateZ(-Math.PI / 2); lathe0.scale(1, 0.82, 1); lathe0.translate(0, -0.2, 0);
@@ -876,7 +876,7 @@ const buildSub = (): SetRig => {
   // sail (fairwater) with the bridge cap, periscope shears, radar dish, "317"
   const sail = slab(supEll(4.6, 0, 3.9, 1.35, 2.6, 48, 0.25), 2.0, 3.9, 0.15);
   uvFrom(sail, (x, y, z) => [(x + z) / 4, y / 4]);
-  b.add(sail, texM("hullSail", () => P.hullHD(), { color: new THREE.Color("#c9d0d8") }));
+  b.add(sail, texM("hullSail", () => P.hullHD(), { color: new THREE.Color("#e6e4de") }));
   b.add(slab(supEll(4.6, 0, 3.95, 1.42, 2.6, 48, 0.25), 5.75, 0.3, 0.08), col("#6c7884"));
   b.add(slab(supEll(6.6, 0, 1.5, 0.95, 2.4, 32), 5.9, 0.9, 0.08), haze);
   for (const s of [-1, 1]) b.add(decalGeo(V(3.4, 4.3, s * 1.43), V(0, 0, s), 2.2, 1.3), decalMat("sail317", "317", 2.2, 1.3, "#f2efe6", "stencil"));
@@ -892,7 +892,7 @@ const buildSub = (): SetRig => {
   // Regulus hangar aft of the sail: ribs with rivet heads, dome door with a seam + hinges
   const hang = new THREE.CylinderGeometry(1.75, 1.75, 7.6, 36, 1, true).rotateZ(Math.PI / 2);
   uvFrom(hang, (x, y, z) => [x / 4, (y + z) / 4]);
-  b.add(hang, texM("hullSail", () => P.hullHD(), { color: new THREE.Color("#c9d0d8") }), M4(-2.6, 2.3, 0));
+  b.add(hang, texM("hullSail", () => P.hullHD(), { color: new THREE.Color("#e6e4de") }), M4(-2.6, 2.3, 0));
   for (let k = 0; k < 5; k++) b.add(cached("hRib", () => new THREE.TorusGeometry(1.79, 0.05, 6, 40).rotateY(Math.PI / 2)), haze, M4(-5.8 + k * 1.6, 2.3, 0));
   b.add(new THREE.SphereGeometry(1.75, 32, 16, 0, Math.PI), haze, M4(-6.4, 2.3, 0, -Math.PI / 2, 0, 0, [1, 1, 0.45]));
   b.add(rbox(0.06, 3.4, 0.06, 0.02), dk, M4(-7.2, 2.3, 0));
@@ -1164,7 +1164,7 @@ const buildStreet = (): SetRig => {
 
 // ---- road: suburban road, the mail truck, the launch cart for shot 13 ----
 const truck = (b: Batch, x: number, z: number) => {
-  const navy = col("#24407a"), white = col("#f2efe6"), red = col("#d8352f"), chrome = col("#c9d3dc"), dark = col("#2e3440"), glass = col("#7fb8d0");
+  const navy = col("#34558f"), white = col("#f2efe6"), red = col("#d8352f"), chrome = col("#c9d3dc"), dark = col("#2e3440"), glass = col("#7fb8d0");
   const M = (dx: number, dy: number, dz: number, ry = 0) => M4(x + dx, dy, z + dz, ry);
   b.add(rbox(6.4, 0.3, 1.6, 0.05), dark, M(0.4, 0.62, 0));                                    // chassis
   // cargo box: navy lower 0.9 m, white upper with the painted livery panels, red belt proud at the split, roof rim
