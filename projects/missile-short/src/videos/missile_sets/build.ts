@@ -8,7 +8,7 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import * as P from "./paint";
 import { rng, ctex, rep } from "./paint";
 import { twoTone } from "./shade";
-import { SPOT, CART_MISSILE, SetName } from "./story";
+import { SPOT, CART_MISSILE, SetName, FOREGROUND } from "./story";
 
 export const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 
@@ -765,7 +765,7 @@ export const poseMissile = (rig: MissileRig, p: MissilePoseLike) => {
 export const buildMissile = (): MissileRig => {
   const root = new THREE.Group(), body = new Batch(), boost = new Batch(), gear = new Batch();
   const skin = texM("missileSkin", () => P.missileSkinHD()), white = texM("wingSkin", () => rep(P.wingHD(), 0.5, 0.5));
-  const red = col("#cf3330"), dark = col("#2b2b34"), metal = col("#9aa0a8");
+  const red = col("#cf3328"), dark = col("#2b2b34"), metal = col("#9aa0a8");
   // fuselage lathe (tail -4.5 .. nose 4.5)
   const prof: [number, number][] = [[0.36, -4.5], [0.47, -4.3], [0.56, -3.7], [0.62, -2.8], [0.65, -1.5], [0.66, 0], [0.65, 1.5], [0.62, 2.6], [0.56, 3.5], [0.49, 4.15], [0.45, 4.45], [0.43, 4.52]];
   const lathe = new THREE.LatheGeometry(prof.map(([rr2, y]) => new THREE.Vector2(rr2, y)), 40);
@@ -773,6 +773,13 @@ export const buildMissile = (): MissileRig => {
   const lu = (lathe.attributes.uv as THREE.BufferAttribute).clone();
   uvFrom(lathe, (x, _y, _z, i) => [(x + 4.5) / 9.02, lu.getX(i)]);
   body.add(lathe, skin);
+  // round 2: red bands as their own material (ink draws material-boundary lines), a hair proud of the skin
+  const rAt = (x: number) => { for (let i = 1; i < prof.length; i++) if (x <= prof[i][1]) { const [r0, y0] = prof[i - 1], [r1, y1] = prof[i]; return r0 + ((r1 - r0) * (x - y0)) / (y1 - y0); } return prof[prof.length - 1][0]; };
+  for (const [x0, x1] of [[-3.82, -3.37], [3.66, 4.02]]) {
+    const pts: THREE.Vector2[] = [];
+    for (let k = 0; k <= 6; k++) { const x = x0 + ((x1 - x0) * k) / 6; pts.push(new THREE.Vector2(rAt(x) + 0.008, x)); }
+    body.add(new THREE.LatheGeometry(pts, 40).rotateZ(-Math.PI / 2), col("#cf3328"));
+  }
   // nose intake: lip ring, dark duct, small centre body
   body.add(new THREE.TorusGeometry(0.42, 0.07, 10, 36).rotateY(Math.PI / 2), red, M4(4.52, 0, 0));
   body.add(new THREE.CircleGeometry(0.4, 32).rotateY(Math.PI / 2), dark, M4(4.42, 0, 0));
@@ -916,7 +923,7 @@ const buildSub = (): SetRig => {
   // deck railings: stanchions every 1.8 m with ball caps, two sagging lifelines
   for (const s of [-1, 1]) {
     const posts: number[] = [];
-    for (let x = -18; x <= 16; x += 1.8) if (x < 0.8 || x > 9) posts.push(x);
+    for (let x = -18; x <= 16; x += 1.8) if ((x < 0.8 || x > 9) && !(s > 0 && x === -18)) posts.push(x); // no starboard post at -18: it sat in front of the shot-5 sailor
     for (const x of posts) { b.add(rod(V(x, 2.0, s * 1.55), V(x, 3.0, s * 1.55), 0.035), rail); b.add(cached("ball", () => new THREE.SphereGeometry(0.06, 8, 6)), rail, M4(x, 3.02, s * 1.55)); }
     for (let i = 0; i + 1 < posts.length; i++) {
       if (posts[i + 1] - posts[i] > 2) continue;
@@ -1053,14 +1060,15 @@ const buildRunway = (): SetRig => {
   // podium (lectern): tapered wood body with an inset panel, slanted top, gold seal, bunting fan, 2 chrome mics
   const [px, , pz] = SPOT.PODIUM;
   const wood = texM("podiumWood", () => P.panelHD("#b0703f"));
-  b.add(rbox(0.72, 1.05, 0.55, 0.05, [1, 1]), wood, M4(px, 0.525, pz));
-  b.add(rbox(0.86, 0.07, 0.68, 0.03), col("#8a5530"), M4(px, 1.1, pz - 0.02, 0, -0.26));
-  b.add(rbox(0.5, 0.6, 0.04, 0.02), col("#8a5530"), M4(px, 0.55, pz + 0.285));
-  b.add(cached("seal", () => new THREE.CylinderGeometry(0.16, 0.16, 0.03, 20).rotateX(Math.PI / 2)), col("#d9b45a"), M4(px, 0.82, pz + 0.3));
-  for (let k = 0; k < 9; k++) { const a = -Math.PI / 2 + ((k + 0.5) / 9) * Math.PI; b.add(tri(V(px, 0.62, pz + 0.33), V(px + 0.36 * Math.sin(a - 0.17), 0.62 - 0.36 * Math.cos(a - 0.17), pz + 0.33 + (k % 2) * 0.03), V(px + 0.36 * Math.sin(a + 0.17), 0.62 - 0.36 * Math.cos(a + 0.17), pz + 0.33 + (k % 2) * 0.03)), col(["#24407a", "#f2efe6", "#d8352f"][k % 3], THREE.DoubleSide)); }
-  for (const dx of [-0.3, 0.3]) { // low gooseneck mics at the lectern corners, clear of the speaker's face
-    b.add(rod(V(px + dx, 1.12, pz + 0.12), V(px + dx * 0.9, 1.24, pz + 0.02), 0.012), col("#4a4f55"));
-    b.add(lathe("mic", [[0, 0], [0.035, 0.01], [0.042, 0.05], [0.038, 0.09], [0, 0.1]], 12), col("#c9d3dc"), M4(px + dx * 0.9, 1.23, pz + 0.0));
+  // round 2: lectern lowered to ~0.8 m (verify_r1 #6)
+  b.add(rbox(0.66, 0.74, 0.5, 0.05, [1, 1]), wood, M4(px, 0.37, pz));
+  b.add(rbox(0.8, 0.06, 0.62, 0.03), col("#8a5530"), M4(px, 0.78, pz - 0.02, 0, -0.26));
+  b.add(rbox(0.46, 0.42, 0.04, 0.02), col("#8a5530"), M4(px, 0.4, pz + 0.26));
+  b.add(cached("seal", () => new THREE.CylinderGeometry(0.13, 0.13, 0.03, 20).rotateX(Math.PI / 2)), col("#d9b45a"), M4(px, 0.58, pz + 0.27));
+  for (let k = 0; k < 9; k++) { const a = -Math.PI / 2 + ((k + 0.5) / 9) * Math.PI; b.add(tri(V(px, 0.42, pz + 0.3), V(px + 0.28 * Math.sin(a - 0.17), 0.42 - 0.28 * Math.cos(a - 0.17), pz + 0.3 + (k % 2) * 0.03), V(px + 0.28 * Math.sin(a + 0.17), 0.42 - 0.28 * Math.cos(a + 0.17), pz + 0.3 + (k % 2) * 0.03)), col(["#24407a", "#f2efe6", "#d8352f"][k % 3], THREE.DoubleSide)); }
+  for (const dx of [-0.28, 0.28]) { // low gooseneck mics at the lectern corners, clear of the speaker's face
+    b.add(rod(V(px + dx, 0.8, pz + 0.1), V(px + dx * 0.9, 0.95, pz), 0.012), col("#4a4f55"));
+    b.add(lathe("mic", [[0, 0], [0.035, 0.01], [0.042, 0.05], [0.038, 0.09], [0, 0.1]], 12), col("#c9d3dc"), M4(px + dx * 0.9, 0.94, pz - 0.02));
   }
   for (const dx of [-2.2, 2.0]) {
     b.add(rod(V(px + dx, 0, pz - 0.6), V(px + dx, 3.2, pz - 0.6), 0.035), col("#d9b45a"));
@@ -1390,23 +1398,23 @@ const buildPostOffice = (): SetRig => {
 // ---- museum hall: stone walls, terrazzo, gallery, skylight, banners, the missile on its plinth + other exhibits ----
 const buildMuseum = (rigForSupports: MissileRig): SetRig => {
   const shell = new Batch(), b = new Batch();
-  const wall = texM("musWall", () => P.ashlarHD("mus", "#e6d3b0")), floor = texM("musFloor", () => rep(P.terrazzoHD(), 0.5, 0.5)), ceil = texM("musCeil", () => P.plasterHD("#f4ead8"));
+  const wall = texM("musWall", () => P.ashlarHD("mus2", "#a88a6a")), floor = texM("musFloor", () => rep(P.terrazzoHD(), 0.5, 0.5), { color: new THREE.Color(0.66, 0.62, 0.6) }), ceil = texM("musCeil", () => P.plasterHD("#c9b89a"));
   room(shell, -16, 16, -14, 24, 12, wall, floor, ceil);
-  const trim = col("#d9c8a6"), dado = col("#b8a07a"), walnut = col("#6e4630"), brass = col("#d9b45a"), marble = texM("marble", () => P.marbleHD());
+  const trim = col("#c4ab84"), dado = col("#6e4630"), walnut = col("#6e4630"), brass = col("#d9b45a"), marble = texM("marble", () => P.marbleHD());
   // dado band, pilasters with capitals
   rb(b, dado, -16, 16, 0, 1.2, -14, -13.88, 0.03); for (const s of [-1, 1]) rb(b, dado, s > 0 ? 15.88 : -16, s > 0 ? 16 : -15.88, 0, 1.2, -14, 24, 0.03);
   for (let x = -12; x <= 12; x += 6) { rb(b, trim, x - 0.5, x + 0.5, 0, 11, -14, -13.6, 0.06); rb(b, trim, x - 0.65, x + 0.65, 11, 11.25, -14, -13.45, 0.05); rb(b, trim, x - 0.8, x + 0.8, 11.25, 11.5, -14, -13.3, 0.05); }
   for (const s of [-1, 1]) for (let z = -8; z <= 20; z += 7) { rb(b, trim, s > 0 ? 15.6 : -16, s > 0 ? 16 : -15.6, 0, 11, z - 0.5, z + 0.5, 0.06); rb(b, trim, s > 0 ? 15.4 : -16, s > 0 ? 16 : -15.4, 11, 11.4, z - 0.7, z + 0.7, 0.05); }
   // upper gallery along the back + side walls: slab, fascia with 2 trim bands, baluster rail
   const gal = (x0: number, x1: number, z0: number, z1: number, along: "x" | "z") => {
-    rb(b, col("#efe3c8"), x0, x1, 5.5, 6.0, z0, z1, 0.04);
+    rb(b, col("#cbb592"), x0, x1, 5.5, 6.0, z0, z1, 0.04);
     const fx0 = along === "x" ? x0 : (x0 + x1) / 2, fz0 = along === "x" ? z1 : z0;
     if (along === "x") { rb(b, dado, x0, x1, 5.58, 5.68, z1, z1 + 0.06, 0.02); rb(b, dado, x0, x1, 5.82, 5.92, z1, z1 + 0.06, 0.02); }
     const n = Math.floor((along === "x" ? x1 - x0 : z1 - z0) / 0.32);
     const edge = along === "x" ? z1 - 0.2 : (x0 < 0 ? x1 - 0.2 : x0 + 0.2);
     for (let i = 0; i <= n; i++) {
       const t = (along === "x" ? x0 : z0) + i * 0.32;
-      b.add(lathe("baluster", [[0.08, 0], [0.06, 0.08], [0.1, 0.3], [0.05, 0.6], [0.07, 0.72], [0.0, 0.75]], 10), col("#efe3c8"), along === "x" ? M4(t, 6.0, edge) : M4(edge, 6.0, t));
+      b.add(lathe("baluster", [[0.08, 0], [0.06, 0.08], [0.1, 0.3], [0.05, 0.6], [0.07, 0.72], [0.0, 0.75]], 10), col("#cbb592"), along === "x" ? M4(t, 6.0, edge) : M4(edge, 6.0, t));
     }
     if (along === "x") rb(b, col("#8a6a3a"), x0, x1, 6.75, 6.9, edge - 0.1, edge + 0.1, 0.03); else rb(b, col("#8a6a3a"), edge - 0.1, edge + 0.1, 6.75, 6.9, z0, z1, 0.03);
     void fx0; void fz0;
@@ -1415,22 +1423,25 @@ const buildMuseum = (rigForSupports: MissileRig): SetRig => {
   // coffered skylight: grid of glowing panes in frames
   for (let i = -3; i <= 3; i++) for (let j = -2; j <= 4; j++) {
     const x = i * 2.2, z = 2 + j * 2.2;
-    rb(b, glow("#fff4d6", 1.25), x - 0.8, x + 0.8, 11.9, 11.95, z - 0.8, z + 0.8, 0.01);
+    rb(b, glow("#fff4d6", 1.05), x - 0.8, x + 0.8, 11.9, 11.95, z - 0.8, z + 0.8, 0.01);
   }
-  for (let i = -3; i <= 4; i++) rb(b, col("#efe3c8"), i * 2.2 - 1.1 - 0.15, i * 2.2 - 1.1 + 0.15, 11.6, 12, -3.6, 12.0, 0.03);
-  for (let j = -2; j <= 5; j++) rb(b, col("#efe3c8"), -7.9, 7.9, 11.6, 12, 2 + j * 2.2 - 1.1 - 0.15, 2 + j * 2.2 - 1.1 + 0.15, 0.03);
+  for (let i = -3; i <= 4; i++) rb(b, col("#b8a07a"), i * 2.2 - 1.1 - 0.15, i * 2.2 - 1.1 + 0.15, 11.6, 12, -3.6, 12.0, 0.03);
+  for (let j = -2; j <= 5; j++) rb(b, col("#b8a07a"), -7.9, 7.9, 11.6, 12, 2 + j * 2.2 - 1.1 - 0.15, 2 + j * 2.2 - 1.1 + 0.15, 0.03);
   // tall windows between the back pilasters (below the gallery: framed panels with photos instead)
   for (let x = -9; x <= 9; x += 6) {
     rb(b, col("#fbf6ea"), x - 1.5, x + 1.5, 7.2, 10.6, -14.02, -13.85, 0.04);
-    rb(b, glow("#f4f0e2", 1.08), x - 1.3, x + 1.3, 7.4, 10.4, -13.98, -13.8, 0.02);
+    rb(b, glow("#f4f0e2", 0.98), x - 1.3, x + 1.3, 7.4, 10.4, -13.98, -13.8, 0.02);
     rb(b, col("#fbf6ea"), x - 0.05, x + 0.05, 7.4, 10.4, -13.97, -13.78, 0.01);
     for (let k = 0; k < 2; k++) { rb(b, col("#8a6a3a"), x - 1.3 + k * 1.4, x - 0.1 + k * 1.4, 2.0, 3.3, -13.9, -13.82, 0.02); b.add(rbox(1.0, 1.1, 0.02, 0.005), texM("poster" + ((x + k) & 1 ? 1 : 2), () => P.posterHD((x + k) & 1 ? 1 : 2)), M4(x - 0.7 + k * 1.4, 2.65, -13.81)); }
   }
   signBoard(b, "musTitle", "NATIONAL POSTAL HISTORY HALL", 9, 0.9, 0, 6.6, -11.4, 0, { bg: "#24407a", fg: "#f2e3b0", style: "slab", border: "#d9b45a" }, 0.1);
   for (const [x, z, k] of [[-9, -6, 0], [9, -6, 1], [-9, 4, 2], [9, 4, 3]] as const) { // hanging banners
     b.add(rod(V(x - 0.9, 11.2, z), V(x + 0.9, 11.2, z), 0.04), brass);
-    b.add(rbox(1.6, 4.8, 0.03, 0.01), texM("banner" + k, () => P.museumBannerHD(k)), M4(x, 8.7, z));
+    b.add(rbox(1.6, 4.8, 0.03, 0.01), lam("bannerLit" + k, () => { const t = P.museumBannerHD(k); return { map: t, emissiveMap: t, emissive: new THREE.Color(0.32, 0.3, 0.28) }; }), M4(x, 8.7, z));
+    b.add(cached("bannerLamp", () => new THREE.SphereGeometry(0.12, 10, 8)), glow("#fff0c8", 1.6), M4(x, 11.35, z + 0.3));
   }
+  // red carpet runner from the visitors' side to the plinth, gold border
+  b.add(quad(V(-1.3, 0.02, 23.5), V(1.3, 0.02, 23.5), V(1.3, 0.02, 3.9), V(-1.3, 0.02, 3.9), 1, 19.6 / 2.6), texM("carpet", () => P.carpetHD()));
   // the hero plinth: dark walnut with a brass edge, marble top step
   rb(b, walnut, -5.5, 5.5, 0, 0.6, -1.3, 1.3, 0.06, 2);
   rb(b, brass, -5.55, 5.55, 0.56, 0.64, -1.35, 1.35, 0.02);
@@ -1514,4 +1525,81 @@ export const buildSets = (): Record<SetName, SetRig> => {
     sea: buildSea(), subdeck: buildSub(), runway: buildRunway(), street: buildStreet(), road: buildRoad(),
     postoffice: buildPostOffice(), museum: buildMuseum(helper),
   };
+};
+
+// =================================================================================================================
+// FOREGROUND framing props (story.ts FOREGROUND, composition.md 3.3). world.ts calls fgUpdate(group, id, f, cam) every
+// frame; the kits are built once into `group` (cached by kit name) and placed in camera space ("cam") or world space.
+// Kit front = local +z (faces the lens). Layer 0, so they get ink and the shot's DOF blurs them.
+// =================================================================================================================
+const fgKit = (kit: string): THREE.Group => {
+  const g = new THREE.Group(), b = new Batch();
+  switch (kit) {
+    case "letter_bundle": { // a tied bundle of envelopes on a little parcel stack; tall enough to enter the frame corner
+      const r = rng(5);
+      b.add(rbox(0.5, 0.3, 0.36, 0.03), col("#c8945a"), M4(0, 0.15, 0, 0.2));
+      for (let k = 0; k < 14; k++) {
+        const m = M4((r() - 0.5) * 0.05, 0.31 + k * 0.024, (r() - 0.5) * 0.05, (r() - 0.5) * 0.3);
+        b.add(rbox(0.4, 0.02, 0.2, 0.005), col(["#f4efe2", "#efe3c8", "#dfe8f2", "#f2e3b0"][k % 4]), m);
+        b.add(rbox(0.05, 0.022, 0.06, 0.003), col(k % 2 ? "#d8352f" : "#3a6ea8"), m.clone().multiply(M4(0.15, 0.002, -0.06)));
+      }
+      for (const dx of [-0.08, 0.08]) b.add(new THREE.TorusGeometry(0.19, 0.008, 4, 16).scale(0.2, 1, 0.6).rotateY(Math.PI / 2), ropeM(), M4(dx, 0.48, 0));
+      break;
+    }
+    case "mail_sack": sack(b, 0, 0, 0, 0.9, 0.3); sackLying(b, 0.55, 0, 0.25, 0.8, 1.2); sack(b, -0.5, 0, 0.3, 0.8, 2.0); break;
+    case "fence": {
+      for (let k = -2; k <= 2; k++) { b.add(rbox(0.1, 0.9, 0.05, 0.02), col("#fbf6ea"), M4(k * 0.26, 0.45, 0)); b.add(new THREE.ConeGeometry(0.07, 0.12, 4).rotateY(Math.PI / 4), col("#fbf6ea"), M4(k * 0.26, 0.96, 0)); }
+      for (const y of [0.3, 0.72]) b.add(rbox(1.4, 0.07, 0.05, 0.02), col("#fbf6ea"), M4(0, y, -0.05));
+      tufts(b, 0, 0.2, 0, 0.6, 8, 3);
+      break;
+    }
+    case "mailbox_post": { // rural mailbox on a post, door end facing the lens; pivot at the box so it frames the edge
+      b.add(rbox(0.12, 1.4, 0.12, 0.02), col("#7a5a3c"), M4(0, -0.85, 0));
+      b.add(rbox(0.36, 0.28, 0.62, 0.04), col("#24407a"), M4(0, 0, 0));
+      b.add(new THREE.CylinderGeometry(0.18, 0.18, 0.62, 18, 1, false, -Math.PI / 2, Math.PI).rotateX(Math.PI / 2), col("#24407a"), M4(0, 0.14, 0));
+      b.add(rbox(0.3, 0.3, 0.03, 0.01), col("#2e4c88"), M4(0, 0.05, 0.315));
+      b.add(decalGeo(V(0, 0.05, 0.335), V(0, 0, 1), 0.28, 0.08), decalMat("mbDoor", "U.S. MAIL", 0.28, 0.08, "#f2efe6", "stencil"));
+      b.add(rbox(0.04, 0.42, 0.06, 0.01), col("#d8352f"), M4(0.21, 0.24, -0.1));
+      b.add(rbox(0.04, 0.14, 0.2, 0.01), col("#d8352f"), M4(0.21, 0.4, -0.02));
+      break;
+    }
+    case "velvet_rope": {
+      b.add(lathe("stanchion", [[0.18, 0], [0.18, 0.04], [0.05, 0.08], [0.04, 0.92], [0.07, 0.95], [0.06, 1.02], [0, 1.03]], 12), col("#d9b45a"), new THREE.Matrix4());
+      b.add(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(V(0, 0.9, 0), V(-0.9, 0.5, -0.4), V(-1.8, 0.9, -0.8)), 12, 0.035, 6), col("#b8353a"));
+      b.add(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(V(0, 0.9, 0), V(0.4, 0.55, 0.6), V(0.8, 0.9, 1.2)), 8, 0.035, 6), col("#b8353a"));
+      break;
+    }
+    default: crate(b, 0, 0, 0, 0.6, 0, "U.S. MAIL");
+  }
+  b.build(g, false);
+  g.name = "fg_" + kit;
+  return g;
+};
+const _fv = new THREE.Vector3(), _fr = new THREE.Vector3(), _fu = new THREE.Vector3();
+/** pose the FOREGROUND prop(s) of frame f (shot id is informational: entries are matched by frame range) */
+export const fgUpdate = (group: THREE.Group, id: number, f: number, cam: THREE.PerspectiveCamera) => {
+  void id;
+  const live = new Set<string>();
+  for (const e of FOREGROUND) {
+    if (f < e.a || f >= e.b) continue;
+    const name = "fg_" + e.kit;
+    let o = group.getObjectByName(name) as THREE.Group | undefined;
+    if (!o) { o = fgKit(e.kit); group.add(o); }
+    live.add(name);
+    o.visible = true;
+    const s = e.s ?? 1;
+    o.scale.setScalar(s);
+    if (e.space === "cam") {
+      cam.updateMatrixWorld();
+      cam.getWorldDirection(_fv);
+      _fr.setFromMatrixColumn(cam.matrixWorld, 0); _fu.setFromMatrixColumn(cam.matrixWorld, 1);
+      o.position.copy(cam.position).addScaledVector(_fr, e.pos[0]).addScaledVector(_fu, e.pos[1]).addScaledVector(_fv, e.pos[2]);
+      o.rotation.set(e.tilt ?? 0, Math.atan2(-_fv.x, -_fv.z) + (e.yaw ?? 0), 0, "YXZ");
+    } else {
+      o.position.set(...e.pos);
+      o.rotation.set(e.tilt ?? 0, e.yaw ?? 0, 0, "YXZ");
+    }
+    o.updateMatrixWorld(true);
+  }
+  for (const c of group.children) if (c.name.startsWith("fg_") && !live.has(c.name)) c.visible = false;
 };

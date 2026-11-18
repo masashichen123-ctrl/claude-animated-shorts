@@ -13,7 +13,7 @@ import { LFB, CHAR } from "./shade";
 // falloff), so the shader ramp is OFF (no double gradient). The tint now comes from the scene ENVIRONMENT (fog + sky +
 // ground), 30 % of its chroma on a near-white head, plus a little of the preset tint for the light's character.
 export const GRAD_K = 0;
-export const GRAD_KB = 0;
+export const GRAD_KB = 1.6; // verify_r1 #7: cloth shade band ~.32 on the far side (preset bodyGrad .2 x 1.6); heads stay flat
 export const TINT_K = 0.25;
 /** share of the environment's chroma the white head picks up (measured k = 0.30) */
 export const ENV_K = 0.3;
@@ -29,7 +29,9 @@ vec3 outgoingLight = diffuseColor.rgb * tintK;
   vec3 sunV = directionalLights[ 0 ].direction;                                          // view space, towards the sun
   vec3 upV = normalize( ( viewMatrix * vec4( 0.0, 1.0, 0.0, 0.0 ) ).xyz );
   float side = sign( sunV.x ) * smoothstep( 0.0, 0.35, abs( sunV.x ) );                     // saturates: even a near-frontal sun shades one side                                          // + = sun on screen right
-  float head = smoothstep( 0.565, 0.6, vMapUv.y );                                        // head zone vs body
+  // head zone vs body: above the adult chin line, or any near-white paint (faces, also kids' low heads) stays unshaded
+  float wmin = min( diffuseColor.r, min( diffuseColor.g, diffuseColor.b ) ), wmax = max( diffuseColor.r, max( diffuseColor.g, diffuseColor.b ) );
+  float head = max( smoothstep( 0.565, 0.6, vMapUv.y ), step( 0.8, wmin ) * step( wmax - wmin, 0.12 ) );
   float hw = mix( 0.15, 0.2, head );
   float uu = clamp( ( vMapUv.x - 0.5 ) / hw, -1.0, 1.0 ) * sign( dFdx( vMapUv.x ) + 1e-7 ); // -1..1 screen left..right
   float t = uu * side;                                                                     // +1 = edge facing the sun
@@ -93,7 +95,7 @@ export function cardShade(m: THREE.MeshLambertMaterial) {
       .replace("#include <lights_fragment_begin>", "float sunVis = 1.0;\n" + LFB)
       .replace("vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + totalEmissiveRadiance;", CARD);
   };
-  m.customProgramCacheKey = () => "card10";
+  m.customProgramCacheKey = () => "card11";
   return m;
 }
 

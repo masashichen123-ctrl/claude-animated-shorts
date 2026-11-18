@@ -649,12 +649,16 @@ export const waterMarks = (key: string, nCrest: number, nGlint: number) => ctex(
         g.beginPath(); g.moveTo(-w / 2, dy); g.quadraticCurveTo(0, dy - sag * 2, w / 2, dy); g.stroke();
       };
       arc(0, "rgb(255,0,0)", 1);          // crest
-      arc(lw * 1.5, "rgb(0,255,0)", 0.9); // trough right under it
+      arc(lw * 2.0, "rgb(0,255,0)", 1.7); // trough right under it (round 2: wider, darker)
       g.restore();
     });
   }
+  for (let i = 0; i < nCrest / 6; i++) { // round 2: soft, wide trough bands (swell shadows) in G
+    const x = U(r, 0, S), y = U(r, 0, S), w = U(r, 120, 320);
+    wrap2(S, S, x, y, w, (xx, yy) => { const gr = g.createRadialGradient(0, 0, 0, 0, 0, 1); gr.addColorStop(0, "rgba(0,150,0,1)"); gr.addColorStop(1, "rgba(0,0,0,0)"); g.save(); g.translate(xx, yy); g.scale(w, w * 0.12); g.fillStyle = gr; g.fillRect(-1, -1, 2, 2); g.restore(); });
+  }
   for (let i = 0; i < nGlint; i++) { // glints: long thin straight lines
-    const x = U(r, 0, S), y = U(r, 0, S), len = U(r, 40, 140), lw = U(r, 1.2, 2.4), a = U(r, -0.05, 0.05);
+    const x = U(r, 0, S), y = U(r, 0, S), len = U(r, 80, 220), lw = U(r, 1.6, 3.0), a = U(r, -0.05, 0.05);
     wrap2(S, S, x, y, len, (xx, yy) => {
       g.save(); g.translate(xx, yy); g.rotate(a); g.strokeStyle = "rgb(0,0,255)"; g.lineWidth = lw;
       g.beginPath(); g.moveTo(-len / 2, 0); g.lineTo(len / 2, 0); g.stroke(); g.restore();
@@ -663,7 +667,7 @@ export const waterMarks = (key: string, nCrest: number, nGlint: number) => ctex(
   g.globalCompositeOperation = "source-over";
 });
 export const waterNear = () => waterMarks("near", 28, 5);  // ~0.3 % crest area
-export const waterFar = () => waterMarks("far", 220, 30);  // ~2.5 % crest + glints, at 40 m tiles
+export const waterFar = () => waterMarks("far", 170, 18);  // ~2.5 % crest + glints, at 40 m tiles
 
 /** Cloud sprite, 1024 x 512, three painted tones and a flat soft bottom, no outline.
  *  Ref cumulus: lit crown #f1f6fc-#fbfafd (L* 96-98, warm in haze #faedd7), mid #dadae9-#e5edf9, lavender-blue
@@ -1203,7 +1207,7 @@ export const asphaltHD = (key = "asphaltHD2", base = "#7b7770") => ctex(key, 102
  *  tint, hairline cracks, tyre-skid streaks along x (world.md 4.3) */
 export const runwayHD = () => ctex("runwayHD", 1024, 1024, (g, r) => {
   const S = 1024, P = 1024 / 3.8;
-  g.fillStyle = "#cfc8b8"; g.fillRect(0, 0, S, S);
+  g.fillStyle = "#a49a8a"; g.fillRect(0, 0, S, S);
   g.fillStyle = "rgba(170,160,140,0.12)"; g.fillRect(0, 0, S / 2, S / 2); g.fillStyle = "rgba(255,250,240,0.1)"; g.fillRect(S / 2, S / 2, S / 2, S / 2);
   octaves(g, r, S, S, P, "246,240,228", "120,110,95", 1);
   for (let i = 0; i < 9; i++) { // skid streaks
@@ -1212,15 +1216,15 @@ export const runwayHD = () => ctex("runwayHD", 1024, 1024, (g, r) => {
     g.fillStyle = lg; wrapX(S, x, len, (xx) => g.fillRect(xx, y, len, w));
   }
   for (const k of [0, S / 2]) {
-    detailLine(g, [[k + 2, 0], [k + 2, S]], "#a39c8c", 4, r, 0.85, 0.7); lip(g, k + 5, 0, k + 5, S, 2);
-    detailLine(g, [[0, k + 2], [S, k + 2]], "#a39c8c", 4, r, 0.85, 0.7); lip(g, 0, k + 5, S, k + 5, 2);
+    detailLine(g, [[k + 2, 0], [k + 2, S]], "#857a6a", 4, r, 0.9, 0.6); lip(g, k + 5, 0, k + 5, S, 2);
+    detailLine(g, [[0, k + 2], [S, k + 2]], "#857a6a", 4, r, 0.9, 0.6); lip(g, 0, k + 5, S, k + 5, 2);
   }
-  for (let i = 0; i < 6; i++) { let x = U(r, 0, S), y = U(r, 0, S); const pts: [number, number][] = [[x, y]]; for (let k = 0; k < 6; k++) { x += U(r, -40, 40); y += U(r, -40, 40); pts.push([x, y]); } detailLine(g, pts, "#cfc8b8", 1.4, r, 0.5, 0.55); }
+  for (let i = 0; i < 6; i++) { let x = U(r, 0, S), y = U(r, 0, S); const pts: [number, number][] = [[x, y]]; for (let k = 0; k < 6; k++) { x += U(r, -40, 40); y += U(r, -40, 40); pts.push([x, y]); } detailLine(g, pts, "#a49a8a", 1.4, r, 0.5, 0.55); }
   for (let i = 0; i < 4; i++) blotch(g, U(r, 0, S), U(r, 0, S), U(r, 30, 80), 1.3, "90,80,70", 0.18);
 });
 /** poured concrete (1024 px = one tile): warm pale grey, saw-cut joints at half tile with a lit lip, 3 octaves, rust /
  *  water stains, hairline cracks (textures.md 3.3) */
-export const concreteHD = (key = "concreteHD2", base = "#c9c2b4") => ctex(key, 1024, 1024, (g, r) => {
+export const concreteHD = (key = "concreteHD2", base = "#b8ad9c") => ctex(key, 1024, 1024, (g, r) => {
   const S = 1024;
   g.fillStyle = base; g.fillRect(0, 0, S, S);
   for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) { g.fillStyle = jit(r, base, 0.04, 3, 0.1) + "40"; g.fillRect(i * 512, j * 512, 512, 512); }
@@ -1383,4 +1387,13 @@ export const townHD = (k: number) => ctex("townHD" + k, 256, 256, (g, r) => {
   g.fillStyle = c; g.fillRect(0, 0, 256, 256);
   octaves(g, r, 256, 256, 30, "255,250,240", "100,90,80", 0.6);
   for (let j = 0; j < 4; j++) for (let i = 0; i < 5; i++) if (r() < 0.85) { g.fillStyle = r() < 0.3 ? "#f6e7a6" : "#6f8fb0"; g.fillRect(18 + i * 46, 30 + j * 58, 24, 30); detailLine(g, [[18 + i * 46, 62 + j * 58], [42 + i * 46, 62 + j * 58]], c, 3, r, 0.6, 0.7); }
+});
+
+/** museum runner carpet (512 px = 2 m along x across the 2.6 m width... tiles along z): deep red with a gold border + pile */
+export const carpetHD = () => ctex("carpetHD", 512, 512, (g, r) => {
+  const S = 512;
+  g.fillStyle = "#8c2b35"; g.fillRect(0, 0, S, S);
+  octaves(g, r, S, S, 256, "190,90,90", "60,15,20", 0.9);
+  for (const x of [0, S - 40]) { g.fillStyle = "#c9a24e"; g.fillRect(x + 8, 0, 24, S); g.fillStyle = "#24407a"; g.fillRect(x + 14, 0, 6, S); }
+  for (let y = 0; y < S; y += 64) detailLine(g, [[60, y + 32], [S / 2, y + 8], [S - 60, y + 32]], "#8c2b35", 2, r, 0.4, 0.6);
 });

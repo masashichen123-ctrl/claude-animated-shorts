@@ -6,6 +6,7 @@ import * as THREE from "three";
 import * as PAINT from "./paint";
 import { ctex, cloudHD } from "./paint";
 import { buildSets, buildMissile, poseMissile, SET_META, SetRig, MissileRig } from "./build";
+import * as B from "./build";
 import { LIGHTS, LOOK, LightPreset, LightName, lightOf, SHOT_SUN, CUR } from "./lights";
 import { TONE, CHAR, LFB, HAZE, hazeShader, untone } from "./shade";
 import { NOINK } from "./ink";
@@ -14,15 +15,18 @@ import { FPS, SHOTS, ShotDef, SetName, SPOT, BOOM_AT, camAt, missileAt, noseDir 
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 /** haze length multiplier per set (the open-sea sets look ~1 km to the horizon; the far sea must stay cyan, not white) */
-const HAZE_K: Partial<Record<SetName, number>> = { sea: 3.2, subdeck: 2.4, runway: 1.5 };
+const HAZE_K: Partial<Record<SetName, number>> = { sea: 2.2, subdeck: 1.6, runway: 1.5 };
+/** shots whose sky gets the 4 view-placed hero clouds, and their [azimuth offset, elevation (rad), width m, aspect] */
+const HERO_CLOUD_SHOTS = new Set([1, 3, 7]);
+const HERO_CLOUDS: [number, number, number, number][] = [[-0.14, 0.075, 220, 3.2], [0.13, 0.11, 250, 2.8], [0.0, 0.045, 320, 6], [-0.3, 0.05, 200, 5]];
 /** camera-relative sun azimuth actually used for a shot (sun disc only when it is roughly ahead of the lens) */
 const o2 = (id: number) => Math.abs(SHOT_SUN[id]?.az ?? SHOTS[id - 1].sunAz ?? 90);
 type Lamp = { p: [number, number, number]; I: number; halo: number; col?: string };
 /** practical lamps per set (bulb positions match build.ts pendant(): bulb at top - drop - 0.28) */
 const LAMPS: Partial<Record<SetName, Lamp[]>> = {
   postoffice: [{ p: [-2.5, 3.22, 0.5], I: 9, halo: 1.3 }, { p: [2.5, 3.22, 0.5], I: 9, halo: 1.3 }, { p: [0, 3.22, 4.5], I: 9, halo: 1.3 }],
-  museum: [{ p: [-6, 9.22, -2], I: 70, halo: 2.4 }, { p: [6, 9.22, -2], I: 70, halo: 2.4 }, { p: [-6, 9.22, 8], I: 70, halo: 2.4 },
-    { p: [6, 9.22, 8], I: 70, halo: 2.4 }, { p: [0, 9.22, 14], I: 70, halo: 2.4 }],
+  museum: [{ p: [-6, 9.22, -2], I: 25, halo: 1.2 }, { p: [6, 9.22, -2], I: 25, halo: 1.2 }, { p: [-6, 9.22, 8], I: 25, halo: 1.2 },
+    { p: [6, 9.22, 8], I: 25, halo: 1.2 }, { p: [0, 9.22, 14], I: 25, halo: 1.2 }],
 };
 /** sun disc (solid, soft rim) and the flat golden halo (lighting.md 6 / depth.md 6.4: r50 13-26 % of the frame width) */
 const discTex = () => ctex("sunDisc", 128, 128, (g) => {
@@ -58,6 +62,7 @@ export class World {
   private points: THREE.PointLight[] = []; private halos: THREE.Sprite[] = []; private spots: THREE.SpotLight[] = [];
   private shadowSize = 4096;
   private clouds: THREE.Mesh[] = [];
+  private fg = new THREE.Group();
   private sets: Record<SetName, SetRig>;
   private missile: MissileRig;
   private frustum = new THREE.Frustum();
@@ -131,6 +136,19 @@ export class World {
       m.layers.set(NOINK); m.renderOrder = -0.8 + ci * 0.001;
       this.clouds.push(m); R.add(m);
     }
+    // 4 "hero" clouds placed per shot in the camera's view (sea / deck wides, verify_r1 #5: the hook sky was one smear)
+    for (let k = 0; k < 4; k++, ci++) {
+      const mat = new THREE.ShaderMaterial({
+        uniforms: { map: { value: this.cloudMaps.day[k] }, mixCol: { value: new THREE.Color() }, mixK: { value: 0.12 }, op: { value: 0.95 }, gain: { value: 1.1 } },
+        vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+        fragmentShader: `uniform sampler2D map; uniform vec3 mixCol; uniform float mixK, op, gain; varying vec2 vUv;
+          void main(){ vec4 t = texture2D(map, vUv); gl_FragColor = vec4(mix(t.rgb * gain, mixCol, mixK), t.a * op); }`,
+        transparent: true, depthWrite: false, fog: false,
+      });
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
+      m.userData.hero = k; m.userData.el = 0.2; m.layers.set(NOINK); m.renderOrder = -0.7 + k * 0.001;
+      this.clouds.push(m); R.add(m);
+    }
     // ---- practicals (lighting.md 3.3): lamps per set, the flame light; additive halos so lamps glow ----
     for (let i = 0; i < 6; i++) {
       const p = new THREE.PointLight("#ffd9a0", 0, 0, 2); p.castShadow = false; p.visible = false; this.points.push(p); R.add(p);
@@ -154,6 +172,7 @@ export class World {
     for (const k of Object.keys(this.sets) as SetName[]) { this.sets[k].group.visible = false; R.add(this.sets[k].group); }
     this.missile = buildMissile();
     R.add(this.missile.root);
+    this.fg.name = "foreground"; R.add(this.fg);
   }
 
   private makeWater() {
@@ -206,7 +225,7 @@ export class World {
   private practicals(set: SetName, ln: LightName, L: LightPreset, flame: number, tail: THREE.Vector3, boom: number, cam: THREE.PerspectiveCamera) {
     const lamps: Lamp[] = (LAMPS[set] ?? []).slice();
     const hot: { p: THREE.Vector3; I: number; col: string; halo: number; hk: number }[] = lamps.map((l) => ({ p: V(...l.p), I: l.I, col: l.col ?? L.pracCol, halo: l.halo, hk: 1 }));
-    if (flame > 0) hot.push({ p: tail.clone(), I: 60 * flame, col: "#ff9a4a", halo: 7 * flame, hk: 1.6 });
+    if (flame > 0) hot.push({ p: tail.clone(), I: 60 * flame, col: "#ff9a4a", halo: (set === "road" ? 1.6 : 4) * flame, hk: set === "road" ? 0.7 : 1.2 });
     if (boom >= 0 && boom < 1.2) { const k = Math.max(0, 1 - boom / 1.2); hot.push({ p: V(...BOOM_AT), I: 900 * k, col: "#ffb060", halo: 0, hk: 0 }); }
     for (let i = 0; i < this.points.length; i++) {
       const pl = this.points[i], h = this.halos[i], q = hot[i];
@@ -219,7 +238,7 @@ export class World {
       }
     }
     // museum: two spots from above-front, a warm pool on the exhibit and one on the plaque
-    const sp = set === "museum" ? [{ p: V(2, 11.5, 10), t: V(...SPOT.EXHIBIT), I: 2200 }, { p: V(6, 9, 9), t: V(SPOT.PLAQUE[0], 0.6, SPOT.PLAQUE[2]), I: 600 }] : [];
+    const sp = set === "museum" ? [{ p: V(2, 11.5, 10), t: V(...SPOT.EXHIBIT), I: 900 }, { p: V(6, 9, 9), t: V(SPOT.PLAQUE[0], 0.6, SPOT.PLAQUE[2]), I: 250 }] : [];
     for (let i = 0; i < this.spots.length; i++) {
       const s2 = this.spots[i], q = sp[i];
       s2.visible = !!q;
@@ -293,9 +312,19 @@ export class World {
       const u = k + 1 < st.length ? THREE.MathUtils.smoothstep(elR, st[k], st[k + 1]) : 0;
       return untone(new THREE.Color(K.sky.c[k]).lerp(new THREE.Color(K.sky.c[Math.min(k + 1, 4)]), u), out);
     };
+    const heroSky = HERO_CLOUD_SHOTS.has(id);
+    cam.getWorldDirection(this.v); const hx = this.v.x, hz = this.v.z, hn = Math.hypot(hx, hz) || 1;
     for (let i = 0; i < this.clouds.length; i++) {
       const m = this.clouds[i], mat = m.material as THREE.ShaderMaterial;
       m.visible = outdoors;
+      const hk2 = m.userData.hero as number | undefined;
+      if (hk2 !== undefined) {
+        m.visible = outdoors && heroSky;
+        const [da, de, w, asp] = HERO_CLOUDS[hk2], c2 = Math.cos(da), s2 = Math.sin(da), d = 700;
+        const fx2 = (hx * c2 - hz * s2) / hn, fz2 = (hz * c2 + hx * s2) / hn;
+        m.position.set(cam.position.x + fx2 * d, d * Math.tan(de), cam.position.z + fz2 * d); m.scale.set(w, w / asp, 1);
+        m.userData.el = de;
+      }
       m.lookAt(cam.position.x, m.position.y, cam.position.z);
       mat.uniforms.map.value = this.cloudMaps[ln][i % 4];
       skyAt(m.userData.el as number, mat.uniforms.mixCol.value);
@@ -318,7 +347,8 @@ export class World {
     const tail = this.missile.tail.clone().applyMatrix4(this.missile.root.matrixWorld);
     const boosterTails = this.missile.boosterTails.map((b) => b.clone().applyMatrix4(this.missile.root.matrixWorld));
     // ---- practical lights: set lamps, the booster / sustainer flame ----
-    this.practicals(s.set, ln, L, mp.flame > 0 && mp.visible ? mp.flame : 0, tail, mp.boom, cam);
+    // the flame light sits 2.5 m behind the nozzle so it lights the deck / smoke, not the airframe itself (verify_r1 #4)
+    this.practicals(s.set, ln, L, mp.flame > 0 && mp.visible ? mp.flame : 0, tail.clone().addScaledVector(dir, -2.5), mp.boom, cam);
     // ---- cast + effects ----
     const right = V(0, 0, 0).setFromMatrixColumn(cam.matrixWorld, 0), up = V(0, 0, 0).setFromMatrixColumn(cam.matrixWorld, 1);
     const st = stage(id, t, { pos: cam.position, right, up }, { pose: mp, dir, tail, boosterTails });
@@ -355,6 +385,11 @@ export class World {
       fused.push(e2);
     }
     for (let i = fi; i < this.fxs.length; i++) this.fxs[i].mesh.visible = false;
+    // foreground props (story.ts FOREGROUND, camera-space or world): built and posed by the sets owner's helper
+    // build.ts fgUpdate(group: THREE.Group, id: number, f: number, cam: THREE.PerspectiveCamera): void — called every
+    // frame with this.fg (a group under root, NOINK not set so props get inked); it reads FOREGROUND for frame f itself
+    // and hides everything when no entry is active. Optional until build.ts provides it.
+    (B as unknown as { fgUpdate?: (g: THREE.Group, id: number, f: number, cam: THREE.PerspectiveCamera) => void }).fgUpdate?.(this.fg, id, f, cam);
     this.pool.flush();
     for (const a of used) a.bind();
     for (const e3 of fused) e3.bind();

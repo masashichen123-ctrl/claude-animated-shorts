@@ -275,13 +275,17 @@ const follow = (fn: (f: number) => V3, f: number, lag: number, lead: number): V3
 // shot 1 (hook, 0-120): high chase from behind-right: the missile runs lower-left -> upper-right through the frame, its
 // letter stream blowing at the lens, the sunrise coast + lighthouse on the top edge; the camera arcs 14 deg round it.
 // Cut on "delivered" to a side truck along the letter stream, cut on "cruise missile" to a 3/4-front punch.
+/** hook character (cast.ts stages it): a mail carrier riding astride the missile's back, behind the wing, letters
+ *  streaming past. HOOK_RIDER is the card's feet in the missile's local frame (x nose, y up); hookCharAt(f) = world. */
+export const HOOK_RIDER: V3 = [-1.6, 0.55, 0];
+export const hookCharAt = (f: number): V3 => add(SEA1(f), HOOK_RIDER);
 const S1a = (f: number): Shot => {
-  const m = SEA1(f), a = lerp(38, 24, gl(f, 4, 44)), d = 17.5, p = 23;
-  return P(orbit(add(m, [0.2, 2.2, -1.0]), d, 90 + a, p, { fov: 54, roll: 0.03 }), f, 0, 0.003);
+  const r = hookCharAt(f), a = lerp(262, 252, gl(f, 4, 44)); // near head-on: the nose comes at the lens, the rider waves the mail
+  return P(orbit(add(r, [0.9, 0.2, 0]), 14, a, 10, { fov: 38, roll: 0.03 }), f, 0, 0.003);
 };
 const S1b = (f: number): Shot => {
   const m = SEA1(f), u = gl(f, 58, 26);
-  return P(rel(m, [lerp(-5.5, -1.5, u), 3.6, 11.5], [lerp(-3.6, -0.6, u), -0.7, 0], 1, { fov: 44, roll: -0.035 }), f, 56, 0.0025);
+  return P(rel(m, [lerp(-5.5, -1.5, u), 1.9, 11.5], [lerp(-3.6, -0.6, u), -0.6, 0], 1, { fov: 44, roll: -0.035 }), f, 56, 0.0025);
 };
 const S1c = (f: number): Shot => P(rel(SEA1(f), [11, 3.2, 8.5], [2.0, -0.3, 0], 1, { fov: 44, roll: 0.045 }), f, 84, 0.0025, 0.006, 30);
 
@@ -315,7 +319,7 @@ const S5a = (f: number) => {
   const u = gl(f, 378, 30);
   return P(orbit([-15.9, 3.85, 0.6], 3.4, lerp(32, 20, u), 28, { fov: 44, roll: 0.03 }), f, 371, 0.0028);
 };
-const F5b: Framing = { q: 0.17, top: 0.28, xs: 0.30, az: 100, pitch: -12, fov: 44, roll: -0.035 };
+const F5b: Framing = { q: 0.17, top: 0.31, xs: 0.30, az: 76, pitch: -12, fov: 44, roll: -0.035 };
 const S5b = (f: number) => P(onHead(SPOT.SAILOR5, F5b), f, 406, 0.0022, 0.006, 32, 414);
 
 // shot 6 (463-496): launch, low from the water off the port side; the lens follows the missile up and out at the right
@@ -350,7 +354,7 @@ const S8a = (f: number): Shot => {
 const PS9: V3 = [(SPOT.PMG9[0] + SPOT.SAILOR9[0]) / 2, 0, (SPOT.PMG9[2] + SPOT.SAILOR9[2]) / 2];
 const F9a: Framing = { q: 0.42, top: 0.36, xs: 0.02, az: 218, pitch: 11, fov: 46, roll: 0.025 };
 const S9a = (f: number) => P(onBody(PS9, lerpF(F9a, { ...F9a, az: 206 }, gl(f, 664, 40))), f, 656, 0.0025);
-const F9b: Framing = { q: 0.22, top: 0.30, xs: 0.0, az: 200, pitch: 6, fov: 30, roll: -0.03 };
+const F9b: Framing = { q: 0.18, top: 0.24, xs: 0.0, az: 206, pitch: 11, fov: 34, roll: -0.03 };
 const S9b = (f: number) => P(onHead(SPOT.PMG9, F9b), f, 703, 0.0018, 0.006, 32, 705);
 const F9c: Framing = { q: 0.42, top: 0.36, xs: 0.0, az: 200, pitch: 11, fov: 46, roll: 0.03 };
 const S9c = (f: number) => P(onBody(PS9, F9c), f, 738, 0.0022);
@@ -395,14 +399,17 @@ const S13c = (f: number): Shot => {
 
 // shot 14 (1189-1266): the museum hall from 4.5 m up (pitch 18 deg, fov 58): the missile on its pedestal in the centre
 // third, ropes, the plaque and three visitors in front; arcs 12 deg, punch on "exactly one flight"
-const L14: V3 = [1.2, 1.5, 5.0];
-const S14a = (f: number) => P(orbit(L14, 9.5, lerp(178, 166, gl(f, 1192, 45)), 17, { fov: 56, roll: lerp(0.025, -0.02, gl(f, 1192, 45)) }), f, 1186, 0.0022, 0.005, 30, 1221);
+/** museum FG visitor (cast.ts: move vis1 here for shot 14): big on the left third, the hall + missile behind */
+export const VIS14_FG: V3 = [-0.55, 0, 10.4];
+const VIS14 = VIS14_FG;
+const L14: V3 = [1.2, 1.4, 4.0];
+const S14a = (f: number) => P(orbit(L14, 10.5, lerp(170, 166.5, gl(f, 1192, 45)), 4, { fov: 56, roll: lerp(0.025, -0.02, gl(f, 1192, 45)) }), f, 1186, 0.0022, 0.005, 30, 1221);
 
 // shot 15 (1267-1352, ending): low MCU of the visitor looking up, the museum missile's nose overhead at the top right;
 // on "America's" crane out on a curve to a high wide of the whole hall, push still running
 const F15: Framing = { q: 0.17, top: 0.40, xs: -0.30, az: 172, pitch: -6, fov: 44, roll: -0.03 };
 const S15a = (f: number): Shot => {
-  const u = gl(f, 1284, 64), a = onHead(SPOT.VISITOR15, F15), b = orbit([0.6, 2.2, 2.0], 13.5, 194, 25, { fov: 58 });
+  const u = gl(f, 1284, 64), a = onHead(SPOT.VISITOR15, F15), b = orbit([0.6, 2.6, 1.0], 10, 194, 22, { fov: 58 });
   const k = u * u * (1.6 - 0.6 * u); // the pull-back leads, the crane catches up (curved path)
   const pos: V3 = [lerp(a.pos[0], b.pos[0], u), lerp(a.pos[1], b.pos[1], k), lerp(a.pos[2], b.pos[2], u)];
   return P({ pos, look: lerp3(a.look, b.look, u), fov: lerp(44, 58, u), roll: lerp(-0.03, 0.02, u) }, f, 1264, 0.0025);
@@ -459,12 +466,17 @@ export const keyEnd = (id: number, f: number) => {
 // ---------------- foreground layer (composition.md 3.3, depth.md 3.5.4) ----------------
 /** Near framing props, cut by a frame edge and blurred by the shot's DOF (cInf >= 8). space "cam": pos is in camera space
  *  (x right, y up, z forward, metres) so the prop stays framed through the push-ins; "world": a world position.
- *  NOT YET DRAWN: world.ts needs a FOREGROUND loop (bridge template world.ts ~l.320) and build.ts a fgProp(kit) builder
+ *  Drawn by the sets owner (build.ts fgUpdate) from these kit names; unknown kits are skipped. Kits used: letter_bundle,
  *  for these kit names (simple shapes: burlap sack pile from sack(), a letter bundle box, a mailbox on a post, a brass
  *  stanchion + red rope, three white pickets). Shots that frame through real set pieces instead (lectern in 9b, the
  *  launch cart + missile in 13b, deck stanchions in 4b) need no entry. */
 export type Fg = { a: number; b: number; kit: string; pos: V3; s?: number; yaw?: number; space?: "world" | "cam"; tilt?: number };
+/** shot 8 ground crewman with bats (cast.ts stages him): left third of the landing wide from ~f625 on */
+export const CREW8: V3 = [-1.6, 0, 11];
 export const FOREGROUND: Fg[] = [
+  { a: 177, b: 249, kit: "buoy", pos: [-1.3, -2.6, 6.0], yaw: 0.3, space: "cam" },             // sub establishing: red buoy bottom-left
+  { a: 498, b: 574, kit: "gull", pos: [1.1, 1.6, 5.0], yaw: -0.5, space: "cam" },              // chase over the sea: gull top-right
+  { a: 575, b: 659, kit: "palm_fronds", pos: [1.6, 2.4, 5.5], yaw: 0.6, space: "cam" },        // landing wide: fronds over the top-right corner
   { a: 122, b: 176, kit: "letter_bundle", pos: [-0.62, -0.78, 1.5], yaw: 0.5, space: "cam" },   // post office MCU: bottom-left corner
   { a: 786, b: 848, kit: "mail_sack", pos: [-0.75, -0.95, 2.0], yaw: 0.8, space: "cam" },      // shot 10 MS: sack pile bottom-left, ~22 % of frame
   { a: 849, b: 931, kit: "fence", pos: [0.62, -0.62, 1.6], yaw: 0.2, space: "cam" },           // shot 11 low MS: pickets bottom-right
@@ -484,14 +496,14 @@ export const DOF: Dof[] = [
   { f: 56, cInf: 8, focus: (f) => add(SEA1(f), [-2.0, 0.1, 0]) }, // side MS of the letter stream (sea behind)
   { f: 84, cInf: 8, focus: onMissile(1) },           // 3/4 front punch, sea behind
   { f: 121, cInf: 11, focus: () => eyes(SPOT.PMG2) }, // post office MCU: postmaster's eyes, clerk + slots soft
-  { f: 176, cInf: 0 },                               // sub establishing
+  { f: 176, cInf: 5, focus: () => [-4, 2.5, 0] },  // sub establishing: the FG buoy goes soft, the sub stays sharp
   { f: 249, cInf: 0 },                               // sailor full shot from over the water
   { f: 316, cInf: 9, focus: () => eyes(SPOT.SAILOR4) }, // MS on the deck line, sail + hangar behind
   { f: 374, cInf: 11, focus: () => NOSE5 },          // insert: the nose intake, the sailor soft
   { f: 406, cInf: 11, focus: () => eyes(SPOT.SAILOR5) }, // MCU, missile + sail behind
   { f: 463, cInf: 0 },                               // launch
-  { f: 497, cInf: 0 },                               // chase over the sea (wide)
-  { f: 574, cInf: 0 },                               // landing wide
+  { f: 497, cInf: 5, focus: onMissile(7) },         // chase over the sea: FG gull soft
+  { f: 574, cInf: 4, focus: onMissile(8) },         // landing wide: FG fronds soft
   { f: 659, cInf: 8, focus: () => eyes(SPOT.PMG9) }, // two-shot MS, missile + hangars behind
   { f: 703, cInf: 11, focus: () => eyes(SPOT.PMG9) }, // CU on a long lens, hangars + missile behind
   { f: 738, dur: 40, cInf: 8, focus: () => eyes(SPOT.PMG9) },

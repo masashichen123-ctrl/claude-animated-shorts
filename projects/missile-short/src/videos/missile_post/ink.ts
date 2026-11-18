@@ -49,6 +49,7 @@ export type InkOptions = {
   minWidth?: number; // floor of the silhouette width (px at 1080x1920) so far edges never break into dashes
   fogInk?: number; // how far fully fogged ink moves toward the fog colour
   fogStart?: number; // m: ink is untinted up to here
+  farMin?: number; // opacity the far fade (fadeNear -> fadeFar) settles at, instead of 0
 };
 
 // ---------------- material ids (material-boundary lines, look_reports/ink.md 3.1 B) ----------------
@@ -65,6 +66,14 @@ export type InkOptions = {
 // because the reference never inks ground/runway joins (ink.md 3.4). Explicit ids skip that rule (opt in).
 const fnv = (s: string) => { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; };
 const idCache = new WeakMap<THREE.Material, { key: unknown; id: number }>();
+/** bloom-mask rule for world materials: unlit (MeshBasicMaterial) = a glow (windows, bulbs, beacons, lamps);
+ *  `userData.bloom = true / false` overrides it. Exported for tests. */
+export function isGlow(m: THREE.Material | null | undefined): boolean {
+  if (!m) return false;
+  const b = (m.userData as { bloom?: unknown } | undefined)?.bloom;
+  if (typeof b === "boolean") return b;
+  return !!(m as THREE.MeshBasicMaterial).isMeshBasicMaterial;
+}
 /** ink id of a material (see the convention above); exported for tests and debugging */
 export function inkIdOf(m: THREE.Material | null | undefined): number {
   if (!m) return 0;
@@ -87,9 +96,9 @@ const DEF: Required<InkOptions> = {
   // (bevels, trims), 1.6 px width floor (no dashed far silhouettes), far ink lifted toward the fog (0.45 from 40 m).
   color: "#05080f", strength: 1.0,
   widthNear: 4.6, widthFar: 2.8, distNear: 6, distFar: 90, creaseScale: 0.5,
-  depthLo: 0.01, depthHi: 0.03, angleLo: 30, angleHi: 45, concaveGain: 0.7,
+  depthLo: 0.01, depthHi: 0.03, angleLo: 26, angleHi: 40, concaveGain: 0.7, // r2: creases from 26-40 deg (more seams)
   farOpacity: 0.95, fadeNear: 150, fadeFar: 450,
-  matScale: 0.35, matGain: 0.85, minWidth: 1.6, fogInk: 0.45, fogStart: 40,
+  matScale: 0.45, matGain: 0.95, minWidth: 1.6, fogInk: 0.45, fogStart: 40, farMin: 0.45,
 };
 
 const FS_VERT = /* glsl */ `
@@ -117,6 +126,7 @@ const NORMAL_FRAG = /* glsl */ `
 uniform sampler2D tCut;
 uniform float cut;
 uniform float inkId;     // material id (0 = no material lines), see inkIdOf()
+uniform float emissive;  // 1 = unlit glow material: the alpha is stored NEGATIVE (bloom mask, see COMP_FRAG)
 varying vec3 vN;
 varying vec3 vV;
 varying vec2 vCut;
@@ -125,7 +135,7 @@ void main() {
   vec3 n;
   if (dot(vN, vN) < 1e-8) n = normalize(cross(dFdx(vV), dFdy(vV)));   // geometry without normals
   else n = normalize(vN) * (gl_FrontFacing ? 1.0 : -1.0);            // back faces of double-sided planes
-  gl_FragColor = vec4(n, 1.0 + inkId);
+  gl_FragColor = vec4(n, (1.0 + inkId) * (emissive > 0.5 ? -1.0 : 1.0));
 }`;
 
 const MASK_FRAG = /* glsl */ `
@@ -159,6 +169,7 @@ uniform float fogStart;  // ink stays pure black up to here (m), then tints towa
 uniform float fogDensity; // > 0: FogExp2 scene fog
 uniform float matScale;  // material-boundary half width = 0.5 * w * matScale on each side
 uniform float matGain;
+uniform float farMin;    // opacity floor of the far fade
 uniform float minWidth;  // px at 1080x1920
 uniform vec3 upV;        // world up in view space
 varying vec2 vUv;
@@ -174,7 +185,7 @@ vec3 viewPos(vec2 uv, float d) { vec2 n = uv * 2.0 - 1.0; return vec3(n.x * d / 
 
 // crease strength between this pixel (n0, P0) and a neighbour
 float crease(vec3 n0, vec3 P0, float zc, vec2 uq, float zq) {
-  vec4 nq = textureLod(tNormal, uq, 0.0);
+  vec4 nq = textureLod(tNormal, uq, 0.0); nq.a = abs(nq.a);
   if (nq.a < 0.5 || abs(zq - zc) > zc * depthLo) return 0.0;       // sky / depth jump: not a crease
   float k = 1.0 - smoothstep(cosHi, cosLo, dot(n0, nq.xyz));
   if (dot(viewPos(uq, zq) - P0, n0) > 0.0) k *= concaveGain;        // neighbour in front of our tangent plane: concave
@@ -183,6 +194,7 @@ float crease(vec3 n0, vec3 P0, float zc, vec2 uq, float zq) {
 
 // 1 if the neighbour (nq, zq) is another material on the same surface, else 0
 float matEdge(float id0, bool up0, float zc, vec4 nq, float zq) {
+  nq.a = abs(nq.a);
   float idq = floor(nq.a + 0.25) - 1.0;
   if (nq.a < 0.5 || idq < 0.5 || abs(idq - id0) < 0.5 || abs(zq - zc) > zc * depthLo) return 0.0;
   if (id0 < 1023.5 && idq < 1023.5 && up0 && abs(dot(nq.xyz, upV)) > 0.9) return 0.0; // derived ids: no ground joins
@@ -191,7 +203,10 @@ float matEdge(float id0, bool up0, float zc, vec4 nq, float zq) {
 
 void main() {
   vec4 nc = textureLod(tNormal, vUv, 0.0);
-  if (nc.a < 0.5) { gl_FragColor = vec4(0.0); return; }          // sky / empty: ink lives on the near object only
+  float em = nc.a < -0.5 ? 1.0 : 0.0;                          // unlit glow material
+  nc.a = abs(nc.a);
+  // b = bloom mask: glow materials, and everything the world pass does not cover (sky, sun, flame / fx cards)
+  if (nc.a < 0.5) { gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0); return; }          // sky / empty: ink lives on the near object only
   float zc = dist(tDepth, vUv);
 
   // characters, cards etc. (not in the world buffer) in front of this pixel: no world ink over them
@@ -201,7 +216,7 @@ void main() {
     zm = min(zm, dist(tMainDepth, vUv - vec2(texel.x, 0.0)));
     zm = min(zm, dist(tMainDepth, vUv + vec2(0.0, texel.y)));
     zm = min(zm, dist(tMainDepth, vUv - vec2(0.0, texel.y)));
-    if (zm < zc * 0.985 - 0.03) { gl_FragColor = vec4(0.0); return; }
+    if (zm < zc * 0.985 - 0.03) { gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0); return; } // a NOINK card in front
   }
 
   float t = clamp(log(zc / dNear) / log(dFar / dNear), 0.0, 1.0);
@@ -236,11 +251,12 @@ void main() {
     }
   }
 
-  float ink = max(max(eD, eN), eM * matGain) * strength * mix(1.0, farOpacity, t) * (1.0 - smoothstep(fadeNear, fadeFar, zc));
+  // far fade floors at farMin (verify_r1 #8: far hangars / the museum gallery keep their drawing)
+  float ink = max(max(eD, eN), eM * matGain) * strength * mix(1.0, farOpacity, t) * mix(1.0, farMin, smoothstep(fadeNear, fadeFar, zc));
   float f0 = max(fogRange.x, fogStart);
   float fogK = fogRange.y > f0 ? clamp((zc - f0) / (fogRange.y - f0), 0.0, 1.0) : 0.0;
   if (fogDensity > 0.0) { float q = fogDensity * max(zc - fogStart, 0.0); fogK = 1.0 - exp(-q * q); }
-  gl_FragColor = vec4(ink, fogK, 0.0, 1.0);
+  gl_FragColor = vec4(ink, fogK, em, 1.0);
 }`;
 
 const COMP_FRAG = /* glsl */ `
@@ -262,7 +278,7 @@ void main() {
   if (debug == 1) { gl_FragColor = vec4(vec3(1.0 - a), 1.0); return; }               // mask only
   if (debug == 2) { gl_FragColor = vec4(texture2D(tNormal, vUv).xyz * 0.5 + 0.5, 1.0); return; } // world normals
   if (debug == 3) {                                                                                   // material ids
-    float id = floor(texture2D(tNormal, vUv).a + 0.25) - 1.0;
+    float id = floor(abs(texture2D(tNormal, vUv).a) + 0.25) - 1.0;
     vec3 h = fract(sin(vec3(id * 12.9898, id * 78.233, id * 37.719)) * 43758.5453);
     gl_FragColor = vec4(id < 0.0 ? vec3(0.0) : id < 0.5 ? vec3(0.25) : mix(vec3(0.15), h, 0.9) * (1.0 - a), 1.0); return;
   }
@@ -273,7 +289,9 @@ void main() {
   fk = max(fk, max(texture2D(tMask, vUv + vec2(0.0, texel.y)).g, texture2D(tMask, vUv - vec2(0.0, texel.y)).g));
   vec3 inkC = mix(inkColor, fogColor, fk * fogInk);
   vec3 g = pow(max(c.rgb, 0.0), vec3(1.0 / 2.2));
-  gl_FragColor = vec4(pow(mix(g, pow(inkC, vec3(1.0 / 2.2)), a), vec3(2.2)), c.a);
+  // alpha = 1 + bloom mask (the composer's HalfFloat buffers keep it; the bloom bright pass in Missile.tsx reads
+  // a - 1, the screen clamps alpha to 1). Lit surfaces never bloom however hot they are lit.
+  gl_FragColor = vec4(pow(mix(g, pow(inkC, vec3(1.0 / 2.2)), a), vec3(2.2)), 1.0 + texture2D(tMask, vUv).b * (1.0 - a));
 }`;
 
 const COPY_FRAG = /* glsl */ `
@@ -326,7 +344,7 @@ export class InkPass extends Pass {
 
     this.normalMat = new THREE.ShaderMaterial({
       vertexShader: NORMAL_VERT, fragmentShader: NORMAL_FRAG, side: THREE.DoubleSide,
-      uniforms: { tCut: { value: null }, cut: { value: 0 }, cutUv: { value: new THREE.Matrix3() }, inkId: { value: 0 } },
+      uniforms: { tCut: { value: null }, cut: { value: 0 }, cutUv: { value: new THREE.Matrix3() }, inkId: { value: 0 }, emissive: { value: 0 } },
     });
     // per object: copy the original material's cut-out (map + alphaTest) so alpha-tested world planes keep their shape
     this.normalMat.onBeforeRender = (_r, _s, _c, _g, object, group) => {
@@ -337,6 +355,7 @@ export class InkPass extends Pass {
       const map = src && src.alphaTest > 0 ? src.map : null;
       u.tCut.value = map; u.cut.value = map ? src.alphaTest : 0;
       u.inkId.value = inkIdOf(src);
+      u.emissive.value = isGlow(src) ? 1 : 0;
       if (map) { map.updateMatrix(); (u.cutUv.value as THREE.Matrix3).copy(map.matrix); }
       this.normalMat.uniformsNeedUpdate = true;
     };
@@ -351,7 +370,7 @@ export class InkPass extends Pass {
       cosLo: { value: Math.cos((o.angleLo * Math.PI) / 180) }, cosHi: { value: Math.cos((o.angleHi * Math.PI) / 180) },
       concaveGain: { value: o.concaveGain }, farOpacity: { value: o.farOpacity },
       fadeNear: { value: o.fadeNear }, fadeFar: { value: o.fadeFar }, strength: { value: o.strength }, useMain: { value: 0 }, pxScale: { value: 1 }, fogRange: { value: new THREE.Vector2(0, 0) }, fogStart: { value: o.fogStart }, fogDensity: { value: 0 },
-      matScale: { value: o.matScale }, matGain: { value: o.matGain }, minWidth: { value: o.minWidth }, upV: { value: new THREE.Vector3(0, 1, 0) },
+      matScale: { value: o.matScale }, farMin: { value: o.farMin }, matGain: { value: o.matGain }, minWidth: { value: o.minWidth }, upV: { value: new THREE.Vector3(0, 1, 0) },
     });
     this.compMat = fs(COMP_FRAG, {
       inputBuffer: { value: null }, tMask: { value: this.maskRT.texture }, tNormal: { value: this.rt.texture },
@@ -370,7 +389,7 @@ export class InkPass extends Pass {
     const map: [keyof InkOptions, string][] = [["widthNear", "wNear"], ["widthFar", "wFar"], ["distNear", "dNear"], ["distFar", "dFar"],
       ["creaseScale", "creaseScale"], ["depthLo", "depthLo"], ["depthHi", "depthHi"], ["concaveGain", "concaveGain"],
       ["farOpacity", "farOpacity"], ["fadeNear", "fadeNear"], ["fadeFar", "fadeFar"], ["strength", "strength"],
-      ["matScale", "matScale"], ["matGain", "matGain"], ["minWidth", "minWidth"], ["fogStart", "fogStart"]];
+      ["matScale", "matScale"], ["matGain", "matGain"], ["minWidth", "minWidth"], ["farMin", "farMin"], ["fogStart", "fogStart"]];
     for (const [k, n] of map) if (options[k] !== undefined) u[n].value = options[k];
     if (options.angleLo !== undefined) u.cosLo.value = Math.cos((options.angleLo * Math.PI) / 180);
     if (options.angleHi !== undefined) u.cosHi.value = Math.cos((options.angleHi * Math.PI) / 180);
