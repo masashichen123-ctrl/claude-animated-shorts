@@ -14,6 +14,7 @@
 // `amount` blends the whole grade (0 = bypass) so it can be dialled back once lighting/albedo work brightens the render.
 import { Effect, BlendFunction } from "postprocessing";
 import { Uniform, Vector3, Vector2 } from "three";
+import { CUR, lightOf, LightName } from "./lights";
 
 const frag = /* glsl */ `
 uniform float gradeKy[7];
@@ -24,6 +25,20 @@ uniform vec3 gradeTintM;
 uniform vec3 gradeTintH;
 uniform vec2 gradeVig;      // x = strength k, y = start radius r0
 uniform float gradeAmount;
+uniform float gradeHueSat[12]; // hue-selective saturation (grade.md A2): multiplier at HSV hue 0, 30, ..., 330 deg
+
+vec3 rgb2hsvG(vec3 c) {
+  vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+  vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+  vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+  float d = q.x - min(q.w, q.y);
+  return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + 1e-10)), d / (q.x + 1e-10), q.x);
+}
+float hueSatAt(int i) {   // constant-index lookup (WebGL1-safe)
+  float r = 1.0;
+  for (int k = 0; k < 12; k++) if (k == i) r = gradeHueSat[k];
+  return r;
+}
 
 vec3 gradeEncode(vec3 c) {   // linear -> sRGB
   c = clamp(c, 0.0, 1.0);
@@ -56,6 +71,12 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   float wM = 1.0 - wS - wH;
   float s = gradeSat.y + (gradeSat.x - gradeSat.y) * wS + (gradeSat.z - gradeSat.y) * wH;
   c = vec3(y) + s * (c - vec3(y));
+  {
+    float hh = rgb2hsvG(clamp(c, 0.0, 1.0)).x * 12.0;
+    float i0 = floor(hh), fh = fract(hh); fh = fh * fh * (3.0 - 2.0 * fh);
+    float hs = mix(hueSatAt(int(mod(i0, 12.0))), hueSatAt(int(mod(i0 + 1.0, 12.0))), fh);
+    c = vec3(y) + hs * (c - vec3(y));
+  }
   c += wS * gradeTintS + wM * gradeTintM + wH * gradeTintH;
   vec2 p = uv * 2.0 - 1.0;
   float r = length(p) * 0.70710678;
@@ -89,7 +110,9 @@ export type GradeParams = {
   sat: [number, number, number];                 // shadows, mids, highlights
   tintS: [number, number]; tintM: [number, number]; tintH: [number, number];   // (Cb, Cr) per zone
   vig: [number, number];                         // strength, start radius
+  hueSat?: number[];                             // 12 saturation multipliers at HSV hue 0, 30, ..., 330 (default all 1)
 };
+const HUE1 = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
 
 // __GRADES__ (fitted by scripts/fit2.py, written by scripts/emit_ts.py)
 export const GRADE_DAY: GradeParams = {
@@ -124,6 +147,7 @@ export class GradeEffect extends Effect {
         ["gradeTintH", new Uniform(tintRGB(...p.tintH))],
         ["gradeVig", new Uniform(new Vector2(...p.vig))],
         ["gradeAmount", new Uniform(amount)],
+        ["gradeHueSat", new Uniform((p.hueSat ?? HUE1).slice())],
       ]),
     });
   }
@@ -135,6 +159,7 @@ export class GradeEffect extends Effect {
       sat: [L(p.sat[0], q.sat[0]), L(p.sat[1], q.sat[1]), L(p.sat[2], q.sat[2])],
       tintS: [L(p.tintS[0], q.tintS[0]), L(p.tintS[1], q.tintS[1])], tintM: [L(p.tintM[0], q.tintM[0]), L(p.tintM[1], q.tintM[1])],
       tintH: [L(p.tintH[0], q.tintH[0]), L(p.tintH[1], q.tintH[1])], vig: [L(p.vig[0], q.vig[0]), L(p.vig[1], q.vig[1])],
+      hueSat: (p.hueSat ?? HUE1).map((v, i) => L(v, (q.hueSat ?? HUE1)[i])),
     } : p;
     const u = this.uniforms;
     u.get("gradeKy")!.value = r.ky.slice();
@@ -144,6 +169,7 @@ export class GradeEffect extends Effect {
     u.get("gradeTintM")!.value = tintRGB(...r.tintM);
     u.get("gradeTintH")!.value = tintRGB(...r.tintH);
     (u.get("gradeVig")!.value as Vector2).set(...r.vig);
+    u.get("gradeHueSat")!.value = (r.hueSat ?? HUE1).slice();
   }
   get amount() { return this.uniforms.get("gradeAmount")!.value as number; }
   set amount(v: number) { this.uniforms.get("gradeAmount")!.value = v; }
@@ -154,39 +180,68 @@ export class GradeEffect extends Effect {
 // the old dark stills) and washed the new lighting out; these are gentle S-curves at full strength instead.
 //   day: mid knot .60 for median Y' ~.57, darks pressed (.1 -> .085), a hint of violet in shadows.
 //   golden: stronger S (darks .1 -> .09, mids .5 -> .54), blue-violet shadow tint, orange highlight tint, heavier vignette.
+// Look pass r1 (look_reports/grade.md 3A): warm-dominant palette, split tone flipped to rose shadows / warm-neutral mids /
+// cream highlights, shadows desaturated (ref shadow C* ~0.6x mids), hue-selective saturation (greens / cyan x0.78,
+// reds / oranges x1.12), coloured darks (black point ~ (22,10,13)), vignette per mood (lighting.md 3.3 border/inner).
+//                      hue:  red   orng  yel   chart green sprng cyan  azure blue  viol  mag   rose
+const HUE_DAY =         [1.15, 1.12, 1.0,  0.78, 0.78, 0.8,  0.78, 0.92, 1.0,  1.0,  1.0,  1.1];
+const HUE_WARM =        [1.1,  1.0,  0.95, 0.8,  0.8,  0.85, 0.9,  1.0,  1.1,  1.15, 1.1,  1.1];
 export const GRADE_DAY2: GradeParams = {
-  ky: [0, 0.1, 0.28, 0.6, 0.835, 0.945, 1],
-  sat: [1.0, 1.05, 1.0],
-  tintS: [0.01, 0.002], tintM: [0, 0], tintH: [0.006, 0],
-  vig: [0.12, 0.45],
+  ky: [0.05, 0.12, 0.29, 0.575, 0.82, 0.94, 1],
+  sat: [0.85, 1.0, 1.05],
+  tintS: [0.0, 0.022], tintM: [-0.012, 0.006], tintH: [-0.018, 0.006],
+  vig: [0.16, 0.45],
+  hueSat: HUE_DAY,
+};
+export const GRADE_MORNING: GradeParams = {   // sunrise: soft S, rose darks, peach-cream highlights, framing vignette (.82)
+  ky: [0.045, 0.115, 0.28, 0.565, 0.815, 0.935, 1],
+  sat: [0.85, 1.02, 1.05],
+  tintS: [0.004, 0.026], tintM: [-0.014, 0.008], tintH: [-0.022, 0.01],
+  vig: [0.24, 0.42],
+  hueSat: [1.12, 1.1, 1.0, 0.8, 0.8, 0.82, 0.85, 0.95, 1.0, 1.05, 1.05, 1.12],
 };
 export const GRADE_GOLDEN2: GradeParams = {
-  ky: [0, 0.09, 0.245, 0.54, 0.8, 0.93, 1],
-  sat: [1.0, 1.12, 1.15],
-  tintS: [0.02, 0.002], tintM: [0, 0], tintH: [-0.012, 0.006],
-  vig: [0.2, 0.4],
+  ky: [0.04, 0.1, 0.255, 0.54, 0.8, 0.93, 1],
+  sat: [0.88, 1.06, 1.08],
+  tintS: [0.012, 0.02], tintM: [-0.004, 0.006], tintH: [-0.014, 0.008],
+  vig: [0.24, 0.4],
+  hueSat: HUE_WARM,
 };
-// missile short: dusk = deeper S, violet shadows, warm highlights; interior = warm, low-contrast, soft vignette
-export const GRADE_DUSK: GradeParams = {
-  ky: [0, 0.085, 0.235, 0.52, 0.79, 0.93, 1],
-  sat: [1.0, 1.1, 1.12],
-  tintS: [0.03, 0.006], tintM: [0.006, 0.004], tintH: [-0.014, 0.01],
-  vig: [0.24, 0.38],
+export const GRADE_DUSK: GradeParams = {   // deeper S, violet-rose darks, warm highlights
+  ky: [0.04, 0.105, 0.265, 0.555, 0.8, 0.93, 1],
+  sat: [0.95, 1.08, 1.1],
+  tintS: [0.03, 0.016], tintM: [0.006, 0.006], tintH: [-0.014, 0.01],
+  vig: [0.3, 0.38],
+  hueSat: HUE_WARM,
 };
-export const GRADE_INTERIOR: GradeParams = {
-  ky: [0, 0.1, 0.28, 0.6, 0.84, 0.95, 1],
-  sat: [1.0, 1.06, 1.0],
-  tintS: [0.006, 0.006], tintM: [-0.006, 0.004], tintH: [-0.008, 0.004],
-  vig: [0.18, 0.42],
+export const GRADE_INTERIOR: GradeParams = {   // post office: warm, gentle S, cream highlights, soft vignette
+  ky: [0.04, 0.11, 0.275, 0.57, 0.82, 0.94, 1],
+  sat: [0.7, 0.92, 1.0],
+  tintS: [0.02, 0.016], tintM: [0.004, 0.004], tintH: [-0.016, 0.006],
+  vig: [0.26, 0.4],
+  hueSat: [1.1, 0.95, 1.0, 0.9, 0.9, 0.95, 1.0, 1.05, 1.1, 1.08, 1.0, 1.05],
 };
-export type GradeName = "day" | "golden" | "dusk" | "interior";
-export const GRADES: Record<GradeName, GradeParams> = { day: GRADE_DAY2, golden: GRADE_GOLDEN2, dusk: GRADE_DUSK, interior: GRADE_INTERIOR };
-/** One strength (0..1, the effect's `amount`) per preset, set against the NEW world (bridge_world, 2026-10-31): full-strength
- *  presets overshot (day median Y' .59-.67 vs target .571, golden .58 vs .52); day 0.65 / golden 0.45 land at
- *  .54-.62 / ~.52. Re-fit the presets (grade.md 5.C) after the merge and raise these again. */
-export const GRADE_STRENGTH: Record<GradeName, number> = { day: 1, golden: 1, dusk: 1, interior: 1 };
+export const GRADE_GALLERY: GradeParams = {   // museum (grade.md A3 interior): orange -10 %, blue / violet +10-15 %, deep falloff
+  ky: [0.03, 0.11, 0.27, 0.54, 0.8, 0.93, 1],
+  sat: [0.55, 0.8, 0.95],
+  tintS: [0.035, 0.012], tintM: [0.012, 0.004], tintH: [-0.02, 0.006],
+  vig: [0.4, 0.34],
+  hueSat: [1.1, 0.9, 1.0, 1, 1, 1, 1, 1.1, 1.15, 1.1, 1.0, 1.05],
+};
+export const GRADE_NIGHT: GradeParams = {
+  ky: [0.03, 0.09, 0.2, 0.42, 0.7, 0.88, 1], sat: [1.1, 1.15, 1.0],
+  tintS: [0.06, 0.01], tintM: [0.045, 0.005], tintH: [-0.01, 0.004], vig: [0.4, 0.3],
+  hueSat: [1.1, 1.15, 1.0, 0.8, 0.8, 0.85, 0.95, 1.05, 1.1, 1.05, 1.0, 1.0],
+};
+export type GradeName = LightName;
+export const GRADES: Record<GradeName, GradeParams> = {
+  day: GRADE_DAY2, golden: GRADE_GOLDEN2, dusk: GRADE_DUSK, interior: GRADE_INTERIOR, morning: GRADE_MORNING, gallery: GRADE_GALLERY,
+};
+export const GRADE_STRENGTH: Record<GradeName, number> = { day: 1, golden: 1, dusk: 1, interior: 1, morning: 1, gallery: 1 };
 /** Apply the preset of a light to the effect (only touches uniforms when the light changes). */
-export function gradeFor(fx: GradeEffect, light: GradeName) {
+export function gradeFor(fx: GradeEffect, light0: GradeName) {
+  // the caller passes story.ts SHOTS[].light; lights.ts SHOT_LIGHT may refine it (world.update just ran for this layer)
+  const light = CUR.id ? lightOf(CUR.id) : light0;
   const tag = fx as unknown as { _light?: string };
   if (tag._light !== light) { fx.set(GRADES[light]); tag._light = light; }
   fx.amount = GRADE_STRENGTH[light];

@@ -44,15 +44,52 @@ export type InkOptions = {
   farOpacity?: number; // opacity multiplier reached at distFar
   fadeNear?: number; // m: start of the far fade-out
   fadeFar?: number; // m: lines gone
+  matScale?: number; // material-boundary line width / silhouette line width (drawn on both sides: total = w * matScale)
+  matGain?: number; // max opacity of material-boundary lines
+  minWidth?: number; // floor of the silhouette width (px at 1080x1920) so far edges never break into dashes
+  fogInk?: number; // how far fully fogged ink moves toward the fog colour
+  fogStart?: number; // m: ink is untinted up to here
 };
+
+// ---------------- material ids (material-boundary lines, look_reports/ink.md 3.1 B) ----------------
+// Convention (sets / char may adopt it; nothing is required):
+//   material.userData.inkId = <number | string>   explicit id. Materials that share an id never get a line between
+//                                                  them (e.g. "ground" on grass, asphalt, concrete and sand patches).
+//                                                  0 (or a value <= 0) = opt out: no material lines on this material.
+//   no userData.inkId                              derived id: FNV-1a hash of material.uuid -> 1..1023. Every material
+//                                                  is its own id, so colour changes made of separate materials (the
+//                                                  missile's red band, flag stripes, window glass vs frame) get a line.
+// Encoding in the world normal buffer (HalfFloat, integers exact to 2048): alpha = 1 + id, id 0 = no lines,
+// derived ids 1..1023, explicit ids 1024..2046. Fallback rule for derived ids only: a boundary between two
+// up-facing surfaces (|n . worldUp| > 0.9, i.e. ground patches, road markings, runway apron joins) draws NO line,
+// because the reference never inks ground/runway joins (ink.md 3.4). Explicit ids skip that rule (opt in).
+const fnv = (s: string) => { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; };
+const idCache = new WeakMap<THREE.Material, { key: unknown; id: number }>();
+/** ink id of a material (see the convention above); exported for tests and debugging */
+export function inkIdOf(m: THREE.Material | null | undefined): number {
+  if (!m) return 0;
+  const key = (m.userData as { inkId?: unknown } | undefined)?.inkId;
+  const c = idCache.get(m);
+  if (c && c.key === key) return c.id;
+  let id: number;
+  if (key === undefined || key === null) id = 1 + (fnv(m.uuid) % 1023);
+  else if (typeof key === "number") id = key <= 0 ? 0 : 1024 + ((Math.floor(key) - 1) % 1023);
+  else id = 1024 + (fnv(String(key)) % 1023);
+  idCache.set(m, { key, id });
+  return id;
+}
 
 const DEF: Required<InkOptions> = {
   // round 2 (reviewer: "world outlines ~1.5x thicker, pure black on every silhouette"): widths x1.5 (creases follow
   // via creaseScale), pure near-black, far opacity 0.75 -> 0.95; fog tint of the ink 0.6 -> 0.3 (compMat fogInk)
-  color: "#030303", strength: 1.0,
-  widthNear: 5.1, widthFar: 3.3, distNear: 6, distFar: 90, creaseScale: 0.8, // round 3: creases 0.64 -> 0.8 (building corners)
-  depthLo: 0.01, depthHi: 0.03, angleLo: 35, angleHi: 50, concaveGain: 0.7, // depth jumps from 1 %; creases from 35 deg (roof eaves)
+  // look pass r1 (look_reports/ink.md 3.1 A-C): two weights (silhouettes 4.6 -> 2.8 px, creases x0.5, material
+  // boundaries x0.35 per side), cool near-black #05080f like the reference core (4,9,22), creases from 30-45 deg
+  // (bevels, trims), 1.6 px width floor (no dashed far silhouettes), far ink lifted toward the fog (0.45 from 40 m).
+  color: "#05080f", strength: 1.0,
+  widthNear: 4.6, widthFar: 2.8, distNear: 6, distFar: 90, creaseScale: 0.5,
+  depthLo: 0.01, depthHi: 0.03, angleLo: 30, angleHi: 45, concaveGain: 0.7,
   farOpacity: 0.95, fadeNear: 150, fadeFar: 450,
+  matScale: 0.35, matGain: 0.85, minWidth: 1.6, fogInk: 0.45, fogStart: 40,
 };
 
 const FS_VERT = /* glsl */ `
@@ -79,6 +116,7 @@ void main() {
 const NORMAL_FRAG = /* glsl */ `
 uniform sampler2D tCut;
 uniform float cut;
+uniform float inkId;     // material id (0 = no material lines), see inkIdOf()
 varying vec3 vN;
 varying vec3 vV;
 varying vec2 vCut;
@@ -87,7 +125,7 @@ void main() {
   vec3 n;
   if (dot(vN, vN) < 1e-8) n = normalize(cross(dFdx(vV), dFdy(vV)));   // geometry without normals
   else n = normalize(vN) * (gl_FrontFacing ? 1.0 : -1.0);            // back faces of double-sided planes
-  gl_FragColor = vec4(n, 1.0);
+  gl_FragColor = vec4(n, 1.0 + inkId);
 }`;
 
 const MASK_FRAG = /* glsl */ `
@@ -118,6 +156,11 @@ uniform float useMain;
 uniform float pxScale;   // output px per 1080x1920 px
 uniform vec2 fogRange;   // scene fog near / far (m); far <= near = no fog tint
 uniform float fogStart;  // ink stays pure black up to here (m), then tints toward the fog colour
+uniform float fogDensity; // > 0: FogExp2 scene fog
+uniform float matScale;  // material-boundary half width = 0.5 * w * matScale on each side
+uniform float matGain;
+uniform float minWidth;  // px at 1080x1920
+uniform vec3 upV;        // world up in view space
 varying vec2 vUv;
 
 // pixel steps along x, y and both diagonals, and their length in px
@@ -138,6 +181,14 @@ float crease(vec3 n0, vec3 P0, float zc, vec2 uq, float zq) {
   return k;
 }
 
+// 1 if the neighbour (nq, zq) is another material on the same surface, else 0
+float matEdge(float id0, bool up0, float zc, vec4 nq, float zq) {
+  float idq = floor(nq.a + 0.25) - 1.0;
+  if (nq.a < 0.5 || idq < 0.5 || abs(idq - id0) < 0.5 || abs(zq - zc) > zc * depthLo) return 0.0;
+  if (id0 < 1023.5 && idq < 1023.5 && up0 && abs(dot(nq.xyz, upV)) > 0.9) return 0.0; // derived ids: no ground joins
+  return 1.0;
+}
+
 void main() {
   vec4 nc = textureLod(tNormal, vUv, 0.0);
   if (nc.a < 0.5) { gl_FragColor = vec4(0.0); return; }          // sky / empty: ink lives on the near object only
@@ -154,31 +205,41 @@ void main() {
   }
 
   float t = clamp(log(zc / dNear) / log(dFar / dNear), 0.0, 1.0);
-  float w = mix(wNear, wFar, t) * pxScale;           // silhouette line width (output px) at this distance, near side only
-  float hc = 0.5 * w * creaseScale;                  // crease line half width (px), drawn on both faces
+  float w = max(mix(wNear, wFar, t), minWidth) * pxScale; // silhouette line width (output px), near side only
+  float hc = max(0.5 * w * creaseScale, 0.7 * pxScale);   // crease line half width (px), drawn on both faces
+  float hm = 0.5 * w * matScale;                          // material-boundary half width (px), drawn on both sides
   float Wc = 1.0 / zc;
   vec3 n0 = nc.xyz;
   vec3 P0 = viewPos(vUv, zc);
-  float eD = 0.0, eN = 0.0;
+  float id0 = floor(nc.a + 0.25) - 1.0;                   // this pixel's material id
+  bool up0 = abs(dot(n0, upV)) > 0.9;
+  float eD = 0.0, eN = 0.0, eM = 0.0;
   for (int a = 0; a < 4; a++) {
     for (int r = 1; r <= RMAX; r++) {
       vec2 o = STEP[a] * texel * float(r);
       float d = (float(r) - 0.5) * SLEN[a];          // distance of this pixel's centre to an edge first seen at r
       float cw = clamp(w + 0.5 - d, 0.0, 1.0);       // continuous coverage -> no width popping, built-in AA
       float ch = clamp(hc + 0.5 - d, 0.0, 1.0);
-      if (cw <= 0.0 && ch <= 0.0) break;
+      float cm = id0 > 0.5 ? clamp(hm + 0.5 - d, 0.0, 1.0) : 0.0;
+      if (cw <= 0.0 && ch <= 0.0 && cm <= 0.0) break;
       float z1 = dist(tDepth, vUv - o), z2 = dist(tDepth, vUv + o);
       // depth jump: this pixel is in front of its neighbours (2nd difference of 1/z < 0; exactly 0 on planes)
       float s = (1.0 / z1 + 1.0 / z2 - 2.0 * Wc) / Wc;
       eD = max(eD, smoothstep(depthLo, depthHi, -s) * cw);
       // crease: normal turns towards a neighbour at the same depth
       if (ch > 0.0) eN = max(eN, max(crease(n0, P0, zc, vUv - o, z1), crease(n0, P0, zc, vUv + o, z2)) * ch);
+      // material boundary: a different material id on the same surface (no depth jump), both sides inked
+      if (cm > 0.0) {
+        eM = max(eM, matEdge(id0, up0, zc, textureLod(tNormal, vUv - o, 0.0), z1) * cm);
+        eM = max(eM, matEdge(id0, up0, zc, textureLod(tNormal, vUv + o, 0.0), z2) * cm);
+      }
     }
   }
 
-  float ink = max(eD, eN) * strength * mix(1.0, farOpacity, t) * (1.0 - smoothstep(fadeNear, fadeFar, zc));
+  float ink = max(max(eD, eN), eM * matGain) * strength * mix(1.0, farOpacity, t) * (1.0 - smoothstep(fadeNear, fadeFar, zc));
   float f0 = max(fogRange.x, fogStart);
   float fogK = fogRange.y > f0 ? clamp((zc - f0) / (fogRange.y - f0), 0.0, 1.0) : 0.0;
+  if (fogDensity > 0.0) { float q = fogDensity * max(zc - fogStart, 0.0); fogK = 1.0 - exp(-q * q); }
   gl_FragColor = vec4(ink, fogK, 0.0, 1.0);
 }`;
 
@@ -189,7 +250,7 @@ uniform sampler2D tNormal;
 uniform vec2 texel;
 uniform vec3 inkColor;
 uniform vec3 fogColor;
-uniform float fogInk;   // how far fully fogged ink moves toward the fog colour (0.3)
+uniform float fogInk;   // how far fully fogged ink moves toward the fog colour (0.45)
 uniform int debug;
 varying vec2 vUv;
 float m(float x, float y) { return texture2D(tMask, vUv + vec2(x, y) * texel).r; }
@@ -200,6 +261,11 @@ void main() {
   vec4 c = texture2D(inputBuffer, vUv);
   if (debug == 1) { gl_FragColor = vec4(vec3(1.0 - a), 1.0); return; }               // mask only
   if (debug == 2) { gl_FragColor = vec4(texture2D(tNormal, vUv).xyz * 0.5 + 0.5, 1.0); return; } // world normals
+  if (debug == 3) {                                                                                   // material ids
+    float id = floor(texture2D(tNormal, vUv).a + 0.25) - 1.0;
+    vec3 h = fract(sin(vec3(id * 12.9898, id * 78.233, id * 37.719)) * 43758.5453);
+    gl_FragColor = vec4(id < 0.0 ? vec3(0.0) : id < 0.5 ? vec3(0.25) : mix(vec3(0.15), h, 0.9) * (1.0 - a), 1.0); return;
+  }
   // blend in display (gamma) space like Canvas2D does for the character drawings: coverage -> darkness is linear
   // on screen, so the measured line widths equal the coverage widths (a linear-light blend reads ~30 % thinner)
   float fk = texture2D(tMask, vUv).g;                       // fog amount of the line (max over the AA footprint)
@@ -219,7 +285,7 @@ void main() {
 }`;
 
 export class InkPass extends Pass {
-  /** 0 = normal, 1 = show the ink mask, 2 = show the world normal buffer */
+  /** 0 = normal, 1 = show the ink mask, 2 = show the world normal buffer, 3 = material ids (with the ink on top) */
   debug = 0;
   private world: THREE.Scene;
   private cam: THREE.PerspectiveCamera;
@@ -260,7 +326,7 @@ export class InkPass extends Pass {
 
     this.normalMat = new THREE.ShaderMaterial({
       vertexShader: NORMAL_VERT, fragmentShader: NORMAL_FRAG, side: THREE.DoubleSide,
-      uniforms: { tCut: { value: null }, cut: { value: 0 }, cutUv: { value: new THREE.Matrix3() } },
+      uniforms: { tCut: { value: null }, cut: { value: 0 }, cutUv: { value: new THREE.Matrix3() }, inkId: { value: 0 } },
     });
     // per object: copy the original material's cut-out (map + alphaTest) so alpha-tested world planes keep their shape
     this.normalMat.onBeforeRender = (_r, _s, _c, _g, object, group) => {
@@ -270,6 +336,7 @@ export class InkPass extends Pass {
       const u = this.normalMat.uniforms;
       const map = src && src.alphaTest > 0 ? src.map : null;
       u.tCut.value = map; u.cut.value = map ? src.alphaTest : 0;
+      u.inkId.value = inkIdOf(src);
       if (map) { map.updateMatrix(); (u.cutUv.value as THREE.Matrix3).copy(map.matrix); }
       this.normalMat.uniformsNeedUpdate = true;
     };
@@ -283,12 +350,13 @@ export class InkPass extends Pass {
       creaseScale: { value: o.creaseScale }, depthLo: { value: o.depthLo }, depthHi: { value: o.depthHi },
       cosLo: { value: Math.cos((o.angleLo * Math.PI) / 180) }, cosHi: { value: Math.cos((o.angleHi * Math.PI) / 180) },
       concaveGain: { value: o.concaveGain }, farOpacity: { value: o.farOpacity },
-      fadeNear: { value: o.fadeNear }, fadeFar: { value: o.fadeFar }, strength: { value: o.strength }, useMain: { value: 0 }, pxScale: { value: 1 }, fogRange: { value: new THREE.Vector2(0, 0) }, fogStart: { value: 60 },
+      fadeNear: { value: o.fadeNear }, fadeFar: { value: o.fadeFar }, strength: { value: o.strength }, useMain: { value: 0 }, pxScale: { value: 1 }, fogRange: { value: new THREE.Vector2(0, 0) }, fogStart: { value: o.fogStart }, fogDensity: { value: 0 },
+      matScale: { value: o.matScale }, matGain: { value: o.matGain }, minWidth: { value: o.minWidth }, upV: { value: new THREE.Vector3(0, 1, 0) },
     });
     this.compMat = fs(COMP_FRAG, {
       inputBuffer: { value: null }, tMask: { value: this.maskRT.texture }, tNormal: { value: this.rt.texture },
       texel: { value: texel }, inkColor: { value: new THREE.Color(o.color) }, debug: { value: 0 },
-      fogColor: { value: new THREE.Color() }, fogInk: { value: 0.3 },
+      fogColor: { value: new THREE.Color() }, fogInk: { value: o.fogInk },
     });
     this.copyMat = fs(COPY_FRAG, { tSrc: { value: this.tmpRT.texture } });
     this.quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.maskMat);
@@ -301,11 +369,13 @@ export class InkPass extends Pass {
     const u = this.maskMat.uniforms;
     const map: [keyof InkOptions, string][] = [["widthNear", "wNear"], ["widthFar", "wFar"], ["distNear", "dNear"], ["distFar", "dFar"],
       ["creaseScale", "creaseScale"], ["depthLo", "depthLo"], ["depthHi", "depthHi"], ["concaveGain", "concaveGain"],
-      ["farOpacity", "farOpacity"], ["fadeNear", "fadeNear"], ["fadeFar", "fadeFar"], ["strength", "strength"]];
+      ["farOpacity", "farOpacity"], ["fadeNear", "fadeNear"], ["fadeFar", "fadeFar"], ["strength", "strength"],
+      ["matScale", "matScale"], ["matGain", "matGain"], ["minWidth", "minWidth"], ["fogStart", "fogStart"]];
     for (const [k, n] of map) if (options[k] !== undefined) u[n].value = options[k];
     if (options.angleLo !== undefined) u.cosLo.value = Math.cos((options.angleLo * Math.PI) / 180);
     if (options.angleHi !== undefined) u.cosHi.value = Math.cos((options.angleHi * Math.PI) / 180);
     if (options.color !== undefined) (this.compMat.uniforms.inkColor.value as THREE.Color).set(options.color);
+    if (options.fogInk !== undefined) this.compMat.uniforms.fogInk.value = options.fogInk;
   }
 
   override setDepthTexture(depthTexture: THREE.Texture) {
@@ -347,8 +417,11 @@ export class InkPass extends Pass {
     // 2) edge mask
     const u = this.maskMat.uniforms, e = cam.projectionMatrix.elements;
     u.cNear.value = cam.near; u.cFar.value = cam.far; u.p00.value = e[0]; u.p11.value = e[5];
-    const fog = scene.fog as THREE.Fog | null;
-    if (fog && (fog as THREE.Fog).isFog) { (u.fogRange.value as THREE.Vector2).set(fog.near, fog.far); (this.compMat.uniforms.fogColor.value as THREE.Color).copy(fog.color); }
+    (u.upV.value as THREE.Vector3).set(0, 1, 0).transformDirection(cam.matrixWorldInverse);
+    const fog = scene.fog as (THREE.Fog & THREE.FogExp2) | null;
+    u.fogDensity.value = 0;
+    if (fog && fog.isFog) { (u.fogRange.value as THREE.Vector2).set(fog.near, fog.far); (this.compMat.uniforms.fogColor.value as THREE.Color).copy(fog.color); }
+    else if (fog && fog.isFogExp2) { (u.fogRange.value as THREE.Vector2).set(0, 0); u.fogDensity.value = fog.density; (this.compMat.uniforms.fogColor.value as THREE.Color).copy(fog.color); }
     else (u.fogRange.value as THREE.Vector2).set(0, 0);
     this.quad.material = this.maskMat;
     renderer.setRenderTarget(this.maskRT);
