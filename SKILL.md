@@ -115,7 +115,7 @@ lighting 5-6, ink 6, textures 5-6, characters 7, depth 6-7, composition 6-7 (fro
   - Fog = horizon colour, 25→420 m day, 20→360 m golden.
   - Bloom only on HDR emissives: threshold 1.0.
 - **Camera:**
-  - Hard cuts on big jumps. Everything else is a smootherstep glide of 18-40 f, peak ≤ 25 px/f at 720p.
+  - Place/time changes: 5 f **anchored dissolves** (subject keeps its screen position, or a shape/colour match), centred ±3 f on a word onset; hard cuts only for angle changes inside one location (see `references/reports/polish_study.md`). Everything else is a smootherstep glide of 18-40 f, peak ≤ 25 px/f at 720p.
   - Every hold pushes in 0.15-0.35 %/f, with 0.6 %/f on punch words.
   - Rolls of 4-5°.
   - No hand-held float. Impact shakes flip sign every frame and decay over 7 f.
