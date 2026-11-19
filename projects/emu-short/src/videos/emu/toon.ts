@@ -1448,13 +1448,15 @@ export const emuSide = (p: Pen, o: EmuOpts) => {
     }
   }
   if (helmet) { // tin Brodie helmet: shallow dome over a broad flat brim, chin strap
-    const hc = HP(-2, -32);
-    p.line([HP(-24, -20), HP(-10, 32)], "#4a3a26", 3, false);
-    const brim = ellPts(hc[0], hc[1] + 6, 84, 13, 0, 360, (hang * (1 - tn) * 180) / Math.PI);
-    p.poly(brim, "#6d6a3e", 4.6);
-    const dome = ellPts(hc[0], hc[1] + 4, 48, 36, 180, 360, (hang * (1 - tn) * 180) / Math.PI);
-    p.shadedFill(dome, "#7b7746", "#55522f", light, 40, 0.3); p.inkRing(dome, 4.6, thick, 0.3);
-    p.stroke([addP(hc, [-30, -6]), addP(hc, [-6, -22])], 3, "rgba(255,250,220,0.45)");
+    // Brodie "soup plate": a wide flat brim with a raised rim edge, a shallow dome, khaki-green, a pale lit lip
+    const hc = HP(-2, -30), deg = (hang * (1 - tn) * 180) / Math.PI;
+    p.line([HP(-26, -16), HP(-12, 34)], "#3e3220", 3.4, false);
+    p.poly(ellPts(hc[0], hc[1] + 9, 98, 17, 0, 360, deg), "#5d5f34", 5);                 // brim underside
+    p.poly(ellPts(hc[0], hc[1] + 5, 96, 14, 0, 360, deg), "#7f8248", 4.6);               // brim top
+    p.stroke(ellPts(hc[0], hc[1] + 5, 88, 10, 200, 340, deg), 3, "rgba(255,250,215,0.55)"); // lit rim
+    const dome = ellPts(hc[0], hc[1] + 3, 46, 26, 180, 360, deg);
+    p.shadedFill(dome, "#868a4c", "#565a30", light, 40, 0.3); p.inkRing(dome, 4.8, thick, 0.3);
+    p.stroke([addP(hc, [-26, -10]), addP(hc, [-4, -21])], 3.4, "rgba(255,250,220,0.5)");
   }
 };
 /** small local generator (toon.ts has no rng): deterministic stream per seed */

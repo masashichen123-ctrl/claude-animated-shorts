@@ -44,17 +44,17 @@ export const LIGHTS: Record<LightName, LightPreset> = {
     lit: [1.38, 1.24, 1.0], shade: [0.31, 0.29, 0.35], lift: [0.04, 0.045, 0.07], lambert: 0.35, sideK: 0.84, term: 0.2,
     charTint: [1.0, 0.95, 0.88], charShade: 0.86, charGrad: 0.07, bodyGrad: 0.2, sideTint: [0.92, 0.90, 0.96],
     blob: [0.62, 0.58, 0.6], actorShadow: false,
-    top: "#2a63c4", hor: "#efe2c2", skyCurve: [0.0, 0.5, 0.6], fog: "#e6d8b8", fogNear: 25, fogFar: 300, sunDisc: "#000000",
+    top: "#3e7fd2", hor: "#dfe8ee", skyCurve: [0.0, 0.5, 0.6], fog: "#d9e4ec", fogNear: 25, fogFar: 300, sunDisc: "#000000",
     sunCol: "#fff3e0", sunI: 2.8, sky: "#dcecff", ground: "#b49a78", hemiI: 0.4,
     bias: -0.00025, normalBias: 0.015,
     albFloor: [0.03, 0.03, 0.042], gobo: 0.6, goboScale: 5, rim: [0, 0, 0], ao: 0.1, aoR: 0.7, prac: 1, pracCol: "#fff2c8",
     bloomI: 0.6, bloomR: 0.6, softM: 0.16,
-    haze: H("#e8dab8", 35, 190, 60, 0.8), glowCol: "#fff6e0", glowK: 0.25,
+    haze: H("#d9e4ec", 35, 200, 60, 0.7), glowCol: "#fff6e0", glowK: 0.25,
   },
   morning: {
     // sunrise at sea: low warm sun, peach haze, cool violet shade, warm rim when backlit; the flame blooms
     az: 125, el: 14,
-    lit: [1.7, 1.26, 0.84], shade: [0.24, 0.24, 0.36], lift: [0.04, 0.05, 0.11], lambert: 0.35, sideK: 0.84, term: 0.1,
+    lit: [1.62, 1.38, 1.04], shade: [0.24, 0.26, 0.36], lift: [0.04, 0.05, 0.1], lambert: 0.35, sideK: 0.84, term: 0.1,
     charTint: [1.0, 0.88, 0.76], charShade: 0.88, charGrad: 0.09, bodyGrad: 0.24, sideTint: [0.88, 0.84, 0.96],
     blob: [0.7, 0.68, 0.84], actorShadow: true,
     top: "#5a86c8", hor: "#ffd9a8", skyCurve: [0.03, 0.55, 0.8], fog: "#f2c6a6", fogNear: 40, fogFar: 360, sunDisc: "#fff0d0",
@@ -62,12 +62,12 @@ export const LIGHTS: Record<LightName, LightPreset> = {
     bias: -0.0005, normalBias: 0.025,
     albFloor: [0.03, 0.03, 0.045], gobo: 0, goboScale: 9, rim: [1.25, 0.85, 0.62], ao: 0.08, aoR: 0.7, prac: 1.2, pracCol: "#ffb060",
     bloomI: 0.8, bloomR: 0.7, softM: 0.22,
-    haze: H("#f2c4a2", 30, 220, 50, 0.5), glowCol: "#fff0c0", glowK: 0.38,
+    haze: H("#e2e2da", 40, 230, 50, 0.5), glowCol: "#fff2d0", glowK: 0.3,
   },
   golden: {
     // late afternoon on the road: amber key low from the side, violet shade
     az: 110, el: 14,
-    lit: [1.62, 1.02, 0.52], shade: [0.2, 0.2, 0.33], lift: [0.04, 0.05, 0.13], lambert: 0.35, sideK: 0.82, term: 0.08,
+    lit: [1.62, 1.22, 0.72], shade: [0.18, 0.22, 0.36], lift: [0.03, 0.05, 0.12], lambert: 0.35, sideK: 0.82, term: 0.08,
     charTint: [1.0, 0.82, 0.62], charShade: 0.88, charGrad: 0.1, bodyGrad: 0.25, sideTint: [0.85, 0.80, 0.95],
     blob: [0.75, 0.74, 0.9], actorShadow: true,
     top: "#6a4f8c", hor: "#ffd08a", skyCurve: [0.05, 0.6, 1.0], fog: "#f6bf8c", fogNear: 50, fogFar: 380, sunDisc: "#ffcf9e",
@@ -75,7 +75,7 @@ export const LIGHTS: Record<LightName, LightPreset> = {
     bias: -0.0006, normalBias: 0.03,
     albFloor: [0.03, 0.028, 0.045], gobo: 0.25, goboScale: 11, rim: [0.9, 0.55, 0.3], ao: 0.08, aoR: 0.7, prac: 1, pracCol: "#ffd08a",
     bloomI: 0.7, bloomR: 0.65, softM: 0.24,
-    haze: H("#f4c290", 50, 240, 40, 0.5), glowCol: "#fff0c0", glowK: 0.55,
+    haze: H("#f8d29a", 50, 240, 40, 0.45), glowCol: "#fff0c0", glowK: 0.55,
   },
   dusk: {
     // sun just under a band of orange cloud, cool violet world, warm rim; the explosion puff and flame glow over it
@@ -88,7 +88,7 @@ export const LIGHTS: Record<LightName, LightPreset> = {
     bias: -0.0006, normalBias: 0.03,
     albFloor: [0.035, 0.03, 0.055], gobo: 0, goboScale: 9, rim: [1.1, 0.6, 0.42], ao: 0.08, aoR: 0.7, prac: 2.2, pracCol: "#ffb060",
     bloomI: 0.9, bloomR: 0.75, softM: 0.26,
-    haze: H("#d6946c", 30, 200, 40, 0.4), glowCol: "#ffb080", glowK: 0.6,
+    haze: H("#d9a476", 30, 200, 40, 0.35), glowCol: "#ffb878", glowK: 0.6,
   },
 };
 
@@ -125,30 +125,30 @@ export type WorldLook = {
 };
 export const LOOK: Record<LightName, WorldLook> = {
   day: {
-    sky: { c: ["#f1e4c4", "#c9dcec", "#86b5e6", "#4d87d6", "#2a63c4"], e: [0, 3, 9, 18, 40] }, // hot sky: pale warm horizon -> deep blue
+    sky: { c: ["#e4ebee", "#bcd5ec", "#86b3e4", "#5a95dc", "#3e7fd2"], e: [0, 3, 9, 18, 40] }, // hot sky: pale horizon -> deep blue
     cloud: { lit: "#fbf8f1", mid: "#e1e7f3", shade: "#b9c6ee" },
     bounce: [0.02, 0.012, 0],
-    sat: 1.2,
+    sat: 0.97,
     skyTex: 0.05,
   },
   morning: {
     // sunrise: peach horizon, rose through ~10 deg, soft blue overhead
-    sky: { c: ["#ffcf8e", "#f6b98a", "#d9a6a0", "#7f9fd0", "#3f6fc0"], e: [0, 4, 11, 22, 45] },
-    cloud: { lit: "#ffe0c0", mid: "#f0b6a8", shade: "#a99ac8" },
+    sky: { c: ["#f4e6c4", "#d8e2e4", "#a2c2e2", "#6e9bd8", "#3e78cc"], e: [0, 4, 11, 22, 45] },
+    cloud: { lit: "#fff6e6", mid: "#e6e6ee", shade: "#b6bfdc" },
     bounce: [0.04, 0.025, 0.0],
     sat: 1.04,
     skyTex: 0.09,
   },
   golden: {
-    sky: { c: ["#ffbe6a", "#f9a868", "#e98d72", "#a87f9a", "#4f5f9a"], e: [0, 4, 10, 20, 42] },
-    cloud: { lit: "#ffd2a8", mid: "#f2a08f", shade: "#a98fc4" },
+    sky: { c: ["#ffd08a", "#fbc07c", "#e7b88e", "#9fb0c6", "#5a7cb8"], e: [0, 4, 10, 20, 42] },
+    cloud: { lit: "#ffe0b0", mid: "#f6c094", shade: "#9fa6c8" },
     bounce: [0.04, 0.02, 0.0],
     sat: 1.02,
     skyTex: 0.07,
   },
   dusk: {
-    sky: { c: ["#ffa25e", "#f08a60", "#b8728a", "#5e5a9a", "#2c336e"], e: [0, 3, 9, 20, 46] },
-    cloud: { lit: "#ffb08a", mid: "#c47a8c", shade: "#5a4f84" },
+    sky: { c: ["#ffb060", "#f2a062", "#b99a86", "#5c74a8", "#2b3d78"], e: [0, 3, 9, 20, 46] },
+    cloud: { lit: "#ffbe86", mid: "#c99080", shade: "#56609a" },
     bounce: [0.05, 0.02, 0.02],
     sat: 1.04,
     skyTex: 0.08,

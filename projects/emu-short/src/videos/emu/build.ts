@@ -10,7 +10,7 @@ import * as P from "./paint";
 import { rng, rep, ctex } from "./paint";
 import { twoTone } from "./shade";
 import { NOINK } from "./ink";
-import { SPOT, SetName, FOREGROUND, TRIPOD_H, CRATE, TruckPose, GunPose, CratePose, farmHill, paddockRise, DAM_PROFILE } from "./story";
+import { SPOT, SetName, FOREGROUND, TRIPOD_H, CRATE, TruckPose, GunPose, CratePose, farmHill, paddockRise, DAM_PROFILE, damNoise } from "./story";
 
 export const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 
@@ -372,6 +372,21 @@ const hillRing = (b: Batch, cx: number, cz: number, R: number, hBase: number, am
 // =================================================================================================================
 /** shared sway clock for wheat clumps + canopy ripple (world.ts sets uTime every frame) */
 export const WHEAT = { uTime: { value: 0 } };
+/** warm the two-tone shade of a material: k = 0 keeps the scene's (cool / violet) shade, 1 = olive-ochre of the same
+ *  value. Wheat uses 1 (wheat in shade never goes violet), grounds 0.5 (the violet shadow on the ground is capped). */
+const WARM = (k: number) => `mix( uShadeCol, vec3( dot( uShadeCol, vec3( 0.3333 ) ) ) * vec3( 1.32, 1.06, 0.62 ), ${k.toFixed(2)} )`;
+const warmShade = <T extends THREE.Material>(m: T, k: number, key: string): T => {
+  if (m.userData.warm) return m;
+  m.userData.warm = true;
+  const prev = m.onBeforeCompile, prevKey = m.customProgramCacheKey.bind(m);
+  m.onBeforeCompile = (sh, r) => {
+    prev.call(m, sh, r);
+    sh.fragmentShader = sh.fragmentShader.replace("mix( uShadeCol, lit, sunTerm )", `mix( ${WARM(k)}, lit, sunTerm )`)
+      .replace("uShadeLift * LIFT_K * ( 1.0 - sunTerm )", `uShadeLift * vec3( 1.0, 0.9, ${(1 - 0.6 * k).toFixed(2)} ) * LIFT_K * ( 1.0 - sunTerm )`);
+  };
+  m.customProgramCacheKey = () => prevKey() + "_warm" + key + k;
+  return m;
+};
 /** add a wind-sway vertex patch to a two-tone material (k = metres of sway at the top of a card, by uv.y) */
 const sway = <T extends THREE.Material>(m: T, mode: "card" | "canopy", key: string): T => {
   if (m.userData.sway) return m;
@@ -388,9 +403,9 @@ const sway = <T extends THREE.Material>(m: T, mode: "card" | "canopy", key: stri
   m.customProgramCacheKey = () => "sway_" + key;
   return m;
 };
-const wheatTopM = () => sway(texM("wheatTop", () => P.wheatTopHD()), "canopy", "top");
-const wheatSideM = () => texM("wheatSide", () => P.wheatSideHD());
-const wheatCardM = (k: number) => sway(lam("wheatCard" + k, () => ({ map: P.wheatCardTex(k), alphaTest: 0.5, side: THREE.DoubleSide })), "card", "card" + k);
+const wheatTopM = () => warmShade(sway(texM("wheatTop", () => P.wheatTopHD()), "canopy", "top"), 1, "wt");
+const wheatSideM = () => warmShade(texM("wheatSide", () => P.wheatSideHD()), 1, "ws");
+const wheatCardM = (k: number) => warmShade(sway(lam("wheatCard" + k, () => ({ map: P.wheatCardTex(k), alphaTest: 0.5, side: THREE.DoubleSide })), "card", "card" + k), 1, "wc");
 const WHEAT_H = 0.95;
 /** cheap value noise for terrain bumps */
 const vn2 = (x: number, z: number, s: number) => {
@@ -455,7 +470,7 @@ const buildNoInk = (b: Batch, parent: THREE.Object3D) => {
 // ---- grounds ----
 const groundM = (key: string, make: () => THREE.Texture) => {
   const m = texM(key, make); m.userData.inkId = 1100; // one ink id for every ground patch: no lines where they meet
-  return m;
+  return warmShade(m, 0.5, "g");
 };
 const stubbleM = () => groundM("stubble", () => P.stubbleHD());
 const dirtM = () => groundM("dirt", () => P.dirtHD());
@@ -479,7 +494,7 @@ const track = (b: Batch, x0: number, x1: number, z0: number, z1: number, y = 0.0
 
 // ---- eucalyptus (gum trees) ----
 const barkM = () => texM("gumBark", () => P.gumBarkHD());
-const gumLeafM = (k: number) => lam("gumLeaf" + k, () => ({ map: P.gumLeafHD(k) }));
+const gumLeafM = (k: number) => warmShade(lam("gumLeaf" + k, () => ({ map: P.gumLeafHD(k) })), 0.55, "gum");
 /** gum tree: pale crooked trunk forking into 2-4 limbs, each ending in a clumpy grey-green crown with sky gaps */
 const gum = (b: Batch, x: number, z: number, h: number, seed: number, q = 0) => {
   const r = rng(seed * 7 + 3), lean = (r() - 0.5) * 0.25, la = r() * 6.28;
@@ -659,13 +674,15 @@ const damWaterM = () => { let m = mats.get("damWaterB"); if (!m) { m = new THREE
 // ---- dam: brown water disc in an earthen bank ring (mud inside, dry outside) ----
 const dam = (b: Batch) => {
   const R = SPOT.DAM_R, C = SPOT.BANK_R, Hb = SPOT.BANK_H;
-  b.add(cached("damWater", () => uvFrom(new THREE.CircleGeometry(R + 0.4, 48).rotateX(-Math.PI / 2), (x, _y, z) => [x / 8, z / 8])), damWaterM(), M4(0, -0.25, 0));
+  // the shoreline wobbles (damNoise): water and both bank lathes are pushed out / in by the same angle function
+  const wob = (g: THREE.BufferGeometry) => { const p = g.attributes.position as THREE.BufferAttribute; for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i), k = damNoise(Math.atan2(z, x)); p.setX(i, x * k); p.setZ(i, z * k); } g.computeVertexNormals(); return g; };
+  b.add(cached("damWater", () => uvFrom(wob(new THREE.CircleGeometry(R + 0.4, 96, 0, Math.PI * 2).rotateX(-Math.PI / 2)), (x, _y, z) => [x / 8, z / 8])), damWaterM(), M4(0, -0.25, 0));
   const inner = DAM_PROFILE.slice(0, 6), outer = DAM_PROFILE.slice(5); void C; void Hb;
   const ring = (key: string, prof: [number, number][], mat: Mat) => {
-    const g = cached(key, () => { const l = new THREE.LatheGeometry(prof.map(([r, y]) => new THREE.Vector2(r, y)), 96); return uvFrom(l, (x, _y, z) => [x / 4, z / 4]); });
+    const g = cached(key, () => { const l = wob(new THREE.LatheGeometry(prof.map(([r, y]) => new THREE.Vector2(r, y)), 128)); return uvFrom(l, (x, _y, z) => [x / 4, z / 4]); });
     b.add(g, mat);
   };
-  ring("damIn", inner, texM("mud", () => P.mudHD()));
+  ring("damIn", inner, warmShade(texM("mud", () => P.mudHD()), 0.85, "mud"));
   ring("damOut", outer, paddockM());
 };
 
@@ -718,7 +735,7 @@ const brassMound = (b: Batch) => {
     return uvFrom(l, (x, y, z) => [(x + z * 0.3) / 2, (y + z) / 2]);
   });
   // brass keeps a warm self-glow (lamp + dusk sky bounce) so it reads golden even on the shaded side, and a hot specular
-  const brass = mats.get("brassPhong") ?? (() => { const m = twoTone(new THREE.MeshPhongMaterial({ map: P.brassHD(), shininess: 30, specular: new THREE.Color("#ffe0a0"), emissive: new THREE.Color("#7a5214"), emissiveMap: P.brassHD() })); mats.set("brassPhong", m); return m; })();
+  const brass = mats.get("brassPhong") ?? (() => { const m = twoTone(new THREE.MeshPhongMaterial({ map: P.brassHD(), shininess: 22, specular: new THREE.Color("#fff0b0"), emissive: new THREE.Color("#c08a28"), emissiveMap: P.brassHD() })); mats.set("brassPhong", m); return m; })();
   b.add(g, brass, M4(bx, 0, bz));
   const r = rng(77);
   for (let i = 0; i < 140; i++) { // spilled casings around the foot
@@ -998,9 +1015,11 @@ const buildPaddock = (): SetRig => {
 const buildDam = (): SetRig => {
   const b = new Batch();
   // ground with a hole for the dam (the outer bank meets it at BANK_R + 4.2)
-  b.add(cached("damGround", () => { const g = new THREE.RingGeometry(SPOT.BANK_R + 4.0, FAR, 96, 6).rotateX(-Math.PI / 2); return uvFrom(g, (x, _y, z) => [x / 4, z / 4]); }), paddockM());
+  b.add(cached("damGround", () => { const g = new THREE.RingGeometry((SPOT.BANK_R + 4.0) * 0.8, FAR, 96, 6).rotateX(-Math.PI / 2); return uvFrom(g, (x, _y, z) => [x / 4, z / 4]); }), paddockM());
   dam(b);
-  for (const [x, z, h] of [[-24, -10, 16], [21, -18, 15], [-17, 25, 14], [28, 9, 17], [-6, -30, 15], [40, -35, 14]]) gum(b, x, z, h, x * 9 + z, 1);
+  // a low spoil berm behind the soldiers: from the lens only their hats show over it
+  b.add(cached("berm", () => new THREE.SphereGeometry(1, 28, 12, 0, Math.PI * 2, 0, Math.PI / 2)), texM("mud", () => P.mudHD()), M4(0.2, -0.02, 13.6, 0, 0, 0, [4.6, 1.25, 1.3]));
+  for (const [x, z, h] of [[-15, -8, 15], [14, -12, 14], [-16, 7, 13], [16, 5, 16], [-4, -19, 15], [7, -18, 13], [30, -30, 14], [-30, -26, 16]]) gum(b, x, z, h, x * 9 + z, 1);
   scrub(b, 0, 0, 20, 70, 50, 71);
   tufts(b, 0, 16, 0, 9, 160, 72, (x, z) => Math.hypot(x, z) < SPOT.BANK_R + 0.5);
   fence(b, -200, -48, 200, -48, 73, 4);

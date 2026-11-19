@@ -13,7 +13,7 @@ import {
   GUNNER, SERGEANT, MAJOR, FARMER, ENEMY,
 } from "./toon";
 import {
-  FPS, SHOTS, SPOT, V3, Light, smooth, clamp01, EV, TruckPose, GunPose, truckPt, truck9X, emu12At, farmHill, paddockRise, damY, CRATE, STACK_N,
+  FPS, SHOTS, SPOT, V3, Light, smooth, clamp01, EV, TruckPose, GunPose, truckPt, truck9X, emu12At, farmHill, paddockRise, damY, damNoise, CRATE, STACK_N,
 } from "./story";
 import { NOINK } from "./ink";
 import { cardShade, blobMaterial, CARD_K, updateEnvTint } from "./cardshade";
@@ -320,11 +320,11 @@ const muzzle = (out: Stage, cam: CamInfo, m: THREE.Vector3, dir: THREE.Vector3, 
     w: size, h: size, rot, glow: 1.9 });
 };
 /** sparkle burst (on ones) over a point, 20 f long, starting at frame f0 */
-const sparkle = (out: Stage, c: V3, f: number, f0: number, size = 0.9) => {
+const sparkle = (out: Stage, c: V3, f: number, f0: number, size = 0.9, glow = 1.3) => {
   const u = (f - f0) / 20;
   if (u <= 0 || u >= 1) return;
   const k = q(u, 20);
-  out.fx.push({ key: `spark${k}`, cw: 400, ch: 400, draw: (p) => fxSparkle(p, k), x: c[0], y: c[1], z: c[2], w: size, h: size, glow: 1.3 });
+  out.fx.push({ key: `spark${k}`, cw: 400, ch: 400, draw: (p) => fxSparkle(p, k), x: c[0], y: c[1], z: c[2], w: size, h: size, glow });
 };
 /** a dust trail behind a moving point: puffs dropped every 3 f, each living ~1 s */
 const trail = (out: Stage, at: (g: number) => V3, f: number, n: number, size: number, tint: string, every = 3) => {
@@ -425,15 +425,15 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
     case 4: { // the herd pours over the hill and into the wheat; the near ones eat the patch; the farmer's jaw drops
       const N = 140, v = 8.5;
       for (let i = 0; i < N; i++) {
-        const front = i < 22, z0f = -24 - 16 * H(i, 1), z0 = front ? z0f : -178 + 150 * H(i, 2);
-        const xt = front ? 2.6 + 5.4 * H(i, 4) : -40 + 90 * H(i, 5), zt = front ? -8.5 + 6.5 * H(i, 6) : -16 - 26 * H(i, 7);
-        const x0 = xt * 0.7 + 20 * (H(i, 8) - 0.5);
-        const run = clamp01(((f - 305) / FPS * v) / Math.max(1, zt - z0)), z = z0 + (zt - z0) * run, x = x0 + (xt - x0) * run;
+        const front = i < 12, z0 = front ? -1e9 : -178 + 150 * H(i, 2);
+        const ztf = -4.6 - 6.5 * H(i, 6), xt = front ? 7.4 - 0.077 * (1.3 - ztf) + 0.32 * (1.3 - ztf) * ((i % 6) / 5 * 2 - 1) * 0.8 : -40 + 90 * H(i, 5), zt = front ? ztf : -16 - 26 * H(i, 7);
+        const zs = front ? zt - 7 - 7 * H(i, 1) : z0, x0 = front ? xt - 1.5 + 3 * H(i, 8) : xt * 0.7 + 20 * (H(i, 8) - 0.5);
+        const run = clamp01(((f - 305) / FPS * v) / Math.max(1, zt - zs)), z = zs + (zt - zs) * run, x = x0 + (xt - x0) * run;
         const arrived = run >= 1, y = farmHill(x, z);
         const ph = (f / 15 + H(i, 9)) % 1;
         emu(out, cam, 20 + i, [x, y, z], arrived
           ? { pose: (front && f < 352) || H(i, 12) < 0.4 ? "stand" : "peck", face: H(i, 10) < 0.5 ? -1 : 1, peck: 0.25 + 0.3 * (0.5 + 0.5 * Math.sin(f * 0.35 + i)), tint: i % 3, scale: 0.92 + 0.16 * H(i, 11) }
-          : { pose: "run", dir: [xt - x0, zt - z0], phase: ph, tint: i % 3, scale: 0.92 + 0.16 * H(i, 11) }, t, f < 358);
+          : { pose: "run", dir: [xt - x0, zt - zs], phase: ph, tint: i % 3, scale: 0.92 + 0.16 * H(i, 11) }, t, f < 358);
         if (!arrived && f < 358 && i % 4 === 0) puff(out, [x, y + 0.2, z - 0.6], ((f + i * 5) % 20) / FPS, 1.6, 0.66, i, DUST);
       }
       const fp = S.FARMER3;
@@ -454,7 +454,7 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
         { f: 426, expr: "yell", lean: 13, headTilt: 6, shrug: 1 },  // "army"
       ], t, faceTo(cam, fp, S.PHONE), (fo) => ({ ...fo, prop: "handset", armL: cranking ? "crank" : "out", wave: cranking ? q((f / 8) % 1, 8) : undefined, sweat: sweatAt(f, 430) }));
       for (let i = 0; i < 6; i++) {
-        const p: V3 = [0.6 + 3.6 * H(i, 21), 0, -11.6 + 0.9 * H(i, 22)];
+        const p: V3 = [1.2 + 2.8 * H(i, 21), 0, -11.5 + 0.9 * H(i, 22)];
         emu(out, cam, 40 + i, p, { pose: i % 3 === 2 ? "stand" : "peck", face: H(i, 23) < 0.5 ? -1 : 1, peck: 0.5 + 0.5 * Math.sin(f * 0.3 + i * 1.7), tint: i % 3 }, t);
       }
       break;
@@ -507,19 +507,23 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
       break;
     }
     case 8: { // the dam: a thousand emus drinking; the soldiers hidden behind the bank; the jam
+      const cam8b: V3 = [-2.0, 1.75, 7.9];
       for (let i = 0; i < 170; i++) {
-        const far = i < 120, a = Math.PI + (far ? (H(i, 51) - 0.5) * 4.2 : (H(i, 51) < 0.5 ? -1 : 1) * (1.4 + 0.5 * H(i, 52)));
-        const r = far ? S.DAM_R - 0.1 + 2.6 * H(i, 53) : S.DAM_R + 1 + 8 * H(i, 54);
-        const p: V3 = [Math.sin(a) * r, 0, Math.cos(a) * r]; p[1] = damY(r);
-        const drink = r < S.DAM_R + 1.4 && H(i, 55) < 0.75;
-        const walkK = !drink && H(i, 56) < 0.3;
-        const tang: [number, number] = [Math.cos(a), -Math.sin(a)];
-        const pp: V3 = walkK ? [p[0] + tang[0] * 0.8 * t, p[1], p[2] + tang[1] * 0.8 * t] : p;
-        emu(out, cam, 100 + i, pp, drink ? { pose: "drink", face: Math.sin(a) > 0 ? -1 : 1, tint: i % 3 }
-          : walkK ? { pose: "walk", dir: tang, phase: (f / 26 + H(i, 57)) % 1, tint: i % 3 } : { pose: H(i, 58) < 0.5 ? "stand" : "peck", face: H(i, 59) < 0.5 ? -1 : 1, peck: 0.6, tint: i % 3 }, t);
+        // crowded along the water's edge: near shore (toward the soldiers, +z), far shore, a few on the banks
+        const g = i < 55 ? 0 : i < 140 ? 1 : 2;
+        const a = g === 0 ? Math.PI / 2 + (H(i, 51) - 0.5) * 1.9 : g === 1 ? -Math.PI / 2 + (H(i, 51) - 0.5) * 3.4 : (H(i, 51) < 0.5 ? 0 : Math.PI) + (H(i, 52) - 0.5) * 1.6;
+        const k = damNoise(a), rn = g < 2 ? S.DAM_R + 0.15 + 1.3 * H(i, 53) : S.DAM_R + 1.8 + 3 * H(i, 54);
+        const p: V3 = [Math.cos(a) * rn * k, damY(rn), Math.sin(a) * rn * k];
+        if (f >= 797 && Math.hypot(p[0] - cam8b[0], p[2] - cam8b[2]) < 3.2) continue;
+        if (g === 0 && Math.abs(p[0]) < 1.6 && f < 797) continue; // keep the soldiers' sight line to the water open
+        const drink = rn < S.DAM_R + 1.0 && H(i, 55) < 0.8, face: -1 | 1 = H(i, 59) < 0.5 ? -1 : 1;
+        const walkK = !drink && H(i, 56) < 0.3, tang: [number, number] = [-Math.sin(a), Math.cos(a)];
+        const pp: V3 = walkK ? [p[0] + tang[0] * 0.7 * t, p[1], p[2] + tang[1] * 0.7 * t] : p;
+        emu(out, cam, 100 + i, pp, drink ? { pose: "drink", face, tint: i % 3 }
+          : walkK ? { pose: "walk", dir: tang, phase: (f / 26 + H(i, 57)) % 1, tint: i % 3 } : { pose: H(i, 58) < 0.5 ? "stand" : "peck", face, peck: 0.6, tint: i % 3 }, t);
       }
       const jam = f >= EV.CLACK8;
-      sitter(out, cam, 2, GUNNER, "gunner", S.GUNNER8, [
+      sitter(out, cam, 2, GUNNER, "gunner", f >= 797 ? [S.GUNNER8[0], 0.72, S.GUNNER8[2]] : S.GUNNER8, [
         { f: 695, expr: "stern", lean: 8, look: -1 },
         { f: 776, expr: "grin", lean: 10 },                       // "dam"
         { f: 790, expr: "stern", lean: 12, headTilt: -3 },
@@ -586,9 +590,9 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
         { f: 1085, expr: "proud", lean: -6, headTilt: -6 },          // "bullets"
       ], t, 1, (fo) => ({ ...fo, prop: "pen", armR: fo.armR ?? "hold" }), 1, false);
       sparkle(out, [SPOT.MAJOR10[0] + 0.55, 1.75, SPOT.MAJOR10[2]], f, EV.FLOURISH10 + 1, 0.7);
-      for (let k = 0; k < 22; k++) { // glints on the camera side of the brass mountain
-        const a = (H(k, 71) - 0.5) * 2.2, r = 1.5 + 7 * H(k, 72), y = 7.6 * (1 - r / 10.8);
-        sparkle(out, [SPOT.BRASS[0] + Math.sin(a) * r, y + 0.5, SPOT.BRASS[2] + Math.cos(a) * r + 0.8], f, 1040 + k * 4, 1.6 + 1.2 * H(k, 73));
+      for (let k = 0; k < 40; k++) { // glints all over the camera side of the brass mountain, from the reveal to the end
+        const a = (H(k, 71) - 0.5) * 2.4, r = 1.2 + 8 * H(k, 72), y = 7.6 * (1 - r / 10.8);
+        sparkle(out, [SPOT.BRASS[0] + Math.sin(a) * r, y + 0.5, SPOT.BRASS[2] + Math.cos(a) * r + 0.8], f, 1040 + ((k * 7) % 90), 2.0 + 1.4 * H(k, 73), 2.2);
       }
       break;
     }
@@ -614,13 +618,13 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
       break;
     }
     case 13: { // explainer: the enemy marches in a neat line toward the sandbagged gun
-      for (let i = 0; i < 9; i++) {
-        const x = -4.4 + i * 1.1, z = -14.5 + 4.6 * (f - 1270) / 112;
+      for (let i = 0; i < 15; i++) {
+        const x = -7.7 + i * 1.1, z = -7.4 + 2.6 * (f - 1270) / 112;
         out.places.push(person(cam, { i: 200 + i, o: ENEMY, okey: "enemy" }, x, 0, z, { side: false, mirror: false },
           { mode: "march", phase: q((((f - EV.MARCH13) / 30) % 1 + 1) % 1, 30), expr: "stern", facing: 0, blink: 0 }, {}, 0.92));
         blob(out, x, 0, z, 0.92);
       }
-      sitter(out, cam, 2, GUNNER, "gunner", [0.55, 0, 0.75], [
+      sitter(out, cam, 2, GUNNER, "gunner", [1.3, 0, 0.45], [
         { f: 1270, expr: "smile", lean: 8, look: -1 },
         { f: 1330, expr: "grin", headTilt: 5 },                     // "enemy"
         { f: 1367, expr: "proud", headTilt: -4 },                   // "line"
@@ -629,15 +633,17 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
     }
     case 14: {
       if (f < EV.CUT14) { // top-down: the starburst
-        const s0 = Math.max(0, (f - EV.SCATTER14) / FPS);
+        const s0 = Math.max(0, (f - EV.SCATTER14) / FPS), C0 = S.GUNNER14;
+        out.places.push({ ...person(cam, { i: 2, o: GUNNER, okey: "gunner" }, C0[0], 0, C0[2], { side: false, mirror: false },
+          { mode: "stand", expr: s0 > 0 ? "shock" : "nervous", prop: "lewis", facing: Math.floor(f / 9) % 2 ? 1 : -1, blink: 0 }, {}, 1), billboard: true });
         for (let i = 0; i < 64; i++) {
-          const a = (i / 64) * Math.PI * 2 + 0.3 * (H(i, 91) - 0.5), r = 1.0 + 2.6 * H(i, 92) + (5.2 + 2.2 * H(i, 93)) * s0;
-          const p: V3 = [Math.cos(a) * r, 0, Math.sin(a) * r], dir: [number, number] = [Math.cos(a), Math.sin(a)];
+          const a = (i / 64) * Math.PI * 2 + 0.3 * (H(i, 91) - 0.5), r = 1.4 + 2.2 * H(i, 92) + (2.6 + 1.2 * H(i, 93)) * s0;
+          const p: V3 = [C0[0] + Math.cos(a) * r, 0, C0[2] + Math.sin(a) * r], dir: [number, number] = [Math.cos(a), Math.sin(a)];
           emu(out, cam, 160 + i, p, s0 > 0 ? { pose: "run", dir, phase: (f / 10 + H(i, 94)) % 1, tint: i % 3, billboard: true } : { pose: "stand", dir, tint: i % 3, billboard: true }, t, false);
           if (s0 > 0) speed(out, cam, [p[0], 0.4, p[2]], new THREE.Vector3(dir[0], 0, dir[1]), f + i, 2.6);
           if (s0 > 0 && i % 3 === 0) puff(out, [p[0] - dir[0] * 1.2, 0.2, p[2] - dir[1] * 1.2], ((f + i * 3) % 12) / FPS, 1.5, 0.4, i, DUST);
         }
-        for (let j = 0; j < 6; j++) puff(out, [(j - 2.5) * 0.7, 0.2, (j % 2 - 0.5) * 0.8], t - (EV.SCATTER14 + j) / FPS, 3.2, 1.3, j, DUST);
+        for (let j = 0; j < 6; j++) puff(out, [S.GUNNER14[0] + (j - 2.5) * 0.9, 0.2, S.GUNNER14[2] + (j % 2 - 0.5) * 1.6], t - (EV.SCATTER14 + j) / FPS, 2.2, 1.1, j, DUST);
       } else { // low angle: the gunner spins after them, dizzy by "once"
         const spin = EV.SPIN14.filter((g) => f >= g).length % 2 ? 1 : -1, dizzy = f >= EV.DIZZY14;
         actor(out, cam, 2, GUNNER, "gunner", S.GUNNER14, [
@@ -647,10 +653,10 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
         ], t, spin as 1 | -1, (fo) => ({ ...fo, prop: "lewis", headTilt: (fo.headTilt ?? 0) + (dizzy ? 8 * Math.sin(f * 0.5) : 0), lean: (fo.lean ?? 0) + (dizzy ? 5 * Math.sin(f * 0.37) : 0), hatTilt: dizzy ? 0.3 : 0, sweat: sweatAt(f, 1456) }));
         for (let i = 0; i < 14; i++) {
           const a = (f / FPS) * (1.2 + 0.6 * H(i, 95)) * (i % 2 ? 1 : -1) + H(i, 96) * 6.28, r = 6 + 6 * H(i, 97);
-          const p: V3 = [Math.cos(a) * r, 0, Math.sin(a) * r - 6], dir: [number, number] = [-Math.sin(a) * (i % 2 ? 1 : -1), Math.cos(a) * (i % 2 ? 1 : -1)];
+          const p: V3 = [S.GUNNER14[0] + Math.cos(a) * r, 0, S.GUNNER14[2] + Math.sin(a) * r - 6], dir: [number, number] = [-Math.sin(a) * (i % 2 ? 1 : -1), Math.cos(a) * (i % 2 ? 1 : -1)];
           emu(out, cam, 230 + i, p, { pose: "run", dir, phase: (f / 10 + H(i, 98)) % 1, tint: i % 3 }, t);
         }
-        if (dizzy) { const k = q((t * 1.6) % 1, 16); out.fx.push({ key: `stars${k}`, cw: 420, ch: 210, draw: (p) => fxStars(p, k), x: 0, y: 2.05, z: 0.1, w: 0.8, h: 0.4 }); }
+        if (dizzy) { const k = q((t * 1.6) % 1, 16); out.fx.push({ key: `stars${k}`, cw: 420, ch: 210, draw: (p) => fxStars(p, k), x: S.GUNNER14[0], y: 2.05, z: S.GUNNER14[2] + 0.1, w: 0.8, h: 0.4 }); }
       }
       break;
     }

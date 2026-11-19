@@ -301,14 +301,14 @@ export const sidingHD = (col: string) => ctex("sidingHD2" + col, 512, 512, (g, r
  *  troughs between rows, a few green-gold stalks. The surface sits ~0.9 m up on a slab (build.ts wheatField). */
 export const wheatTopHD = () => ctex("wheatTopHD", 1024, 1024, (g, r) => {
   const S = 1024;
-  g.fillStyle = "#d6a240"; g.fillRect(0, 0, S, S);
-  octaves(g, r, S, S, 340, "255,226,140", "150,95,30", 1.3);
+  g.fillStyle = "#d9b04a"; g.fillRect(0, 0, S, S);
+  octaves(g, r, S, S, 340, "255,236,160", "140,105,40", 1.3);
   for (let i = 0; i < 4200; i++) { // ears: short tilted ellipses, light top, dark under
     const x = U(r, 0, S), y = U(r, 0, S), a = U(r, -0.5, 0.5) - Math.PI / 2, l = U(r, 9, 16);
-    const c = pick(r, ["#f2c766", "#e8b24e", "#c98b2c", "#f6d888", "#b97d26"]);
+    const c = pick(r, ["#f0cf6c", "#e2bb52", "#c49a3a", "#f6dc90", "#b48c34"]);
     wrap2(S, S, x, y, l, (xx, yy) => {
       g.save(); g.translate(xx, yy); g.rotate(a);
-      g.fillStyle = "rgba(110,60,15,0.35)"; g.beginPath(); g.ellipse(1.5, 2, l * 0.55, l * 0.22, 0, 0, TAU); g.fill();
+      g.fillStyle = "rgba(110,80,25,0.35)"; g.beginPath(); g.ellipse(1.5, 2, l * 0.55, l * 0.22, 0, 0, TAU); g.fill();
       g.fillStyle = c; g.beginPath(); g.ellipse(0, 0, l * 0.5, l * 0.2, 0, 0, TAU); g.fill();
       g.restore();
     });
@@ -322,10 +322,10 @@ export const wheatTopHD = () => ctex("wheatTopHD", 1024, 1024, (g, r) => {
 export const wheatSideHD = () => ctex("wheatSideHD", 1024, 512, (g, r) => {
   const W = 1024, H = 512;
   const bg = g.createLinearGradient(0, 0, 0, H);
-  bg.addColorStop(0, "#e2ad4a"); bg.addColorStop(0.35, "#c98f34"); bg.addColorStop(1, "#7a5224");
+  bg.addColorStop(0, "#e2bb52"); bg.addColorStop(0.35, "#c9a03c"); bg.addColorStop(1, "#7a6228");
   g.fillStyle = bg; g.fillRect(0, 0, W, H);
   for (let i = 0; i < 520; i++) {
-    const x = U(r, 0, W), lean = U(r, -14, 14), top = U(r, 10, 120), c = pick(r, ["#e9b85a", "#d29a3e", "#f1ca72", "#b98030"]);
+    const x = U(r, 0, W), lean = U(r, -14, 14), top = U(r, 10, 120), c = pick(r, ["#e8c45e", "#d2a844", "#f1d27a", "#b99238"]);
     wrapX(W, x - 20, 40, (xx) => {
       g.strokeStyle = `rgba(90,55,20,0.45)`; g.lineWidth = 3.4; g.beginPath(); g.moveTo(xx, H); g.quadraticCurveTo(xx + lean * 0.3, (H + top) / 2, xx + lean, top + 30); g.stroke();
       g.strokeStyle = c; g.lineWidth = 2; g.beginPath(); g.moveTo(xx, H); g.quadraticCurveTo(xx + lean * 0.3, (H + top) / 2, xx + lean, top + 30); g.stroke();
@@ -342,11 +342,11 @@ export const wheatCardTex = (k: number) => ctex("wheatCard" + k, 256, 512, (g, r
   const r = rng(k * 97 + 13), W = 256, H = 512; void r0;
   const n = 9 + Math.floor(r() * 4);
   for (let i = 0; i < n; i++) {
-    const x0 = U(r, 60, 196), lean = U(r, -46, 46), top = U(r, 40, 170), c = pick(r, ["#f0c262", "#e3ad48", "#f6d27e", "#d39a3a"]);
+    const x0 = U(r, 60, 196), lean = U(r, -46, 46), top = U(r, 40, 170), c = pick(r, ["#efcc66", "#e2b84e", "#f6da84", "#d2a840"]);
     const tx = x0 + lean, ty = top;
     g.lineCap = "round";
     g.strokeStyle = "rgba(96,58,22,0.85)"; g.lineWidth = 6; g.beginPath(); g.moveTo(x0, H); g.quadraticCurveTo(x0 + lean * 0.2, (H + ty) / 2, tx, ty + 40); g.stroke();
-    g.strokeStyle = pick(r, ["#d8a648", "#c99a44", "#b7a050"]); g.lineWidth = 3; g.beginPath(); g.moveTo(x0, H); g.quadraticCurveTo(x0 + lean * 0.2, (H + ty) / 2, tx, ty + 40); g.stroke();
+    g.strokeStyle = pick(r, ["#d8b24c", "#c9a648", "#b7a858"]); g.lineWidth = 3; g.beginPath(); g.moveTo(x0, H); g.quadraticCurveTo(x0 + lean * 0.2, (H + ty) / 2, tx, ty + 40); g.stroke();
     const ang = Math.atan2(lean, H - ty) * 0.8;
     g.save(); g.translate(tx, ty + 30); g.rotate(ang);
     for (let a = 0; a < 7; a++) { g.strokeStyle = "rgba(250,225,160,0.85)"; g.lineWidth = 1.2; g.beginPath(); g.moveTo((a % 2 ? 6 : -6), -a * 7); g.lineTo((a % 2 ? 16 : -16), -a * 7 - 26); g.stroke(); }
@@ -361,15 +361,15 @@ export const wheatCardTex = (k: number) => ctex("wheatCard" + k, 256, 512, (g, r
 /** harvested stubble paddock (1024 px = 4 m): straw ground, rows of short cut stems with shadows, red soil between */
 export const stubbleHD = () => ctex("stubbleHD", 1024, 1024, (g, r) => {
   const S = 1024;
-  g.fillStyle = "#cfae6c"; g.fillRect(0, 0, S, S);
-  octaves(g, r, S, S, 256, "250,228,170", "150,85,40", 1.3);
+  g.fillStyle = "#c6b48e"; g.fillRect(0, 0, S, S);
+  octaves(g, r, S, S, 256, "245,232,195", "135,100,70", 1.2);
   for (let row = 0; row < 16; row++) { // drill rows every 0.25 m
     const y0 = row * 64 + 32;
-    g.fillStyle = "rgba(160,80,40,0.18)"; g.fillRect(0, y0 + 8, S, 12);
+    g.fillStyle = "rgba(140,90,60,0.16)"; g.fillRect(0, y0 + 8, S, 12);
     for (let i = 0; i < 150; i++) {
       const x = U(r, 0, S), y = y0 + U(r, -10, 10), h = U(r, 6, 14);
       g.fillStyle = "rgba(110,60,25,0.35)"; g.fillRect(x + 1, y + 1, 4, 5);
-      g.fillStyle = pick(r, ["#ecd08c", "#f4dc9c", "#d9b46a", "#c99a52"]); g.fillRect(x, y - h, 3, h);
+      g.fillStyle = pick(r, ["#e6d6a8", "#efe2b8", "#d4c08e", "#c2aa7c"]); g.fillRect(x, y - h, 3, h);
     }
   }
   speckle(g, r, S, S, 500, ["rgba(170,90,45,0.4)", "rgba(250,240,200,0.5)"], 1.5, 3.5);
@@ -390,13 +390,13 @@ export const dirtHD = (key = "dirtHD", base = "#bf6332") => ctex(key, 1024, 1024
 /** dry paddock grass (1024 px = 4 m): tan / olive tufts over red soil patches */
 export const paddockHD = () => ctex("paddockHD", 1024, 1024, (g, r) => {
   const S = 1024;
-  g.fillStyle = "#c2a464"; g.fillRect(0, 0, S, S);
-  octaves(g, r, S, S, 256, "245,225,160", "120,80,35", 1.3);
+  g.fillStyle = "#bba882"; g.fillRect(0, 0, S, S);
+  octaves(g, r, S, S, 256, "240,228,190", "115,90,60", 1.2);
   for (let i = 0; i < 26; i++) wrap2(S, S, U(r, 0, S), U(r, 0, S), 90, (x, y) => blotch(g, x, y, U(r, 40, 90), 1.6, "185,95,50", 0.35));
   g.lineCap = "round";
   for (let i = 0; i < 3200; i++) {
     const x = U(r, 0, S), y = U(r, 0, S), l = U(r, 6, 14);
-    g.strokeStyle = pick(r, ["#a89656", "#d8c07c", "#8f8a4e", "#e2cc8a", "#9c7a44"]); g.lineWidth = 2;
+    g.strokeStyle = pick(r, ["#a69a6c", "#d2c494", "#8f8c62", "#ddd0a2", "#988060"]); g.lineWidth = 2;
     g.beginPath(); g.moveTo(x, y); g.lineTo(x + U(r, -4, 4), y - l); g.stroke();
   }
 });
@@ -416,8 +416,8 @@ export const mudHD = () => ctex("mudHD", 1024, 1024, (g, r) => {
 /** brown farm-dam water (1024 px = 8 m): olive-brown, lighter sky streaks, ripple rings, a few floating feathers */
 export const damWaterHD = () => ctex("damWaterHD", 1024, 1024, (g, r) => {
   const S = 1024;
-  g.fillStyle = "#7a6a48"; g.fillRect(0, 0, S, S);
-  g.fillStyle = "rgba(160,190,210,0.18)"; g.fillRect(0, 0, S, S); // sky reflection tint (uniform: the tile repeats seamlessly)
+  g.fillStyle = "#62684e"; g.fillRect(0, 0, S, S);
+  g.fillStyle = "rgba(150,190,215,0.22)"; g.fillRect(0, 0, S, S); // sky reflection tint (uniform: the tile repeats seamlessly)
   octaves(g, r, S, S, 128, "170,160,130", "50,40,25", 1.0);
   for (let i = 0; i < 140; i++) { const x = U(r, 0, S), y = U(r, 0, S), l = U(r, 60, 220); g.strokeStyle = `rgba(${r() < 0.5 ? '190,215,235' : '235,220,180'},${U(r, 0.35, 0.65)})`; g.lineWidth = U(r, 3, 6); g.beginPath(); g.moveTo(x, y); g.lineTo(x + l, y + U(r, -3, 3)); g.stroke(); }
   for (let i = 0; i < 22; i++) { const x = U(r, 0, S), y = U(r, 0, S); g.strokeStyle = "rgba(230,220,190,0.35)"; g.lineWidth = 2.5; for (const k of [1, 1.8]) { g.beginPath(); g.ellipse(x, y, 16 * k, 7 * k, 0, 0, TAU); g.stroke(); } }
@@ -432,9 +432,9 @@ export const gumBarkHD = () => ctex("gumBarkHD", 256, 512, (g, r) => {
 /** eucalyptus foliage (256 x 128 on a unit sphere): grey-green, sage dabs on the crown, olive clumps below */
 export const gumLeafHD = (k: number) => ctex("gumLeafHD" + k, 256, 128, (g, r0) => {
   const r = rng(k * 31 + 7); void r0;
-  const base = ["#7e9a78", "#869e7c", "#73906f"][k % 3];
+  const base = ["#7a9a6a", "#82a070", "#6f9062"][k % 3];
   const gr = g.createLinearGradient(0, 0, 0, 128);
-  gr.addColorStop(0, "#a9bd98"); gr.addColorStop(0.4, base); gr.addColorStop(1, "#56704f");
+  gr.addColorStop(0, "#a2bc88"); gr.addColorStop(0.4, base); gr.addColorStop(1, "#4a6640");
   g.fillStyle = gr; g.fillRect(0, 0, 256, 128);
   for (let i = 0; i < 70; i++) {
     const x = U(r, 0, 256), y = U(r, 6, 120), rad = U(r, 4, 10), light = y < 60 ? r() < 0.7 : r() < 0.2;

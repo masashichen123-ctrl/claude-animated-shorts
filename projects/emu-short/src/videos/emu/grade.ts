@@ -196,14 +196,14 @@ export const GRADE_DAY2: GradeParams = {
 export const GRADE_MORNING: GradeParams = {   // sunrise: soft S, rose darks, peach-cream highlights, framing vignette (.82)
   ky: [0.045, 0.115, 0.28, 0.565, 0.815, 0.935, 1],
   sat: [0.85, 1.02, 1.05],
-  tintS: [0.004, 0.026], tintM: [-0.014, 0.008], tintH: [-0.022, 0.01],
+  tintS: [0.016, -0.004], tintM: [-0.008, 0.004], tintH: [-0.018, 0.008],
   vig: [0.24, 0.42],
   hueSat: [1.12, 1.1, 1.0, 0.8, 0.8, 0.82, 0.85, 0.95, 1.0, 1.05, 1.05, 1.12],
 };
 export const GRADE_GOLDEN2: GradeParams = {
   ky: [0.04, 0.1, 0.255, 0.54, 0.8, 0.93, 1],
   sat: [0.88, 1.06, 1.08],
-  tintS: [0.012, 0.02], tintM: [-0.004, 0.006], tintH: [-0.014, 0.008],
+  tintS: [0.022, -0.006], tintM: [-0.008, 0.004], tintH: [-0.016, 0.008],
   vig: [0.24, 0.4],
   hueSat: HUE_WARM,
 };
