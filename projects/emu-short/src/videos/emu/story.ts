@@ -70,13 +70,24 @@ export const EV = {
   SALUTE6: 500,     // "soldiers"@502
   GUNS6: [533, 540] as number[], // the two tripods thump down (533-543)
   CRATE6: 582,      // the last crate lands on the stack
-  FIRE7: 612,       // shot 7 bursts from here
+  FIRE7: [[602, 608], [628, 637], [647, 662], [688, 695]] as [number, number][], // shot 7 bursts (audio/cues.md: 2 / 3 / 5 / 3 rounds)
+  STRIKE7: [611, 614, 636, 639, 642, 656, 659, 662, 665, 669] as number[], // dust puffs falling short
   JAM8: 801,        // the drum spring pops, KICK
-  CLACK8: 799,      // "clack" + puff
-  HAMMER9: [837, 841, 845, 849] as number[], // hammer strikes
+  CLACK8: 801,      // "clack" + puff (audio/cues.md: clack, spring and puff all @801)
+  HAMMER9: [837, 841, 846, 850] as number[], // hammer strikes (audio/cues.md)
   CUT9: 875,
   FLOURISH10: 961,  // pen flourish ("claimed"@963)
-  PUFF12: 1205,     // 10 dust puffs every 4 f
+  PUFF12: 1205,     // 10 dust puffs every 4 f from @1205
+  PECK12: 1259,     // the single peck (audio/cues.md)
+  MARCH13: 1275,    // boots on every 15 f from here
+  SCATTER14: 1382,  // the burst
+  SPIN14: [1450, 1457, 1463, 1469, 1475, 1482, 1488, 1494] as number[], // facing flips on the whooshes
+  SAG16: 1688,      // the gun on the truck sags (creak @1690)
+  TURN17: [1736, 1750] as [number, number], // head turn to the lens
+  BLINK17: 1756,
+  CRANK5: [[389, 402], [436, 449]] as [number, number][],
+  PATS11: [1166, 1180] as number[],
+  EMU1_STEPS: 24,   // footfalls 24 / 38 / 52
   CUT14: 1450,
   DIZZY14: 1476,    // swirl eyes by "once"@1479
 };
@@ -207,15 +218,15 @@ export const gunsAt = (id: number, f: number): GunPose[] => {
       const drop = (f0: number) => { const s = (f - f0) / FPS; return s < 0 ? 9 : s < 0.12 ? 0.35 * (1 - s / 0.12) : 0; };
       return S.TRIPODS6.map((p, i) => gp({ pos: [p[0], TRIPOD_H + drop(EV.GUNS6[i]), p[2]], yaw: Math.PI / 2 + 0.6 - i * 0.25, pitch: 0.18 }));
     }
-    case 7: return [gp({ pos: [S.GUN7[0], TRIPOD_H, S.GUN7[2]], yaw: Math.PI / 2 + 0.04 + 0.01 * Math.sin(f * 0.9), pitch: 0.07, fire: burst(f, EV.FIRE7, 640) || burst(f, 650, 676) })];
-    case 8: return [gp({ pos: S.GUN8, yaw: Math.PI / 2 - 0.06, pitch: 0.05, tripod: false, fire: burst(f, 784, EV.CLACK8 - 1), jam: f >= EV.CLACK8 ? (f - EV.CLACK8) / FPS : -1 })];
-    case 9: return [gp({ pos: [-1.0, 1.85, 0], yaw: f < EV.CUT9 ? 0.25 : 0.15 * Math.sin(f * 0.5), pitch: f < EV.CUT9 ? 0 : 0.08 * Math.sin(f * 1.3), tripod: false, onTruck: true, fire: f >= EV.CUT9 ? burst(f, 884, 930) : 0 })];
+    case 7: return [gp({ pos: [S.GUN7[0], TRIPOD_H, S.GUN7[2]], yaw: Math.PI / 2 + 0.04 + 0.01 * Math.sin(f * 0.9), pitch: 0.07, fire: EV.FIRE7.reduce((a, [x, y]) => a || burst(f, x, y), 0) })];
+    case 8: return [gp({ pos: S.GUN8, yaw: Math.PI / 2 - 0.06, pitch: 0.05, tripod: false, fire: 0, jam: f >= EV.CLACK8 ? (f - EV.CLACK8) / FPS : -1 })];
+    case 9: return [gp({ pos: [-1.0, 1.85, 0], yaw: f < EV.CUT9 ? 0.25 : 0.15 * Math.sin(f * 0.5), pitch: f < EV.CUT9 ? 0 : 0.08 * Math.sin(f * 1.3), tripod: false, onTruck: true, fire: f >= EV.CUT9 ? burst(f, 928, 935) : 0 })];
     case 12: return [gp({ pos: [S.GUN12[0], TRIPOD_H, S.GUN12[2]], yaw: aim(S.GUN12, emu12At(f + 3)), pitch: 0.06, fire: burst(f, 1203, 1243) })];
     case 13: { // the barrel sweeps along the marching line
       const u = (f - 1270) / 112;
       return [gp({ pos: [S.GUN13[0], 0.82, S.GUN13[2]], yaw: Math.PI / 2 + 0.42 * Math.sin(u * Math.PI * 2.2 - 1.2), pitch: 0.05, tripod: false })];
     }
-    case 16: return [gp({ pos: [-1.0, 1.85, 0], yaw: 0, pitch: -0.42, tripod: false, onTruck: true })];
+    case 16: return [gp({ pos: [-1.0, 1.85, 0], yaw: 0, pitch: 0.12 - 0.54 * smooth((f - EV.SAG16) / 6), tripod: false, onTruck: true })];
   }
   return [];
 };
@@ -473,7 +484,7 @@ export const DOF: Dof[] = [
   { f: 1694, cInf: 7, focus: () => emuEye(SPOT.EMU17, 1.12) },
 ];
 /** shot 12's strolling emu (feet), shared with cast.ts */
-export const emu12At = (f: number): V3 => [-1.7 + 3.4 * clamp01((f - 1199) / 74), 0, -5.2];
+export const emu12At = (f: number): V3 => [-2.3 + 3.3 * clamp01((f - 1199) / 74), 0, -5.2];
 export const dofAt = (f: number) => {
   let i = 0; while (i + 1 < DOF.length && f >= DOF[i + 1].f) i++;
   const d = DOF[i], p = DOF[Math.max(0, i - 1)];

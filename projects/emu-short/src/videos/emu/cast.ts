@@ -384,12 +384,12 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
   const S = SPOT;
   switch (id) {
     case 1: { // the hook: the crouched gunner sweats; ONE emu steps out of the wheat and stares him down
-      const u = smooth((f - EV.EMU1_OUT) / 36), e0: V3 = [S.EMU1[0] - 0.7, 0, S.EMU1[2] - 3.6];
+      const u = clamp01((f - 17) / 42), e0: V3 = [S.EMU1[0] - 0.7, 0, S.EMU1[2] - 3.6];
       const ep: V3 = [e0[0] + (S.EMU1[0] - e0[0]) * u, 0, e0[2] + (S.EMU1[2] - e0[2]) * u];
-      const walking = f > EV.EMU1_OUT && u < 1;
+      const walking = f > 17 && u < 1;
       const lean = f >= EV.EMU1_LEAN - 2;
       emu(out, cam, 1, ep, { pose: walking ? "walk" : lean ? "lean" : "stand", dir: walking ? [0.15, 1] : undefined, face: faceTo(cam, ep, S.GUNNER1),
-        phase: (f / 26) % 1, eye: lean ? "wide" : u >= 1 ? "stare" : "open", turn: lean ? 0.3 : 0.1 }, t);
+        phase: (f - EV.EMU1_STEPS) / 28, eye: lean ? "wide" : u >= 1 ? "stare" : "open", turn: lean ? 0.3 : 0.1 }, t);
       const gf = faceTo(cam, S.GUNNER1, S.EMU1);
       sitter(out, cam, 2, GUNNER, "gunner", S.GUNNER1, [
         { f: 0, expr: "nervous", armF: "point", lean: 6, look: 1 },
@@ -446,11 +446,11 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
       break;
     }
     case 5: { // the wall telephone: crank, then yell into it; emus pecking in the yard beyond the posts
-      const fp = S.FARMER5, cranking = f < 414;
+      const fp = S.FARMER5, cranking = EV.CRANK5.some(([a, b]) => f >= a && f <= b);
       actor(out, cam, 3, FARMER, "farmer", fp, [
         { f: 389, expr: "annoyed", lean: 5, look: 1 },
         { f: 399, expr: "stern", headTilt: 4 },                   // "farmers"
-        { f: 414, expr: "yell", lean: 10, headTilt: -5, shrug: 0.6 }, // "called in the army"
+        { f: 405, expr: "yell", lean: 10, headTilt: -5, shrug: 0.6 }, // "called in the army"
         { f: 426, expr: "yell", lean: 13, headTilt: 6, shrug: 1 },  // "army"
       ], t, faceTo(cam, fp, S.PHONE), (fo) => ({ ...fo, prop: "handset", armL: cranking ? "crank" : "out", wave: cranking ? q((f / 8) % 1, 8) : undefined, sweat: sweatAt(f, 430) }));
       for (let i = 0; i < 6; i++) {
@@ -503,10 +503,7 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
         const z = z0 - vz * (f - 602) / FPS, y = paddockRise(x, z);
         emu(out, cam, 60 + i, [x, y, z], { pose: "run", dir: [0.05, -1], phase: (f / 13 + H(i, 34)) % 1, tint: i % 3 }, t, false);
       }
-      for (let k = 0; k < 24; k++) { // strikes landing short of the birds
-        const f0 = EV.FIRE7 + 4 + k * 3 + (k > 9 ? 16 : 0);
-        strike(out, [-5 + 8 * H(k, 41), 0, -24 - 10 * H(k, 42)], f, f0, 1.4, k);
-      }
+      EV.STRIKE7.forEach((f0, k) => strike(out, [-5 + 8 * H(k, 41), 0, -24 - 10 * H(k, 42)], f, f0, 1.4, k)); // dust falling short (cues.md)
       break;
     }
     case 8: { // the dam: a thousand emus drinking; the soldiers hidden behind the bank; the jam
@@ -575,7 +572,7 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
           speed(out, cam, [x - 0.4, 1.1, z], new THREE.Vector3(1, 0, 0), f + i * 3, 2.0);
           if (i % 2 === 0) puff(out, [x - 0.6, 0.2, z], ((f + i * 7) % 15) / FPS, 1.1, 0.5, i, DUST);
         }
-        for (let k = 0; k < 14; k++) strike(out, [truck9X(884 + k * 3) + 6 + 18 * H(k, 66), 0, S.TRUCK9[2] - 9 + 14 * H(k, 67)], f, 886 + k * 3, 1.2, k);
+        for (let k = 0; k < 3; k++) strike(out, [truck9X(930) + 8 + 14 * H(k, 66), 0, S.TRUCK9[2] - 9 + 14 * H(k, 67)], f, 930 + k * 2, 1.2, k);
       }
       break;
     }
@@ -600,13 +597,16 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
         { f: 1135, expr: "smile", look: -1, lean: -2 },
         { f: 1150, expr: "proud", headTilt: -4, lean: -5 },          // "army"
         { f: 1170, expr: "grin", headTilt: 6, lean: 3 },             // "plenty"
-      ], t, -1, (fo) => ({ ...fo, armF: undefined, armL: ["up", "wave", q(0.5 + 0.5 * Math.sin(f * 0.6), 6)] as ArmSpec, armR: "hip" }));
+      ], t, -1, (fo) => { // two proud pats on the wall: hand up, slap down on the frame of the pat
+        const pat = Math.max(...EV.PATS11.map((g) => { const d = f - g; return d >= -6 && d < 0 ? (d + 6) / 6 : d >= 0 && d < 5 ? 1 - d / 5 : 0; }));
+        return { ...fo, armL: ["up", "out", q(pat, 6)] as ArmSpec, armR: "hip" };
+      });
       sparkle(out, [S.SOLDIER11[0] - 1.6, 4.2, S.WALL_Z + 0.4], f, 1170, 1.2);
       break;
     }
     case 12: { // one emu strolls past the gun, unbothered, ten puffs at its feet, a peck on "ten"
-      const ep = emu12At(f), peckK = f >= 1238 && f < 1258 ? Math.sin(Math.PI * (f - 1238) / 20) : 0;
-      emu(out, cam, 1, ep, peckK > 0.02 ? { pose: "peck", face: 1, peck: peckK, eye: "happy" } : { pose: "walk", dir: [1, 0], phase: (f / 24) % 1, eye: "open", turn: 0.15 }, t);
+      const ep = emu12At(f), peckK = f >= EV.PECK12 - 9 && f < EV.PECK12 + 9 ? Math.sin(Math.PI * (f - EV.PECK12 + 9) / 18) : 0;
+      emu(out, cam, 1, ep, peckK > 0.02 ? { pose: "peck", face: 1, peck: peckK, eye: "happy" } : { pose: "walk", dir: [1, 0], phase: (f - 1204) / 28, eye: "open", turn: 0.15 }, t);
       for (let k = 0; k < 10; k++) {
         const f0 = EV.PUFF12 + 4 * k, e = emu12At(f0), side = k % 2 ? 1 : -1;
         strike(out, [e[0] + 0.4 + side * (0.35 + 0.25 * H(k, 81)), 0, e[2] + side * 0.4 + 0.3 * (H(k, 82) - 0.5)], f, f0, 1.1, k);
@@ -617,7 +617,7 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
       for (let i = 0; i < 9; i++) {
         const x = -4.4 + i * 1.1, z = -14.5 + 4.6 * (f - 1270) / 112;
         out.places.push(person(cam, { i: 200 + i, o: ENEMY, okey: "enemy" }, x, 0, z, { side: false, mirror: false },
-          { mode: "march", phase: q((f / 30) % 1, 16), expr: "stern", facing: 0, blink: 0 }, {}, 0.92));
+          { mode: "march", phase: q((((f - EV.MARCH13) / 30) % 1 + 1) % 1, 30), expr: "stern", facing: 0, blink: 0 }, {}, 0.92));
         blob(out, x, 0, z, 0.92);
       }
       sitter(out, cam, 2, GUNNER, "gunner", [0.55, 0, 0.75], [
@@ -629,7 +629,7 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
     }
     case 14: {
       if (f < EV.CUT14) { // top-down: the starburst
-        const s0 = Math.max(0, (f - 1386) / FPS);
+        const s0 = Math.max(0, (f - EV.SCATTER14) / FPS);
         for (let i = 0; i < 64; i++) {
           const a = (i / 64) * Math.PI * 2 + 0.3 * (H(i, 91) - 0.5), r = 1.0 + 2.6 * H(i, 92) + (5.2 + 2.2 * H(i, 93)) * s0;
           const p: V3 = [Math.cos(a) * r, 0, Math.sin(a) * r], dir: [number, number] = [Math.cos(a), Math.sin(a)];
@@ -637,9 +637,9 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
           if (s0 > 0) speed(out, cam, [p[0], 0.4, p[2]], new THREE.Vector3(dir[0], 0, dir[1]), f + i, 2.6);
           if (s0 > 0 && i % 3 === 0) puff(out, [p[0] - dir[0] * 1.2, 0.2, p[2] - dir[1] * 1.2], ((f + i * 3) % 12) / FPS, 1.5, 0.4, i, DUST);
         }
-        for (let j = 0; j < 6; j++) puff(out, [(j - 2.5) * 0.7, 0.2, (j % 2 - 0.5) * 0.8], t - (1386 + j) / FPS, 3.2, 1.3, j, DUST);
+        for (let j = 0; j < 6; j++) puff(out, [(j - 2.5) * 0.7, 0.2, (j % 2 - 0.5) * 0.8], t - (EV.SCATTER14 + j) / FPS, 3.2, 1.3, j, DUST);
       } else { // low angle: the gunner spins after them, dizzy by "once"
-        const spin = Math.floor((f - EV.CUT14) / 5) % 2 ? 1 : -1, dizzy = f >= EV.DIZZY14;
+        const spin = EV.SPIN14.filter((g) => f >= g).length % 2 ? 1 : -1, dizzy = f >= EV.DIZZY14;
         actor(out, cam, 2, GUNNER, "gunner", S.GUNNER14, [
           { f: EV.CUT14, expr: "nervous", lean: 6 },
           { f: 1462, expr: "shock", headTilt: 8 },                  // "direction"
@@ -675,7 +675,7 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
       break;
     }
     case 17: { // the emus are still there: the near one turns to the lens and blinks
-      const tn = smooth((f - 1698) / 12), bl = f >= 1722 && f < 1726 ? [0.5, 1, 1, 0.5][f - 1722] : 0;
+      const [ta, tb] = EV.TURN17, tn = smooth((f - ta) / (tb - ta)), bl = f >= EV.BLINK17 && f < EV.BLINK17 + 4 ? [0.5, 1, 1, 0.5][f - EV.BLINK17] : 0;
       emu(out, cam, 1, S.EMU17, { pose: "stand", face: -1, turn: tn, eye: "open", blink: bl, scale: 1.12 }, t, false);
       for (let i = 0; i < 22; i++) {
         const z = -24 - 40 * H(i, 102), p: V3 = [S.CAM17[0] + (z - S.CAM17[2]) * (0.22 * (H(i, 101) * 2 - 1)) - 0.5, 0, z];
