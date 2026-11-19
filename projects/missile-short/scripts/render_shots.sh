@@ -13,6 +13,6 @@ for s in $SHOTS; do
   echo "shot $s frames $a-$b $(date -u +%H:%M)"
   npx remotion render src/index.tsx MissileShort "$o" --frames=$a-$b --scale=0.5 --concurrency=4 --codec=h264 --crf=14 \
     --browser-executable=/opt/pw-browsers/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell \
-    --gl=swiftshader --props='{"post":{"dpr":0.5}}' --timeout=300000 --muted 2>&1 | grep -E "^\+|rror" 
+    --gl=swiftshader --props='{"post":{"dpr":0.5}}' --timeout=1200000 --muted 2>&1 | grep -E "^\+|rror" 
 done
 echo ALLDONE
