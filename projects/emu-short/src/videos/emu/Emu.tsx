@@ -1,5 +1,5 @@
-// "Missile Mail" (1959): 45 s vertical short in the flat-characters-in-a-3D-toon-world style, rebuilt on the bridge
-// template's look stack (owner: post, with ink.ts / lensblur.ts / grade.ts).
+// "The Great Emu War" (1932): 59 s vertical short in the flat-characters-in-a-3D-toon-world style, on the missile
+// short's look stack (owner: post, with ink.ts / lensblur.ts / grade.ts).
 // One three.js world (world.ts) posed per frame from the story timeline (story.ts). Post chain:
 //   InkPass (world ink lines, own pass) -> lens blur pre + main (thin-lens DOF per shot from dofAt) ->
 //   [bloom (emissive only) + NEUTRAL tone mapping + colour grade] (one merged EffectPass), MSAA 4.
@@ -36,17 +36,15 @@ const toggles = (): PostToggles => ({ ink: true, lens: true, pre: true, bloom: t
 // Look pass r1 (lighting.md 3.4, "bloom on emissives only"): the bright pass keys on the MAX channel, not luminance,
 // with a threshold above any lit albedo (day lit 1.58 x white .85 = 1.34; golden 1.5 x .95 = 1.43): from 1.45, full
 // at 1.8. A/B on r1 stills: at the old luminance threshold 1.0 the sunlit top of the white missile bloomed (311, 816);
-// now only emissives do: sun disc (6.0), flame / boom / burst cards (glow 1.6-2.2), beacon 2.2, lamps 2.6. Max channel
-// so saturated sources (red beacon, orange flame: luminance < 1.3) still bloom. Emissives need k >= 1.8 to glow fully.
+// now only emissives do: sun disc (6.0), muzzle flash cards (glow 1.6-2.2), the tent lamp and its glowing door. Max channel
+// so saturated sources (an orange lamp: luminance < 1.3) still bloom. Emissives need k >= 1.8 to glow fully.
 const BLOOM_T = 1.45, BLOOM_S = 0.35;
 /** per light preset bloom strength / radius (lighting.md 3.4; e-fold glow ~30 px at 1080 for radius 0.6) */
-const BLOOM_LOOK: Record<string, [number, number]> = { day: [0.6, 0.6], golden: [0.8, 0.7], dusk: [0.8, 0.7], morning: [0.8, 0.7], interior: [0.9, 0.75], gallery: [0.9, 0.75], night: [0.9, 0.75] };
-/** per-light bright-pass threshold (max channel, linear). Gallery / interior: lit cream floors and walls with practicals
- *  reach ~1.6-1.9, so the threshold sits at 2.0 / 1.8 (verify_r1 #1: the museum's milky veil was the lit hall blooming).
- *  A lights.ts preset may carry its own `bloomT`, which wins. */
-const BLOOM_TH: Record<string, number> = { gallery: 2.0, interior: 1.8 };
-/** per-shot bloom intensity factor: 13 (dusk puff) - the flame glow burned the missile to white (verify_r1 #4) */
-const SHOT_BLOOM_K: Record<number, number> = { 13: 0.35 };
+const BLOOM_LOOK: Record<string, [number, number]> = { day: [0.6, 0.6], golden: [0.8, 0.7], dusk: [0.8, 0.7], morning: [0.8, 0.7] };
+/** per-light bright-pass threshold (max channel, linear); a lights.ts preset may carry its own `bloomT`, which wins */
+const BLOOM_TH: Record<string, number> = {};
+/** per-shot bloom intensity factor */
+const SHOT_BLOOM_K: Record<number, number> = {};
 const makeBloom = () => {
   const b = new BloomEffect({ blendFunction: BlendFunction.ADD, intensity: 0.6, luminanceThreshold: BLOOM_T, luminanceSmoothing: BLOOM_S, mipmapBlur: true, levels: 6, radius: 0.6 });
   // bright pass = max channel x the bloom mask the InkPass writes into alpha (1 + mask): only glow materials, the sky /
@@ -63,7 +61,7 @@ const fwd = new THREE.Vector3(), fpt = new THREE.Vector3();
 /** waits for loadKit() (procedural world: resolves at once; kept so async assets can be added without touching the comp) */
 const useKit = () => {
   const [kit, setKit] = useState<boolean | null>(null);
-  const [handle] = useState(() => delayRender("missile kit"));
+  const [handle] = useState(() => delayRender("emu kit"));
   useEffect(() => { loadKit().then((k) => { setKit(k); continueRender(handle); }); }, [handle]);
   return kit;
 };
@@ -103,7 +101,7 @@ const Inner: React.FC<{ id: number; kit: boolean }> = ({ id, kit }) => {
   noInkFallback(world.root);
   // thin-lens focus: distance along the view axis to the shot's focus point (default: the camera's look target)
   // DOF of THIS canvas's shot: during a dissolve / the flash cut, a shot drawn outside its own range keeps its first
-  // (or last) frame's lens instead of the other shot's (the postmaster was blurred by the hook's focus at 118-120)
+  // (or last) frame's lens instead of the other shot's 
   const sd = SHOTS[id - 1];
   const d = dofAt(Math.min(Math.max(f, sd.a), sd.b - 1));
   cam.getWorldDirection(fwd);
@@ -140,10 +138,8 @@ const ShotView: React.FC<{ id: number; kit: boolean; alpha: number }> = ({ id, k
   </AbsoluteFill>
 );
 
-/** The white flash IS the hook's transition: the dissolve into the next shot that overlaps it (story.ts XFADE) left a
- *  ghost of the hook (the missile's red band over the postmaster, frames 119-123) after the white had faded. So from
- *  the frame after the flash peak until that dissolve would have ended, show only the next shot (a cut under the
- *  white). All other dissolves are untouched. */
+/** The white flash IS the hook's transition: from the frame after the flash peak, show only the next shot (a cut
+ *  under the white). Dissolves elsewhere are untouched. */
 const layersFlash = (f: number) => {
   const L = layersAt(f);
   const nxt = SHOTS.find((s) => s.a > FLASH_AT);

@@ -1,8 +1,8 @@
-// Colour grade (post agent; copied from the bridge short, presets extended to the missile short's four lights): references/grade/GradeEffect.ts (reports/grade.md) verbatim,
+// Colour grade (post agent; copied from the bridge short, presets for the emu short's four lights): references/grade/GradeEffect.ts (reports/grade.md) verbatim,
 // plus GRADES / GRADE_STRENGTH / gradeFor() so the lead can re-fit the presets after the lighting merge.
 // The presets were fitted to the OLD unlit stills: after the WORLD lighting lands they will over-correct; re-fit
 // (grade.md 5.C) or lower GRADE_STRENGTH. Each Inner (crossfade layer) grades with its own shot's light, so the DOM
-// crossfade at XFADE frames (shots 10->11, 13->14) cross-fades the presets as well.
+// crossfade at XFADE frames cross-fades the presets as well.
 // GradeEffect: the fitted reference-style colour grade as a postprocessing 6.37 Effect.
 // Put it LAST in the EffectComposer, after ToneMappingEffect. It works on display-referred values: the input (linear,
 // already tone-mapped to 0..1) is encoded to sRGB, graded exactly like scripts/grade.py (validated on our stills), and
@@ -214,20 +214,6 @@ export const GRADE_DUSK: GradeParams = {   // deeper S, violet-rose darks, warm 
   vig: [0.3, 0.38],
   hueSat: HUE_WARM,
 };
-export const GRADE_INTERIOR: GradeParams = {   // post office: warm, gentle S, cream highlights, soft vignette
-  ky: [0.04, 0.11, 0.275, 0.57, 0.82, 0.94, 1],
-  sat: [0.7, 0.92, 1.0],
-  tintS: [0.02, 0.016], tintM: [0.004, 0.004], tintH: [-0.016, 0.006],
-  vig: [0.26, 0.4],
-  hueSat: [1.1, 0.95, 1.0, 0.9, 0.9, 0.95, 1.0, 1.05, 1.1, 1.08, 1.0, 1.05],
-};
-export const GRADE_GALLERY: GradeParams = {   // museum (grade.md A3 interior): orange -10 %, blue / violet +10-15 %, deep falloff
-  ky: [0.0, 0.075, 0.23, 0.5, 0.78, 0.92, 1],
-  sat: [0.85, 1.0, 1.0],
-  tintS: [0.035, 0.012], tintM: [0.012, 0.004], tintH: [-0.02, 0.006],
-  vig: [0.4, 0.34],
-  hueSat: [1.1, 0.9, 1.0, 1, 1, 1, 1, 1.1, 1.15, 1.1, 1.0, 1.05],
-};
 export const GRADE_NIGHT: GradeParams = {
   ky: [0.03, 0.09, 0.2, 0.42, 0.7, 0.88, 1], sat: [1.1, 1.15, 1.0],
   tintS: [0.06, 0.01], tintM: [0.045, 0.005], tintH: [-0.01, 0.004], vig: [0.4, 0.3],
@@ -235,9 +221,9 @@ export const GRADE_NIGHT: GradeParams = {
 };
 export type GradeName = LightName;
 export const GRADES: Record<GradeName, GradeParams> = {
-  day: GRADE_DAY2, golden: GRADE_GOLDEN2, dusk: GRADE_DUSK, interior: GRADE_INTERIOR, morning: GRADE_MORNING, gallery: GRADE_GALLERY,
+  day: GRADE_DAY2, golden: GRADE_GOLDEN2, dusk: GRADE_DUSK, morning: GRADE_MORNING,
 };
-export const GRADE_STRENGTH: Record<GradeName, number> = { day: 1, golden: 1, dusk: 1, interior: 1, morning: 1, gallery: 1 };
+export const GRADE_STRENGTH: Record<GradeName, number> = { day: 1, golden: 1, dusk: 1, morning: 1 };
 /** Apply the preset of a light to the effect (only touches uniforms when the light changes). */
 export function gradeFor(fx: GradeEffect, light0: GradeName) {
   // the caller passes story.ts SHOTS[].light; lights.ts SHOT_LIGHT may refine it (world.update just ran for this layer)

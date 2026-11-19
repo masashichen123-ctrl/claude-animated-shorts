@@ -1,17 +1,19 @@
 // Our cast as lit flat sprites in the 3D world (owner: characters, with toon.ts / cardshade.ts). Each frame every
-// character asks for a drawing (a key + a draw call); the pool keeps one canvas per distinct drawing. Characters are
-// yaw-only billboards shaded by cardShade() (scene tint, bright floor, side gradient toward the sun, painted crescent in
-// the drawing); standing ones get a soft multiply contact blob. Effects (letters, flames, smoke, dust, the explosion)
-// are unlit cards. Cards, effects and blobs live on the NOINK layer so the world ink pass never outlines their quads.
-// CONTRACT with world.ts: stage(id, t, cam, mis) -> { places, fx }; Pool / Actor / Fx draw them.
+// character asks for a drawing (a key + a draw call); the pool keeps one canvas per distinct drawing. Characters and
+// emus are yaw-only billboards shaded by cardShade() (scene tint, bright floor, side gradient toward the sun, painted
+// crescent in the drawing); standing ones get a soft multiply contact blob. Effects (muzzle flashes, dust, smoke,
+// sparkles, the jammed spring) are unlit cards. Cards, effects and blobs live on the NOINK layer so the world ink pass
+// never outlines their quads. Herds of 100+ emus stay cheap: drawings are keyed by (pose, quantised phase, tint, size
+// tier), so a whole herd shares a few dozen canvases.
+// CONTRACT with world.ts: stage(id, t, cam, rig) -> { places, fx }; Pool / Actor / Fx draw them.
 import * as THREE from "three";
 import {
-  Pen, bodyFront, bodySide, fxBurst, fxContact, fxShadow, fxLetter, fxFlame, fxSmoke, fxBoom, Outfit, Expr, FrontOpts, SideOpts,
-  SAILOR, POSTMASTER, CLERK, POSTMAN, KID59, VISITORS, DECK_CREW, GROUND_CREW, Prop, ArmPose, ArmSpec, fxSparkle, fxSpeed,
+  Pen, bodyFront, bodySide, fxContact, fxShadow, fxSmoke, fxSparkle, fxSpeed, fxStars, fxBurst, fxMuzzle, fxDust, fxSpring, fxClack,
+  Outfit, Expr, FrontOpts, SideOpts, ArmPose, ArmSpec, emuSide, EmuOpts, EmuPose, EmuEye,
+  GUNNER, SERGEANT, MAJOR, FARMER, ENEMY,
 } from "./toon";
-import * as STORY from "./story";
 import {
-  FPS, SHOTS, SPOT, V3, Light, MissilePose, missileAt, noseDir, smooth, clamp01, LAUNCH_F, TOUCH_F, HIT_F, GO_F, BOOM_F, BOOM_AT,
+  FPS, SHOTS, SPOT, V3, Light, smooth, clamp01, EV, TruckPose, GunPose, truckPt, truck9X, emu12At, farmHill, paddockRise, damY, CRATE, STACK_N,
 } from "./story";
 import { NOINK } from "./ink";
 import { cardShade, blobMaterial, CARD_K, updateEnvTint } from "./cardshade";
@@ -117,6 +119,8 @@ export class Fx {
 export type Place = {
   key: string; draw: (p: Pen) => void; x: number; y: number; z: number;
   scale?: number; mirror?: boolean; yaw?: number; roll?: number; size?: [number, number, number];
+  /** face the camera fully (top-down aerials): the card copies the camera orientation, then rolls by `roll` */
+  billboard?: boolean;
 };
 /** effect card: billboard (or flat on the ground), rot = screen roll, soft = see-through, glow = colour multiplier (> 1 blooms) */
 export type FxPlace = { key: string; cw: number; ch: number; draw: (p: Pen) => void; x: number; y: number; z: number; w: number; h: number; flat?: boolean; rot?: number; soft?: boolean; glow?: number };
@@ -206,13 +210,13 @@ const person = (cam: CamInfo, who: Who, x: number, y: number, z: number, view: {
 // charshade.md 3.4: core ~.62-.70 on screen, near-neutral (B/R <= 1.12), ~0.6-0.8 body width, soft edge
 // keyed by string so new light presets ("morning", "gallery") work; an unknown key falls back to day
 const CONTACT: Record<string, [number, number, number]> = { day: [0.62, 0.6, 0.66], golden: [0.58, 0.54, 0.66], morning: [0.6, 0.57, 0.67],
-  dusk: [0.58, 0.55, 0.66], interior: [0.64, 0.6, 0.64], gallery: [0.64, 0.6, 0.64] };
+  dusk: [0.58, 0.55, 0.66] };
 const TAIL: [number, number, number] = [0.72, 0.7, 0.78];
 const toSrgb = (v: number) => { const c = clamp01(v); return c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055; };
 const hexOf = (c: [number, number, number], k: number) => "#" + c.map((v) => Math.round(255 * toSrgb(1 - (1 - v) * k)).toString(16).padStart(2, "0")).join("");
 const blob = (out: Stage, x: number, y: number, z: number, sc = 1, k = 1) => {
   const hl = Math.hypot(SUN.x, SUN.z) || 1, ox = -SUN.x / hl, oz = -SUN.z / hl, rot = Math.atan2(-ox, -oz);
-  if (LNAME === "day" || LNAME === "interior" || (LNAME as string) === "gallery") {
+  if (LNAME === "day") {
     const el = Math.asin(Math.min(0.99, Math.max(0.1, SUN.y)));
     const len = Math.min(2.4, Math.max(0.5, 1.6 / Math.tan(el))) * sc, h = len + 0.55 * sc, c = 0.3 * h; // feet at v = .2 of the card
     const tc = hexOf(TAIL, k);
@@ -300,313 +304,3 @@ const sweatAt = (f: number, f0: number) => { const u = (f - f0) / 14; return u >
 /** screen roll that makes a card's canvas "down" point along world direction v */
 const rollAlong = (cam: CamInfo, v: THREE.Vector3) => Math.atan2(v.dot(cam.right), -v.dot(cam.up));
 const _v = new THREE.Vector3();
-
-/** exhaust flame at a nozzle, plume along -dir */
-const flame = (out: Stage, cam: CamInfo, at3: THREE.Vector3, dir: THREE.Vector3, t: number, len0: number) => {
-  const back = _v.copy(dir).multiplyScalar(-1);
-  const ph = q((t * 3.7) % 1, 6);
-  // foreshortened flights (toward / away from the lens) get a smaller plume, so the card never covers the airframe;
-  // the card starts strictly behind the nozzle (its top edge 0.08 len aft of the tail)
-  const proj = Math.hypot(dir.dot(cam.up), dir.dot(cam.right)), len = len0 * (0.35 + 0.65 * proj), c = len * 0.58;
-  out.fx.push({ key: `flame${ph}`, cw: 300, ch: 600, draw: (p) => fxFlame(p, ph), x: at3.x - dir.x * c, y: at3.y - dir.y * c, z: at3.z - dir.z * c,
-    w: len * 0.5, h: len, rot: rollAlong(cam, back), glow: 2.2 });
-};
-/** letters streaming back from a point (missile-relative: the camera rides along, so they peel away behind it) */
-const letterStream = (out: Stage, from: THREE.Vector3, dir: THREE.Vector3, t: number, n: number, spread: number) => {
-  for (let i = 0; i < n; i++) {
-    const age = (t * 0.9 + i / n) % 1, side = Math.sin(i * 12.9898) * spread;
-    const x = from.x - dir.x * age * 9 + Math.sin(age * 9 + i) * 0.4, y = from.y - dir.y * age * 9 - age * age * 2.5 + Math.cos(age * 7 + i) * 0.3;
-    const z = from.z - dir.z * age * 9 + side * age;
-    const s = 0.42 * Math.min(1, age * 6);
-    out.fx.push({ key: `letter${i % 4}`, cw: 300, ch: 200, draw: (p) => fxLetter(p, i % 4), x, y, z, w: s, h: s * 0.67, rot: age * 7 + i });
-  }
-};
-/** letters raining / fluttering down around a point (after the puff, at the house hole, over the sacks) */
-const letterRain = (out: Stage, c: V3, t0: number, t: number, n: number, r: number, size = 0.42, fall = 1.6) => {
-  const s = t - t0;
-  if (s < 0) return;
-  for (let i = 0; i < n; i++) {
-    const a = i * 2.39996, rr = r * Math.sqrt((i + 0.5) / n) * Math.min(1, 0.4 + s * 1.5);
-    const x = c[0] + Math.cos(a) * rr + 0.3 * Math.sin(s * 3 + i), z = c[2] + Math.sin(a) * rr * 0.6;
-    const y = c[1] + 0.6 * r * Math.max(0, 0.5 - s) - fall * s + 0.25 * Math.sin(s * 4 + i * 1.7);
-    if (y < 0.05) continue;
-    out.fx.push({ key: `letter${i % 4}`, cw: 300, ch: 200, draw: (p) => fxLetter(p, i % 4), x, y, z, w: size, h: size * 0.67, rot: Math.sin(s * 5 + i) * 1.2 + i });
-  }
-};
-/** soft smoke puff at a point, t since spawn (seconds), grows to size */
-const puff = (out: Stage, c: V3, s: number, size: number, life: number, seed: number, tint = "#ece8ea") => {
-  if (s < 0 || s > life) return;
-  const u = q(s / life, 20);
-  out.fx.push({ key: `smoke${u}|${seed % 3}|${tint}`, cw: 400, ch: 400, draw: (p) => fxSmoke(p, u, seed % 3, tint), x: c[0], y: c[1] + size * 0.25 * u, z: c[2],
-    w: size * (0.6 + 0.4 * u), h: size * (0.6 + 0.4 * u), soft: true });
-};
-
-// ---------------- per-shot staging ----------------
-/** everything with a face, and every effect card, in shot `id` at time t (pure function of id + t) */
-export const stage = (id: number, t: number, cam: CamInfo, mis: MissileInfo): Stage => {
-  const out: Stage = { places: [], fx: [] };
-  const s = SHOTS[id - 1], f = t * FPS, mp = mis.pose;
-  LNAME = s.light;
-  findSun(cam, SUN);
-  // engine flames wherever the missile is burning
-  if (mp.visible && mp.flame > 0) {
-    flame(out, cam, mis.tail, mis.dir, t, id === 13 ? 1.6 * mp.flame + 0.4 : 2.6 * mp.flame + 0.6);
-    if (mp.booster) for (const bt of mis.boosterTails) flame(out, cam, bt, mis.dir, t + 0.3, 4.2 * mp.flame);
-  }
-  // thin translucent speed lines behind the tail, only where the flight is side-on (verify_r1 #4/#5: none on 1 / 13)
-  const sideOn = Math.hypot(mis.dir.dot(cam.up), mis.dir.dot(cam.right)) > 0.5;
-  if (mp.visible && id === 7 && sideOn) {
-    const ph = q((t * 30) % 30 / 30, 30), c = mis.tail.clone().addScaledVector(mis.dir, -4.5);
-    out.fx.push({ key: `speed${ph}`, cw: 600, ch: 300, draw: (p) => fxSpeed(p, ph), x: c.x, y: c.y, z: c.z, w: 7, h: 2.6,
-      rot: Math.atan2(mis.dir.dot(cam.up), mis.dir.dot(cam.right)) });
-  }
-  switch (id) {
-    case 1: { // the hook: a sailor RIDES the mail missile, astride the fuselage, waving fistfuls of letters into the wind
-      letterStream(out, mis.tail.clone().addScaledVector(mis.dir, 2.5), mis.dir, t, 16, 1.6);
-      const seat = new THREE.Vector3(...mp.pos).addScaledVector(mis.dir, -0.4), p1: V3 = [seat.x, seat.y + 0.5, seat.z];
-      const nose = seat.clone().addScaledVector(mis.dir, 5), rf = faceTo(cam, p1, nose);
-      const A = act([
-        { f: 0, expr: "grin", armF: "wave", lean: 6 },
-        { f: 7, expr: "laugh", headTilt: 6 },                                  // "1959"
-        { f: 40, armB: "up", headTilt: -4, expr: "grin" },                     // "United States"
-        { f: 58, expr: "proud", armB: "hang", lean: 9 },                       // "delivered"
-        { f: 74, expr: "grin", armF: "up", headTilt: 5 },                      // "mail"
-        { f: 86, expr: "shock", shrug: 1, lean: -4, armF: "hang", dur: 4 },    // "cruise": a gust
-        { f: 95, expr: "laugh", shrug: 0, armF: "up", armB: "up", lean: 4 },   // "missile"
-      ], Math.round(f), rf, 9);
-      const fo: FrontOpts = { ...A.fo, mode: "sit", facing: rf, prop: "letters", blink: lidAt(t, 9, A.swaps) };
-      out.places.push(person(cam, { i: 9, o: SAILOR, okey: "rider" }, p1[0], p1[1], p1[2], { side: false, mirror: false }, fo, {}, 1.5));
-      break;
-    }
-    case 2: { // post office: the postmaster general taps his watch at the clerk, then jabs a finger; the clerk sweats + shrugs
-      const pf = faceTo(cam, SPOT.PMG2, SPOT.CLERK), cf = faceTo(cam, SPOT.CLERK, SPOT.PMG2);
-      actor(out, cam, 1, POSTMASTER, "pmg", SPOT.PMG2, [
-        { f: 118, expr: "annoyed", gaze: 0.8, headTilt: -4 },
-        { f: 130, look: 1, gaze: 0, headTilt: 3 },                         // "office": looks up at the clerk
-        { f: 138, expr: "stern", lean: 6 },                                // "wanted"
-        { f: 148, expr: "speak", armF: "point", headTilt: 7, lean: 8 },    // "faster"
-        { f: 162, expr: "annoyed", armF: "hip", lean: 3, headTilt: -5 },   // "mail"
-      ], t, pf, (fo) => ({ ...fo, prop: f < 146 ? "watch" : null, ...(f < 146 ? { armR: undefined, armL: undefined } : {}),
-        expr: f >= 146 && f < 162 ? talk(t, 146 / FPS, 162 / FPS, "stern") : fo.expr }));
-      actor(out, cam, 2, CLERK, "clerk", SPOT.CLERK, [
-        { f: 120, expr: "neutral", look: 0.6 },
-        { f: 132, expr: "nervous", look: 1, lean: -3 },                    // the boss turns on him
-        { f: 150, armF: "shrug", armB: "shrug", shrug: 1, headTilt: -7 },  // "faster"
-        { f: 164, expr: "pained", look: -0.6, shrug: 0.3, armF: "hang", armB: "hang", headTilt: 4 }, // "mail"
-      ], t, cf, (fo) => ({ ...fo, prop: f < 148 ? "letter" : null, sweat: sweatAt(f, 138) }));
-      break;
-    }
-    case 3: { // tiny sailor on the deck for scale, waving
-      const p3: V3 = [-8.2, SPOT.DECK, 1.0];
-      actor(out, cam, 3, SAILOR, "sailor", p3, [
-        { f: 176, expr: "smile", armF: "wave" },
-        { f: 183, expr: "grin", headTilt: 5 },                             // "Navy"
-        { f: 199, headTilt: -4, look: 1 },                                 // "submarine"
-        { f: 217, expr: "proud", armF: "point", lean: 5 },                 // "missile"
-        { f: 232, expr: "grin", armF: "wave", lean: 0 },
-      ], t, faceTo(cam, p3, mp.pos));
-      break;
-    }
-    case 4: { // proud sailor beside the missile; points at it on "Barbero"
-      const p4 = SPOT.SAILOR4;
-      actor(out, cam, 3, SAILOR, "sailor", p4, [
-        { f: 249, expr: "smile", look: 0.5 },
-        { f: 257, armB: "hip" },                                           // "June"
-        { f: 270, look: 1, headTilt: 5 },                                  // "8th": glances at the missile
-        { f: 292, expr: "smile_closed", headTilt: -4, look: 0 },           // "coast"
-        { f: 304, expr: "grin", armF: "wave" },                            // "Florida"
-        { f: 331, expr: "proud", armF: "point", lean: 6, look: 1 },        // "Barbero"
-        { f: 347, expr: "grin", lean: 2, headTilt: 6 },                    // "loaded"
-        { f: 359, armF: "up", expr: "laugh", look: -0.3, headTilt: -3 },   // "missile"
-      ], t, faceTo(cam, p4, mp.pos));
-      break;
-    }
-    case 5: { // stuffing letters into the nose intake; a burst of letters on "3,000 letters"
-      const k = q(0.5 + 0.5 * Math.sin(t * 7), 10);
-      actor(out, cam, 3, SAILOR, "sailor", SPOT.SAILOR5, [
-        { f: 374, expr: "smile_closed" },
-        { f: 387, expr: "stern", headTilt: -7 },                           // "of a warhead": head shake
-        { f: 394, headTilt: 7, dur: 4 },
-        { f: 401, headTilt: -5, dur: 4 },
-        { f: 410, expr: "grin", lean: 5, headTilt: 0 },                    // "carried"
-        { f: 418, expr: "proud", armB: "up", headTilt: 5 },                // "3,000"
-        { f: 443, expr: "laugh", armB: "hang", lean: 2 },                  // "letters"
-      ], t, 1, (fo) => ({ ...fo, prop: "letters", wave: k, armR: undefined }));
-      sparkle(out, [SPOT.SAILOR5[0] + 0.3, SPOT.DECK + 2.4, SPOT.SAILOR5[2]], f, 418);
-      const nose = new THREE.Vector3(...mp.pos).addScaledVector(mis.dir, 4.4);
-      for (let i = 0; i < 6; i++) { // letters hop from his hand into the intake
-        const u = (t * 1.6 + i / 6) % 1, hand: V3 = [SPOT.SAILOR5[0] + 0.25, SPOT.DECK + 1.95, SPOT.SAILOR5[2] - 0.05];
-        const x = hand[0] + (nose.x - hand[0]) * u, y = hand[1] + (nose.y - hand[1]) * u + 0.5 * Math.sin(Math.PI * u), z = hand[2] + (nose.z - hand[2]) * u;
-        out.fx.push({ key: `letter${i % 4}`, cw: 300, ch: 200, draw: (p) => fxLetter(p, i % 4), x, y, z, w: 0.26 * (1 - 0.5 * u), h: 0.17 * (1 - 0.5 * u), rot: u * 4 + i });
-      }
-      if (t > 418 / FPS) letterRain(out, [nose.x + 0.6, nose.y + 0.6, nose.z + 0.4], 418 / FPS, t, 10, 1.2, 0.26, 0.9);
-      break;
-    }
-    case 6: { // launch: kick-off burst, smoke clouds left along the rail and the climb
-      const s0 = t - LAUNCH_F / FPS;
-      if (s0 >= 0 && s0 < 0.3) { const u = q(s0 / 0.3, 30); out.fx.push({ key: `burst${u}`, cw: 500, ch: 500, draw: (p) => fxBurst(p, u, "#ffe9a0"), x: mis.tail.x, y: mis.tail.y, z: mis.tail.z, w: 5, h: 5, glow: 1.6 }); }
-      for (let k = 0; k < 8; k++) {
-        const fs = LAUNCH_F + k * 3, m = missileAt(6, fs), d = noseDir(m.yaw, m.pitch);
-        puff(out, [m.pos[0] - d[0] * 5, m.pos[1] - d[1] * 5 - 0.3, m.pos[2] - d[2] * 5 + (k % 2 ? 0.6 : -0.6)], t - fs / FPS, 4 + k * 0.8, 3.0, k);
-      }
-      // deck crewman in the FG left third: points at the bird, covers his ears at ignition, then cheers it up and away
-      const c6: V3 = (STORY as unknown as { CREW6?: V3 }).CREW6 ?? [-9.6, SPOT.DECK, -1.7];
-      actor(out, cam, 10, DECK_CREW, "deck", c6, [
-        { f: 460, expr: "grin", armF: "point", lean: 4, look: 1 },
-        { f: LAUNCH_F - 2, expr: "pained", armF: "ears", armB: "ears", shrug: 1, lean: -7, dur: 4 }, // "launched"
-        { f: 480, expr: "shock", gaze: -1, lean: -3 },
-        { f: 489, expr: "laugh", armF: "up", armB: "up", shrug: 0, lean: 0 },                     // "flew"
-      ], t, faceTo(cam, c6, SPOT.LAUNCH), (x) => x, 1.35);
-      break;
-    }
-    case 7: break;
-    case 8: { // touchdown dust + tyre smoke
-      const s0 = t - TOUCH_F / FPS;
-      for (let k = 0; k < 3; k++) puff(out, [mp.pos[0] - 1.5 - k * 2.5 * Math.min(1, s0), 0.5, (k - 1) * 0.9], s0 - k * 0.08, 2.6, 1.4, k, "#e6dcc8");
-      // ground crewman marshalling the missile in with his bats: up / out signals on ones every 9 f, a point on "Mayport"
-      const c8: V3 = (STORY as unknown as { CREW8?: V3 }).CREW8 ?? [-2.4, 0, 11.5];
-      const sig: Beat[] = [];
-      for (let k = 0, g = 571; g < 632; g += 9, k++) sig.push({ f: g, armF: k % 2 ? "out" : "up", armB: k % 2 ? "out" : "up", headTilt: k % 2 ? -4 : 4, dur: 5 });
-      sig[0].expr = "grin"; sig[2].expr = "proud"; sig[4].expr = "laugh";
-      actor(out, cam, 11, GROUND_CREW, "crew8", c8, [...sig,
-        { f: 638, expr: "proud", armF: "point", armB: "hip", lean: 5, look: 1 },                  // "Mayport"
-        { f: 650, expr: "grin", armF: "up", armB: "up", lean: 0 },
-      ], t, faceTo(cam, c8, mp.pos), (fo) => ({ ...fo, prop: "paddles" }), 1.45);
-      break;
-    }
-    case 9: { // the speech: arm up on "historic", both arms out on "entire world"; the sailor salutes, then cheers
-      actor(out, cam, 1, POSTMASTER, "pmg", SPOT.PMG9, [
-        { f: 659, expr: "proud" },
-        { f: 668, look: 0.6, headTilt: 4 },                                // "postmaster"
-        { f: 683, armB: "hip", lean: -3 },                                 // "general"
-        { f: 696, lean: 4, headTilt: -3, look: 0 },                        // "called"
-        { f: 709, expr: "grin", armF: "up", headTilt: 8, lean: 2 },        // "historic"
-        { f: 733, armF: "hang", expr: "proud", headTilt: 0 },              // "for the"
-        { f: 754, expr: "grin", armF: "out", armB: "out", lean: 0, headTilt: -5 }, // "entire world"
-        { f: 772, armF: "hang", armB: "hip", expr: "proud", headTilt: 3 },
-      ], t, 1, (fo) => ({ ...fo, expr: (f >= 707 && f < 722) || f >= 770 ? fo.expr : talk(t, 662 / FPS, 770 / FPS, fo.expr ?? "proud") }));
-      sparkle(out, [SPOT.PMG9[0] + 0.5, 2.55, SPOT.PMG9[2]], f, 709, 1.1);
-      const sf = faceTo(cam, SPOT.SAILOR9, SPOT.PMG9);
-      actor(out, cam, 3, SAILOR, "sailor", SPOT.SAILOR9, [
-        { f: 659, expr: "smile", look: 1 },
-        { f: 690, expr: "proud", look: 0, headTilt: -3 },
-        { f: 712, expr: "grin", headTilt: 5, look: 1 },                    // "historic": turns to the boss
-        { f: 750, armF: "up", armB: "up", expr: "laugh", headTilt: 0 },    // "entire world": cheers
-        { f: 772, armF: "hang", armB: "hang", expr: "grin" },
-      ], t, sf, (fo) => ({ ...fo, salute: f > 690 && f < 748 }));
-      break;
-    }
-    case 10: { // unloading: a sailor carries a sack from the missile to the pile; the postman waves a letter
-      const u = smooth((f - 790) / 50), p0: V3 = [1.0, 0, 2.0], p1: V3 = [SPOT.SACKS[0] - 0.6, 0, SPOT.SACKS[2] + 1.3];
-      const px: V3 = [p0[0] + (p1[0] - p0[0]) * u, 0, p0[2] + (p1[2] - p0[2]) * u];
-      const fs = faceTo(cam, p0, p1), A = act([
-        { f: 785, expr: "grin" }, { f: 808, expr: "proud", headTilt: 5 }, { f: 821, expr: "laugh", headTilt: -3 }, { f: 838, expr: "smile_closed" },
-      ], Math.round(f), fs, 3);
-      out.places.push(person(cam, { i: 3, o: SAILOR, okey: "sailor" }, px[0], 0, px[2], { side: false, mirror: false },
-        { ...A.fo, armR: undefined, armL: undefined, mode: u > 0 && u < 1 ? "stroll" : "stand", phase: q((t * 1.6) % 1, 40), prop: "sack", blink: lidAt(t, 3, A.swaps), facing: fs }, {}));
-      blob(out, px[0], 0, px[2]);
-      const pp: V3 = [SPOT.SACKS[0] + 1.6, 0, SPOT.SACKS[2] + 1.0];
-      actor(out, cam, 4, POSTMAN, "postman", pp, [
-        { f: 785, expr: "smile", look: 1 },
-        { f: 793, expr: "grin", headTilt: 6 },                             // "Luckily"
-        { f: 808, expr: "proud", look: 0, headTilt: -2 },                  // "every letter"
-        { f: 821, expr: "laugh", armF: "up", lean: 3 },                    // "arrived"
-      ], t, faceTo(cam, pp, px), (fo) => ({ ...fo, prop: "letter", wave: q(0.5 + 0.5 * Math.sin(t * 6), 10) }));
-      break;
-    }
-    case 11: { // the missile goes into the house: debris burst, smoke, letters flutter down; the kid at the mailbox
-      const s0 = t - HIT_F / FPS, hole: V3 = [-1.7, 2.28, SPOT.HOUSE_Z + 0.2];
-      if (s0 >= 0 && s0 < 0.35) { const u = q(s0 / 0.35, 30); out.fx.push({ key: `burstD${u}`, cw: 500, ch: 500, draw: (p) => fxBurst(p, u, "#d8b48a", 12, 40, 240), x: hole[0], y: hole[1], z: hole[2] + 0.3, w: 4.5, h: 4.5 }); }
-      for (let k = 0; k < 3; k++) puff(out, [hole[0] + (k - 1) * 0.9, hole[1] + 0.2, hole[2] + 0.5], s0 - k * 0.1, 3.0 + k, 2.4, k, "#ddd6cc");
-      letterRain(out, [hole[0] + 0.6, hole[1] + 1.4, hole[2] + 1.6], HIT_F / FPS + 0.1, t, 14, 2.4, 0.4, 0.7);
-      const kf = faceTo(cam, SPOT.KID, hole);
-      actor(out, cam, 5, KID59, "kid", SPOT.KID, [
-        { f: 848, expr: "smile", look: 0.4 },
-        { f: HIT_F, expr: "shock", lean: -9, shrug: 1, armF: "up", armB: "up", look: 1, dur: 4 }, // the hit
-        { f: 871, expr: "nervous", shrug: 0.4, armF: "hang", armB: "hang", lean: -3 },          // "every delivery"
-        { f: 887, expr: "annoyed", armF: "shrug", armB: "shrug", shrug: 1, headTilt: -8 },      // "needed"
-        { f: 902, expr: "stern", armF: "point", armB: "hip", shrug: 0, headTilt: 3, look: 1 },  // "a missile"
-      ], t, kf, (fo) => ({ ...fo, prop: f < HIT_F ? "letter" : null, sweat: sweatAt(f, 872) }), 0.78);
-      break;
-    }
-    case 12: { // the postman by his overloaded truck: "one truck carries thousands of letters"
-      const pf = faceTo(cam, SPOT.POSTMAN12, SPOT.TRUCK);
-      actor(out, cam, 4, POSTMAN, "postman", SPOT.POSTMAN12, [
-        { f: 931, expr: "smile", look: 0.5, armB: "hip" },                 // "You see"
-        { f: 945, expr: "grin", headTilt: 5 },                             // "mail"
-        { f: 950, expr: "proud", headTilt: -3 },                           // "cheap"
-        { f: 967, armF: "point", lean: 5, look: 1 },                       // "one truck"
-        { f: 983, expr: "grin", headTilt: 4 },                             // "carries"
-        { f: 992, armF: "up", armB: "up", expr: "laugh", lean: 0, look: 0 }, // "thousands"
-        { f: 1010, armF: "hang", armB: "hip", expr: "smile_closed", headTilt: -5 }, // "letters"
-        { f: 1028, armF: "point", expr: "smile", look: 1, headTilt: 2 },   // "tank of fuel"
-        { f: 1039, armF: "hang", expr: "proud", headTilt: 4, look: 0 },    // "fuel"
-      ], t, pf, (fo) => ({ ...fo, prop: "letter" }));
-      sparkle(out, [SPOT.POSTMAN12[0], 2.5, SPOT.POSTMAN12[2]], f, 992);
-      if (t > 992 / FPS) letterRain(out, [-0.5, 6.2, 0.3], 992 / FPS, t, 10, 2.2, 0.38, 0.5);
-      break;
-    }
-    case 13: { // one trip: launch from the cart, the postman flinches, sweats on "expensive", the puff, letters rain down
-      const go = GO_F, boom = BOOM_F, pf = faceTo(cam, SPOT.POSTMAN13, mp.pos);
-      actor(out, cam, 4, POSTMAN, "postman", SPOT.POSTMAN13, [
-        { f: 1055, expr: "smile", look: 0.5 },
-        { f: 1063, armF: "point", lean: 4, look: 1 },                      // "missile"
-        { f: 1080, expr: "grin", armF: "hang", headTilt: 5, lean: 0 },     // "very fast"
-        { f: go, expr: "shock", lean: -9, shrug: 1, armF: "up", armB: "up", gaze: -1, dur: 4 }, // launch
-        { f: 1103, expr: "awe", shrug: 0, armF: "hang", armB: "hang", lean: -2 }, // "very"
-        { f: 1107, expr: "nervous", headTilt: -7, gaze: -0.5 },            // "expensive"
-        { f: 1121, armF: "shrug", armB: "shrug", shrug: 1, headTilt: 5 },  // "delivery van"
-        { f: 1146, expr: "awe", shrug: 0, armF: "hang", armB: "hang", gaze: -1, headTilt: 0 }, // "only"
-        { f: boom, expr: "shock", lean: -10, armF: "up", armB: "up", shrug: 1, dur: 4 }, // the puff
-        { f: 1172, expr: "pained", armF: "hang", armB: "hip", shrug: 0, lean: 0, gaze: 0, headTilt: -6 }, // "trip"
-      ], t, pf, (fo) => ({ ...fo, prop: f < go ? "letter" : null, sweat: sweatAt(f, 1107) }));
-      for (let k = 0; k < 6; k++) { const m = missileAt(13, GO_F + k * 2), d = noseDir(m.yaw, m.pitch); puff(out, [m.pos[0] - d[0] * 5, Math.max(0.8, m.pos[1] - d[1] * 5), m.pos[2] - d[2] * 5], t - (GO_F + k * 2) / FPS, 3 + k * 0.6, 2.6, k, "#d8d0dc"); }
-      if (mp.boom >= 0) {
-        const u = q(Math.min(1, mp.boom / 1.1), 30);
-        if (mp.boom < 1.1) out.fx.push({ key: `boom${u}`, cw: 800, ch: 800, draw: (p) => fxBoom(p, u), x: BOOM_AT[0], y: BOOM_AT[1], z: BOOM_AT[2], w: 30, h: 30, glow: u < 0.45 ? 2.0 : 1 });
-        letterRain(out, BOOM_AT, boom / FPS + 0.15, t, 24, 14, 1.4, 9);
-      }
-      break;
-    }
-    case 14: { // museum visitors: dad points, mum laughs, kid bounces
-      const ex = mp.pos;
-      actor(out, cam, 6, VISITORS[0], "vis0", SPOT.VISITOR15, [
-        { f: 1189, expr: "awe", gaze: -1, look: 1 },
-        { f: 1195, armF: "point", lean: 4 },                               // "future"
-        { f: 1214, expr: "smile", headTilt: 6, gaze: 0 },                  // "lasted"
-        { f: 1225, armF: "hang", expr: "grin", lean: 0 },                  // "exactly"
-        { f: 1239, expr: "laugh", armB: "hip", headTilt: -4 },             // "one flight"
-        { f: 1255, expr: "smile_closed" },
-      ], t, faceTo(cam, SPOT.VISITOR15, ex));
-      const p1: V3 = [-0.95, 0, 10.4], p2: V3 = [3.5, 0, 6.3]; // mum = big FG figure, left third of the wide
-      actor(out, cam, 7, VISITORS[1], "vis1", p1, [
-        { f: 1189, expr: "smile", look: 1 },
-        { f: 1203, headTilt: -6 },                                         // "of mail"
-        { f: 1225, expr: "grin", armB: "hip", look: 0 },                   // "exactly"
-        { f: 1248, expr: "laugh", headTilt: 5 },                           // "flight"
-      ], t, faceTo(cam, p1, ex));
-      actor(out, cam, 8, VISITORS[2], "vis2", p2, [
-        { f: 1189, expr: "grin", armF: "wave", gaze: -1 },
-        { f: 1214, expr: "awe", armF: "hang" },                            // "lasted"
-        { f: 1239, expr: "grin", armF: "point", lean: 6 },                 // "one"
-        { f: 1250, expr: "laugh", armF: "wave", lean: 0 },
-      ], t, faceTo(cam, p2, ex), (x) => x, 0.75);
-      sparkle(out, [ex[0], ex[1] + 1.5, ex[2]], f, 1239, 1.6);
-      break;
-    }
-    case 15: { // close on the visitor under the missile
-      actor(out, cam, 6, VISITORS[0], "vis0", SPOT.VISITOR15, [
-        { f: 1267, expr: "awe", gaze: -1, look: 1 },
-        { f: 1277, headTilt: 6 },                                          // "still"
-        { f: 1285, expr: "smile", gaze: -0.5, armF: "point" },             // "only time"
-        { f: 1300, expr: "smile_closed", armF: "hang", headTilt: -4 },     // "America's"
-        { f: 1315, expr: "grin", look: 0.5, gaze: 0 },                     // "mail"
-        { f: 1327, headTilt: 6, lean: 3 },                                 // "gone"
-        { f: 1338, expr: "laugh", lean: 0, headTilt: -3 },                 // "missile"
-      ], t, faceTo(cam, SPOT.VISITOR15, mp.pos));
-      break;
-    }
-  }
-  return out;
-};
-export { FPS };
