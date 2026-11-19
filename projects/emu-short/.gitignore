@@ -1,0 +1,6 @@
+node_modules
+.rtmp/
+out/
+*.wav
+public/emu/
+backup/
