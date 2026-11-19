@@ -569,7 +569,7 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
           { f: 900, expr: "pained", headTilt: -8, lean: 8 },        // "outran"
           { f: 916, expr: "nervous", headTilt: 6 },
         ], t, 1, (fo) => ({ ...fo, headTilt: (fo.headTilt ?? 0) + 7 * Math.sin(f * 1.7), armR: "point", armL: "point", sweat: sweatAt(f, 893) }), 1, false);
-        trail(out, (g) => [truck9X(g) - 3.0, 0.5, S.TRUCK9[2] + ((g / 3) % 2 ? 0.6 : -0.6)], f, 8, 2.8, DUST);
+        trail(out, (g) => [truck9X(g) - 3.0, 0.4, S.TRUCK9[2] + ((g / 3) % 2 ? 0.5 : -0.9)], f, 5, 1.6, DUST, 4);
         for (let i = 0; i < 9; i++) {
           const x = truck9X(EV.CUT9) + 9 + 12 * H(i, 61) + (9.2 + 4.5 + 1.5 * H(i, 62)) * (f - EV.CUT9) / FPS, z = S.TRUCK9[2] - 6 + 9 * H(i, 63);
           emu(out, cam, 140 + i, [x, 0, z], { pose: "run", dir: [1, 0], phase: (f / 11 + H(i, 64)) % 1, tint: i % 3, scale: 1 + 0.1 * H(i, 65) }, t);
@@ -624,11 +624,6 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
           { mode: "march", phase: q((((f - EV.MARCH13) / 30) % 1 + 1) % 1, 30), expr: "stern", facing: 0, blink: 0 }, {}, 0.92));
         blob(out, x, 0, z, 0.92);
       }
-      sitter(out, cam, 2, GUNNER, "gunner", [1.3, 0, 0.45], [
-        { f: 1270, expr: "smile", lean: 8, look: -1 },
-        { f: 1330, expr: "grin", headTilt: 5 },                     // "enemy"
-        { f: 1367, expr: "proud", headTilt: -4 },                   // "line"
-      ], t, -1, (fo) => ({ ...fo, armR: "point", armL: "point" }), 1, false);
       break;
     }
     case 14: {
@@ -636,14 +631,14 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
         const s0 = Math.max(0, (f - EV.SCATTER14) / FPS), C0 = S.GUNNER14;
         out.places.push({ ...person(cam, { i: 2, o: GUNNER, okey: "gunner" }, C0[0], 0, C0[2], { side: false, mirror: false },
           { mode: "stand", expr: s0 > 0 ? "shock" : "nervous", prop: "lewis", facing: Math.floor(f / 9) % 2 ? 1 : -1, blink: 0 }, {}, 1), billboard: true });
-        for (let i = 0; i < 64; i++) {
-          const a = (i / 64) * Math.PI * 2 + 0.3 * (H(i, 91) - 0.5), r = 1.4 + 2.2 * H(i, 92) + (2.6 + 1.2 * H(i, 93)) * s0;
+        for (let i = 0; i < 44; i++) {
+          const a = (i / 44) * Math.PI * 2 + 0.3 * (H(i, 91) - 0.5), toCam = Math.max(0, Math.sin(a)), r = 1.3 + 1.6 * H(i, 92) * (1 - 0.5 * toCam) + (1.5 + 0.8 * H(i, 93)) * (1 - 0.6 * toCam) * s0; // the ones running at the lens stay in frame longer
           const p: V3 = [C0[0] + Math.cos(a) * r, 0, C0[2] + Math.sin(a) * r], dir: [number, number] = [Math.cos(a), Math.sin(a)];
           emu(out, cam, 160 + i, p, s0 > 0 ? { pose: "run", dir, phase: (f / 10 + H(i, 94)) % 1, tint: i % 3, billboard: true } : { pose: "stand", dir, tint: i % 3, billboard: true }, t, false);
           if (s0 > 0) speed(out, cam, [p[0], 0.4, p[2]], new THREE.Vector3(dir[0], 0, dir[1]), f + i, 2.6);
-          if (s0 > 0 && i % 3 === 0) puff(out, [p[0] - dir[0] * 1.2, 0.2, p[2] - dir[1] * 1.2], ((f + i * 3) % 12) / FPS, 1.5, 0.4, i, DUST);
+          if (s0 > 0 && i % 2 === 0 && p[2] < S.GUNNER14[2] + 2.5) puff(out, [p[0] - dir[0] * 1.0, 0.15, p[2] - dir[1] * 1.0], ((f + i * 3) % 12) / FPS, 0.7, 0.4, i, DUST);
         }
-        for (let j = 0; j < 6; j++) puff(out, [S.GUNNER14[0] + (j - 2.5) * 0.9, 0.2, S.GUNNER14[2] + (j % 2 - 0.5) * 1.6], t - (EV.SCATTER14 + j) / FPS, 2.2, 1.1, j, DUST);
+        for (let j = 0; j < 6; j++) puff(out, [S.GUNNER14[0] + (j - 2.5) * 0.9, 0.2, S.GUNNER14[2] + (j % 2 - 0.5) * 1.6], t - (EV.SCATTER14 + j) / FPS, 1.2, 0.8, j, DUST);
       } else { // low angle: the gunner spins after them, dizzy by "once"
         const spin = EV.SPIN14.filter((g) => f >= g).length % 2 ? 1 : -1, dizzy = f >= EV.DIZZY14;
         actor(out, cam, 2, GUNNER, "gunner", S.GUNNER14, [
@@ -652,8 +647,8 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
           { f: EV.DIZZY14 + 2, expr: "dazed", lean: -6, headTilt: -10 },
         ], t, spin as 1 | -1, (fo) => ({ ...fo, prop: "lewis", headTilt: (fo.headTilt ?? 0) + (dizzy ? 8 * Math.sin(f * 0.5) : 0), lean: (fo.lean ?? 0) + (dizzy ? 5 * Math.sin(f * 0.37) : 0), hatTilt: dizzy ? 0.3 : 0, sweat: sweatAt(f, 1456) }));
         for (let i = 0; i < 14; i++) {
-          const a = (f / FPS) * (1.2 + 0.6 * H(i, 95)) * (i % 2 ? 1 : -1) + H(i, 96) * 6.28, r = 6 + 6 * H(i, 97);
-          const p: V3 = [S.GUNNER14[0] + Math.cos(a) * r, 0, S.GUNNER14[2] + Math.sin(a) * r - 6], dir: [number, number] = [-Math.sin(a) * (i % 2 ? 1 : -1), Math.cos(a) * (i % 2 ? 1 : -1)];
+          const a = (f / FPS) * (1.2 + 0.6 * H(i, 95)) * (i % 2 ? 1 : -1) + H(i, 96) * 6.28, r = 4 + 3 * H(i, 97);
+          const p: V3 = [S.GUNNER14[0] + Math.cos(a) * r, 0, S.GUNNER14[2] + Math.sin(a) * r - 7.5], dir: [number, number] = [-Math.sin(a) * (i % 2 ? 1 : -1), Math.cos(a) * (i % 2 ? 1 : -1)];
           emu(out, cam, 230 + i, p, { pose: "run", dir, phase: (f / 10 + H(i, 98)) % 1, tint: i % 3 }, t);
         }
         if (dizzy) { const k = q((t * 1.6) % 1, 16); out.fx.push({ key: `stars${k}`, cw: 420, ch: 210, draw: (p) => fxStars(p, k), x: S.GUNNER14[0], y: 2.05, z: S.GUNNER14[2] + 0.1, w: 0.8, h: 0.4 }); }

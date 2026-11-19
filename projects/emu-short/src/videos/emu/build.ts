@@ -987,7 +987,7 @@ const buildRoad = (): SetRig => {
   }
   for (const z of [5.85, 7.15]) for (let x = -300; x < 600; x += 45) b.add(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(V(x, 6.32, z), V(x + 22.5, 5.9, z), V(x + 45, 6.32, z)), 6, 0.012, 3), wireM());
   for (const [x, z, h] of [[-24, 11, 15], [14, 13, 17], [-50, 9, 13], [40, 10, 16], [80, -14, 15], [130, 11, 17], [-80, -16, 14], [200, -15, 16], [260, 12, 15]]) gum(b, x, z, h, x * 3 + z, 1);
-  scrub(b, 0, 12, 6, 30, 30, 28);
+  scrub(b, 0, 12, 6, 30, 30, 28, (_x, z) => z < 11); // no saltbush on the road verge (it went to a dark lump against the sunset)
   tufts(b, 0, 6, 3.5, 16, 220, 29, (x, z) => z < 3.6);
   horizon(b, 41);
   return done("road", b, c);

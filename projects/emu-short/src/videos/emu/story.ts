@@ -359,7 +359,7 @@ const S8b = (f: number): Shot => P({ pos: [-2.0, 1.75, 7.9], look: [0.5, 1.25, 1
 const S9a = (f: number): Shot => P({ pos: [2.2, 2.3, 11.6], look: [-0.9, 1.95, 6.0], fov: 42, roll: 0.025 }, f, 825, 0.0025);
 const S9b = (f: number): Shot => {
   const x = truck9X(f), u = gl(f, 880, 40);
-  return { pos: [x - lerp(10, 12, u), 2.5, SPOT.TRUCK9[2] + lerp(4.5, 2.8, u)], look: [x + 8, 1.25, SPOT.TRUCK9[2] - 0.5], fov: 56, roll: -0.02 };
+  return { pos: [x - lerp(8.5, 9.5, u), 2.6, SPOT.TRUCK9[2] + lerp(6.0, 5.0, u)], look: [x + 8, 1.2, SPOT.TRUCK9[2] - 1.0], fov: 54, roll: -0.02 };
 };
 // 10 (937-1134): Meredith at the field desk outside the lit tent, the tally board on the left; flourish; pull back and
 // crane up (1040-1087) to reveal the mountain of brass behind the tent
@@ -374,15 +374,16 @@ const S11 = (f: number): Shot => P({ pos: [-1.9, 0.95, 5.6], look: [0.6, 2.6, -1
 const S12 = (f: number): Shot => P({ pos: [1.3, 2.0, 3.6], look: [-0.45, 0.85, -5.0], fov: 52, roll: -0.02 }, f, 1201, 0.0025, 0.006, 16, 1244);
 // 13 (1270-1381): high 3/4 behind the sandbagged gun, the grey line marching in step toward it
 const S13 = (f: number): Shot => {
-  const a = C([0.75, 1.95, 2.9], [0.1, 0.95, -8.0], 46, 0.02), b = C([0.55, 1.85, 2.6], [0.0, 0.95, -8.0], 44, -0.01);
+  const a = C([0.55, 2.55, 3.9], [0.1, 0.7, -8.0], 46, 0.02), b = C([0.45, 2.45, 3.6], [0.0, 0.7, -8.0], 44, -0.01);
   const c = between(a, b, gl(f, 1276, 90));
   return zoom(c.pos, c.look, c.fov ?? 44, pushK(f, 1300, 0.0012) * pushK(f, 1365, 0, 0.005, 16), { roll: c.roll });
 };
 // 14a (1382-1449): top-down aerial over the starburst; 14b (1450-1503): low angle on the spinning gunner
 // high 3/4 drone (~60 deg down) over the starburst, the gunner in the middle; rises and arcs a little as they scatter
 const S14a = (f: number): Shot => {
-  const C0 = SPOT.GUNNER14, u = gl(f, 1382, 66), a = lerp(-0.12, 0.12, u), d = lerp(9.5, 11.5, u), hgt = lerp(15, 18, u);
-  return { pos: [C0[0] + Math.sin(a) * d, hgt, C0[2] + Math.cos(a) * d], look: [C0[0], 0.4, C0[2] - 0.8], fov: 46, roll: lerp(0.02, -0.03, u) };
+  // ~35 deg down, close: the gunner at ~1/5 frame height in the lower centre, a strip of horizon at the top
+  const C0 = SPOT.GUNNER14, u = gl(f, 1382, 66), a = lerp(-0.1, 0.1, u), d = lerp(6.2, 6.8, u), hgt = lerp(4.1, 4.5, u);
+  return { pos: [C0[0] + Math.sin(a) * d, hgt, C0[2] + Math.cos(a) * d], look: [C0[0] - Math.sin(a) * 5, 0.0, C0[2] - Math.cos(a) * 5], fov: 50, roll: lerp(0.02, -0.03, u) };
 };
 const S14b = (f: number): Shot => P({ pos: add(SPOT.GUNNER14, [0.6, 0.55, 3.6]), look: add(SPOT.GUNNER14, [0.05, 1.55, -0.2]), fov: 48, roll: 0.04 }, f, EV.CUT14, 0.003, 0.008, 18, 1474);
 // 15 (1504-1655): Meredith at the salute, the helmeted emu ranks behind; slow crane up over the ranks to the horizon
@@ -483,7 +484,7 @@ export const DOF: Dof[] = [
   { f: 1040, dur: 47, cInf: 0 },                                             // pull back to the brass mountain
   { f: 1135, cInf: 8, focus: () => eyes(SPOT.SOLDIER11) },
   { f: 1201, cInf: 7, focus: (f) => emuEye(emu12At(f)) },
-  { f: 1270, cInf: 8, focus: (f) => [0, 1.4, -7.4 + 2.6 * (f - 1270) / 112] }, // explainer: the line sharp, the gun pit soft
+  { f: 1270, cInf: 4, focus: (f) => [0, 1.4, -7.4 + 2.6 * (f - 1270) / 112] }, // explainer: the line sharp, the gun pit a little soft
   { f: 1382, cInf: 0 },                                                      // aerial
   { f: EV.CUT14, cInf: 10, focus: () => eyes(SPOT.GUNNER14) },
   { f: 1504, cInf: 10, focus: () => eyes(SPOT.MAJOR15) },
