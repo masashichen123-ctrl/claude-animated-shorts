@@ -75,12 +75,12 @@ export const LIGHTS: Record<LightName, LightPreset> = {
     bias: -0.0006, normalBias: 0.03,
     albFloor: [0.03, 0.028, 0.045], gobo: 0.25, goboScale: 11, rim: [0.9, 0.55, 0.3], ao: 0.08, aoR: 0.7, prac: 1, pracCol: "#ffd08a",
     bloomI: 0.7, bloomR: 0.65, softM: 0.24,
-    haze: H("#f6bf8c", 25, 150, 50, 0.8), glowCol: "#fff0c0", glowK: 0.55,
+    haze: H("#f4c290", 50, 240, 40, 0.5), glowCol: "#fff0c0", glowK: 0.55,
   },
   dusk: {
     // sun just under a band of orange cloud, cool violet world, warm rim; the explosion puff and flame glow over it
     az: 10, el: 4,
-    lit: [1.3, 0.68, 0.42], shade: [0.15, 0.15, 0.29], lift: [0.05, 0.05, 0.15], lambert: 0.35, sideK: 0.82, term: 0.08,
+    lit: [1.45, 0.82, 0.46], shade: [0.17, 0.16, 0.28], lift: [0.05, 0.04, 0.12], lambert: 0.35, sideK: 0.82, term: 0.08,
     charTint: [0.95, 0.78, 0.7], charShade: 0.86, charGrad: 0.1, bodyGrad: 0.25, sideTint: [0.82, 0.78, 0.95],
     blob: [0.72, 0.7, 0.9], actorShadow: true,
     top: "#2a2f6a", hor: "#ff9a6a", skyCurve: [0.05, 0.6, 1.0], fog: "#c98377", fogNear: 40, fogFar: 380, sunDisc: "#ff9a62",
@@ -88,7 +88,7 @@ export const LIGHTS: Record<LightName, LightPreset> = {
     bias: -0.0006, normalBias: 0.03,
     albFloor: [0.035, 0.03, 0.055], gobo: 0, goboScale: 9, rim: [1.1, 0.6, 0.42], ao: 0.08, aoR: 0.7, prac: 2.2, pracCol: "#ffb060",
     bloomI: 0.9, bloomR: 0.75, softM: 0.26,
-    haze: H("#b98290", 20, 140, 40, 0.78), glowCol: "#ffb080", glowK: 0.6,
+    haze: H("#d6946c", 30, 200, 40, 0.4), glowCol: "#ffb080", glowK: 0.6,
   },
 };
 
@@ -99,10 +99,13 @@ export const SHOT_LIGHT: Record<number, LightName> = {};
 export const SHOT_SUN: Record<number, { az: number; el: number }> = {
   1: { az: 128, el: 14 }, 2: { az: 125, el: 16 },
   3: { az: 125, el: 50 }, 4: { az: 120, el: 46 }, 5: { az: 140, el: 48 }, 6: { az: 125, el: 48 }, 7: { az: 118, el: 50 },
-  8: { az: 30, el: 9 },
-  9: { az: 128, el: 50 }, 10: { az: 25, el: 3 }, 11: { az: 120, el: 46 }, 12: { az: 125, el: 48 }, 13: { az: 130, el: 50 }, 14: { az: 120, el: 55 },
-  15: { az: 18, el: 9 }, 16: { az: 3, el: 5 }, 17: { az: 22, el: 8 },
+  8: { az: 118, el: 19 },
+  9: { az: 128, el: 50 }, 10: { az: 72, el: 5 }, 11: { az: 120, el: 46 }, 12: { az: 125, el: 48 }, 13: { az: 130, el: 50 }, 14: { az: 120, el: 55 },
+  15: { az: 110, el: 12 }, 16: { az: 3, el: 5 }, 17: { az: 100, el: 11 },
 };
+/** a second, later sun for a shot: from frame [0] on (a reverse-angle key) the sun is re-frozen camera-relative to the
+ *  keys after it, so the dam's gun close-up is front-lit like the reveal before it */
+export const SHOT_SUN_FROM: Record<number, [number, { az: number; el: number }]> = { 8: [797, { az: 125, el: 20 }] };
 /** per-shot sky stops overriding LOOK[light].sky */
 export const SHOT_SKY: Record<number, { c: string[]; e: number[] }> = {
   16: { c: ["#ffc070", "#ff9a5e", "#e07a72", "#8e6e9a", "#4d5a9a"], e: [0, 3, 8, 18, 42] }, // sunset down the road
@@ -130,21 +133,21 @@ export const LOOK: Record<LightName, WorldLook> = {
   },
   morning: {
     // sunrise: peach horizon, rose through ~10 deg, soft blue overhead
-    sky: { c: ["#ffd6a6", "#f8c4a2", "#dcb4b8", "#9fb0d6", "#5f88c6"], e: [0, 4, 11, 22, 45] },
+    sky: { c: ["#ffcf8e", "#f6b98a", "#d9a6a0", "#7f9fd0", "#3f6fc0"], e: [0, 4, 11, 22, 45] },
     cloud: { lit: "#ffe0c0", mid: "#f0b6a8", shade: "#a99ac8" },
     bounce: [0.04, 0.025, 0.0],
     sat: 1.04,
     skyTex: 0.09,
   },
   golden: {
-    sky: { c: ["#ffc47c", "#f7ae78", "#e8967c", "#c4848e", "#8a6f8a"], e: [0, 4, 10, 20, 40] },
+    sky: { c: ["#ffbe6a", "#f9a868", "#e98d72", "#a87f9a", "#4f5f9a"], e: [0, 4, 10, 20, 42] },
     cloud: { lit: "#ffd2a8", mid: "#f2a08f", shade: "#a98fc4" },
     bounce: [0.04, 0.02, 0.0],
     sat: 1.02,
     skyTex: 0.07,
   },
   dusk: {
-    sky: { c: ["#ffa874", "#f48c80", "#c87c98", "#7e6caa", "#45428a"], e: [0, 3, 10, 22, 50] },
+    sky: { c: ["#ffa25e", "#f08a60", "#b8728a", "#5e5a9a", "#2c336e"], e: [0, 3, 9, 20, 46] },
     cloud: { lit: "#ffb08a", mid: "#c47a8c", shade: "#5a4f84" },
     bounce: [0.05, 0.02, 0.02],
     sat: 1.04,

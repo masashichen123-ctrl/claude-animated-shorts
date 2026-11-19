@@ -1263,7 +1263,7 @@ export const fxBlob = (p: Pen, col: string) => {
 };
 
 
-// ---------------- missile short effects ----------------
+// ---------------- smoke ----------------
 /** puffy smoke cloud on a 400 x 400 canvas; t 0..1 grows and fades; tint = base grey */
 export const fxSmoke = (p: Pen, t: number, seed = 0, tint = "#ece8ea") => {
   const g = p.g, a = Math.max(0, 1 - t) ** 0.8;
@@ -1310,7 +1310,7 @@ export type EmuOpts = {
   light?: number; blink?: number; seed?: number;
 };
 const EMU_BODY = ["#6f5944", "#7b634a", "#5e4d3e"];
-const EMU_NECK = "#8ea3ba", EMU_SKIN = "#a9c0d4", EMU_DARK = "#3a2f28", EMU_LEG = "#8d929c", EMU_BEAK = "#3d3a39";
+const EMU_NECK = "#7c93ad", EMU_SKIN = "#9fb8d0", EMU_DARK = "#3a2f28", EMU_LEG = "#7f8590", EMU_BEAK = "#3d3a39";
 const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
 const rot2 = (v: P2, a: number): P2 => [v[0] * Math.cos(a) - v[1] * Math.sin(a), v[0] * Math.sin(a) + v[1] * Math.cos(a)];
 const addP = (a: P2, b: P2): P2 => [a[0] + b[0], a[1] + b[1]];
@@ -1359,10 +1359,10 @@ export const emuSide = (p: Pen, o: EmuOpts) => {
   };
   const feet: P2[] = pose === "proud" || pose === "attention" ? [[300, G], [328, G]] : moving ? [footAt(phase + 0.5, 300), footAt(phase, 300)] : [[262, G], [318, G]];
   const leg = (hip: P2, ft: P2, near: boolean) => {
-    const j = ikBack(hip, ft, l1, l2), col = near ? EMU_LEG : shade(EMU_LEG, 0.78);
-    p.poly(tube(curve(hip, lerp2(hip, j, 0.5), j, 6), 30, 17), col, 5.2); // drumstick (upper) -> heel
-    p.poly(tube([j, lerp2(j, ft, 0.5), ft], 17, 13), col, 5.2);
-    for (let k = 1; k < 5; k++) { const q = lerp2(j, ft, k / 5); p.stroke([[q[0] - 6, q[1]], [q[0] + 6, q[1] + 2]], 2.4, shade(EMU_LEG, 0.6)); }
+    const j = ikBack(hip, ft, l1, l2), col = near ? EMU_LEG : shade(EMU_LEG, 0.78), thigh = near ? mix(bodyCol, EMU_DARK, 0.2) : mix(bodyCol, EMU_DARK, 0.45);
+    p.poly(tube([j, lerp2(j, ft, 0.5), ft], 19, 14), col, 5.2);               // shank: heel -> foot
+    p.poly(tube(curve(hip, lerp2(hip, j, 0.5), j, 6), 50, 19), thigh, 5.2);   // feathered drumstick -> heel
+    for (let k = 1; k < 6; k++) { const q = lerp2(j, ft, k / 6); p.stroke([[q[0] - 6, q[1]], [q[0] + 6, q[1] + 2]], 2.4, shade(EMU_LEG, 0.6)); }
     const up = ft[1] < G - 4; // toes: three forward (lifted foot curls), one short back nub
     const toes: P2[] = up ? [[34, 18], [26, 26], [16, 30]] : [[52, 4], [44, -6], [34, 10]];
     for (const t of toes) p.line([ft, addP(ft, t)], col, 9, true);
@@ -1394,7 +1394,7 @@ export const emuSide = (p: Pen, o: EmuOpts) => {
   leg(hipR, feet[1], true);
   // ---- neck + head ----
   const N0 = bp(118, -62);
-  let Hc: P2 = [455, 205], hang = 0;
+  let Hc: P2 = [452, 212], hang = 0;
   if (pose === "walk") { Hc = [462 + 14 * Math.sin(2 * two * phase), 210 + 6 * Math.cos(2 * two * phase)]; hang = rad(4); }
   else if (pose === "run") { Hc = [512, 300 + 10 * Math.cos(2 * two * phase)]; hang = rad(16); }
   else if (pose === "proud") { Hc = [430, 178]; hang = rad(-16); }
@@ -1404,41 +1404,43 @@ export const emuSide = (p: Pen, o: EmuOpts) => {
   const down = Hc[1] > N0[1] - 40;
   const ctrl: P2 = down ? [N0[0] + 110, Math.min(N0[1], Hc[1]) - 30] : [N0[0] + (Hc[0] - N0[0]) * 0.15 - 22, N0[1] + (Hc[1] - N0[1]) * 0.55];
   const neckC = curve(N0, ctrl, addP(Hc, rot2([-14, 20], hang)), 14);
-  const neck = tube(neckC, 52, 24);
-  p.shadedFill(neck, EMU_NECK, mul(EMU_NECK, [0.78, 0.8, 0.88]), light, 60, 0.3);
-  p.clip(neck, () => { for (let k = 2; k < 13; k += 2) { const q = neckC[k]; p.stroke([[q[0] - 9, q[1] - 2], [q[0] + 7, q[1] + 4]], 2.2, shade(EMU_NECK, 0.62)); } });
+  const neck = tube(neckC, 62, 30);
+  p.shadedFill(neck, EMU_NECK, mul(EMU_NECK, [0.74, 0.76, 0.86]), light, 60, 0.3);
+  p.clip(neck, () => { // sparse dark hair-feathers, denser toward the base
+    for (let k = 1; k < 14; k++) { const q = neckC[k], n = k < 6 ? 3 : 1; for (let m = 0; m < n; m++) p.stroke([[q[0] - 14 + m * 10, q[1] - 3], [q[0] - 10 + m * 10, q[1] + 9]], 3, k < 6 ? dark : shade(EMU_NECK, 0.6)); }
+  });
   p.inkRing(neck, 5.5, thick, 0.4);
   // dark feather ruff where the neck meets the body
   const ruff: P2[] = [];
   for (let i = 0; i <= 14; i++) { const q = neckC[Math.min(5, Math.floor(i / 2.5))], s = i / 14, a = -Math.PI / 2 + Math.PI * s; ruff.push(addP(bp(108, -48), [Math.cos(a) * (40 + (i % 2) * 14), Math.sin(a) * (58 + (i % 2) * 12) + 6 * s])); void q; }
   p.poly(ruff, dark, 4.5);
   // head
-  const tn = clamp(turn, 0, 1), hr = 37, hr2 = 31;
+  const tn = clamp(turn, 0, 1), hr = 46, hr2 = 38;
   const HP = (x: number, y: number) => addP(Hc, rot2([x, y], hang * (1 - tn)));
   const head = ellPts(Hc[0], Hc[1], hr + 3 * tn, hr2 + 2 * tn, 0, 360, (hang * (1 - tn) * 180) / Math.PI);
   p.shadedFill(head, EMU_SKIN, mul(EMU_SKIN, [0.8, 0.82, 0.9]), light, hr, 0.3);
   p.clip(head, () => { // dark feathered crown cap + nape
-    const cap = ellPts(Hc[0] - 18 * (1 - tn), Hc[1] - 18, hr + 6, hr2 * 0.75, 0, 360, (hang * (1 - tn) * 180) / Math.PI);
+    const cap = ellPts(Hc[0] - 22 * (1 - tn), Hc[1] - 24, hr + 6, hr2 * 0.7, 0, 360, (hang * (1 - tn) * 180) / Math.PI);
     p.poly(cap, EMU_DARK, 0);
     for (let k = 0; k < 6; k++) { const q = HP(-30 + k * 9, -12 + (k % 2) * 4); p.stroke([q, addP(q, [-4, 10])], 3, shade(EMU_DARK, 1.5)); }
   });
   p.inkRing(head, 5.2, thick, 0.35);
   // beak: profile wedge -> front: a short wedge on the centre line, pointing down at the lens
-  const prof: P2[] = [[26, -3], [70, 8], [74, 15], [66, 20], [28, 19]];
-  const front: P2[] = [[-13, 9], [13, 9], [10, 22], [0, 30], [-10, 22]];
+  const prof: P2[] = [[32, -2], [84, 9], [89, 17], [79, 23], [34, 24]];
+  const front: P2[] = [[-16, 11], [16, 11], [12, 27], [0, 37], [-12, 27]];
   const beak = prof.map((q, i) => HP(lerp(q[0], front[i][0], tn), lerp(q[1], front[i][1], tn)));
   p.poly(beak, EMU_BEAK, 4.2);
   p.stroke([lerp2(beak[0], beak[4], 0.5), lerp2(beak[2], beak[3], 0.4)], 2.6, "#1c1a1a");
   // eyes: big dark discs with a pale rim; one in profile, two when turned to the lens
-  const eyesAt: [number, number, number][] = tn < 0.35 ? [[6, -5, 1]] : [[lerp(6, -15, tn), -5, 1], [lerp(34, 15, tn), -5, clamp((tn - 0.35) / 0.4, 0, 1)]];
+  const eyesAt: [number, number, number][] = tn < 0.35 ? [[8, -6, 1]] : [[lerp(8, -19, tn), -6, 1], [lerp(40, 19, tn), -6, clamp((tn - 0.35) / 0.4, 0, 1)]];
   for (const [ex, ey, k] of eyesAt) {
     if (k <= 0.05) continue;
-    const c = HP(ex, ey), R = (eyeK === "wide" ? 15.5 : 13) * (0.6 + 0.4 * k);
+    const c = HP(ex, ey), R = (eyeK === "wide" ? 20 : 16.5) * (0.6 + 0.4 * k);
     if (eyeK === "shut") { p.arc(c[0], c[1] + 2, R, 4, 15, 165, 4.2); continue; }
     if (eyeK === "happy") { p.arc(c[0], c[1] + 5, R, R * 0.8, 200, 340, 4.4); continue; }
     if (eyeK === "dizzy") { const s: P2[] = []; for (let t = 1; t < 16; t++) s.push([c[0] + Math.cos(t * 0.9) * t * 0.85, c[1] + Math.sin(t * 0.9) * t * 0.85]); p.ell(c[0], c[1], R, R, "#f4f0e6", 3); p.stroke(s, 2.8); continue; }
-    p.ell(c[0], c[1], R + 3.5, R + 3.5, "#d9c99a", 0);
-    p.ell(c[0], c[1], R, R, "#1e1512", 3.2);
+    p.ell(c[0], c[1], R, R, "#2a1a14", 3.4);
+    p.ell(c[0] - R * 0.1, c[1] + R * 0.12, R * 0.62, R * 0.62, "#140c0a", 0);
     if (eyeK === "stare" || blink > 0) { // lid closes over the top: menacing stare / half blink
       const cov = eyeK === "stare" ? 0.42 : 0.6, lidY = c[1] - R + 2 * R * cov;
       p.clip(ellPts(c[0], c[1], R + 3.6, R + 3.6), () => p.poly([[c[0] - R - 5, c[1] - R - 6], [c[0] + R + 5, c[1] - R - 6], [c[0] + R + 5, lidY], [c[0] - R - 5, lidY + (eyeK === "stare" ? 5 : 0)]], EMU_SKIN, 0));
@@ -1446,17 +1448,17 @@ export const emuSide = (p: Pen, o: EmuOpts) => {
     }
   }
   if (helmet) { // tin Brodie helmet: shallow dome over a broad flat brim, chin strap
-    const hc = HP(-2, -26);
-    p.line([HP(-20, -16), HP(-8, 26)], "#4a3a26", 3, false);
-    const brim = ellPts(hc[0], hc[1] + 6, 70, 11, 0, 360, (hang * (1 - tn) * 180) / Math.PI);
+    const hc = HP(-2, -32);
+    p.line([HP(-24, -20), HP(-10, 32)], "#4a3a26", 3, false);
+    const brim = ellPts(hc[0], hc[1] + 6, 84, 13, 0, 360, (hang * (1 - tn) * 180) / Math.PI);
     p.poly(brim, "#6d6a3e", 4.6);
-    const dome = ellPts(hc[0], hc[1] + 4, 40, 30, 180, 360, (hang * (1 - tn) * 180) / Math.PI);
+    const dome = ellPts(hc[0], hc[1] + 4, 48, 36, 180, 360, (hang * (1 - tn) * 180) / Math.PI);
     p.shadedFill(dome, "#7b7746", "#55522f", light, 40, 0.3); p.inkRing(dome, 4.6, thick, 0.3);
     p.stroke([addP(hc, [-30, -6]), addP(hc, [-6, -22])], 3, "rgba(255,250,220,0.45)");
   }
 };
 /** small local generator (toon.ts has no rng): deterministic stream per seed */
-const rng2 = (seed: number) => { let s = (seed * 9301 + 49297) % 233280 || 1; return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; };
+const rng2 = (seed: number) => { let s = Math.abs(Math.round(seed * 9301 + 49297)) % 233280 || 1; return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; };
 
 // ---------------- emu-war effects ----------------
 /** muzzle flash on a 400 x 400 canvas (muzzle at the left-centre, flash toward +x); k = variant */
@@ -1488,4 +1490,18 @@ export const fxClack = (p: Pen) => {
   const pts: P2[] = [];
   for (let i = 0; i < 16; i++) { const a = (i / 16) * Math.PI * 2, l = i % 2 ? 50 : 125; pts.push([150 + Math.cos(a) * l, 150 + Math.sin(a) * l]); }
   p.poly(pts, "#fffbe8", 9);
+};
+
+/** cartoon dust cloud on a 400 x 400 canvas, t 0..1: overlapping lobes, light crowns, darker belly, plum ink; fades out */
+export const fxDustCloud = (p: Pen, t: number, seed = 0, col = "#dca27a") => {
+  const g = p.g, r = rng2(seed * 13 + 5);
+  g.save(); g.globalAlpha = t < 0.65 ? 1 : Math.max(0, 1 - (t - 0.65) / 0.35);
+  const R = 60 + 70 * Math.sqrt(t), n = 6, lobes: [number, number, number][] = [];
+  for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2 + r(), d = R * (0.45 + 0.25 * r()); lobes.push([200 + Math.cos(a) * d * 1.25, 230 + Math.sin(a) * d * 0.7 - 30 * t, R * (0.45 + 0.25 * r())]); }
+  lobes.push([200, 220 - 30 * t, R * 0.75]);
+  for (const [x, y, rr] of lobes) p.ell(x, y, rr, rr * 0.9, null, 9);
+  for (const [x, y, rr] of lobes) p.ell(x, y, rr, rr * 0.9, mul(col, [0.86, 0.84, 0.86]), 0);
+  for (const [x, y, rr] of lobes) p.ell(x - rr * 0.12, y - rr * 0.16, rr * 0.8, rr * 0.7, col, 0);
+  for (const [x, y, rr] of lobes) p.ell(x - rr * 0.25, y - rr * 0.32, rr * 0.4, rr * 0.3, mix(col, "#ffffff", 0.3), 0);
+  g.restore();
 };

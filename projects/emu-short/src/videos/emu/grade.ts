@@ -207,10 +207,10 @@ export const GRADE_GOLDEN2: GradeParams = {
   vig: [0.24, 0.4],
   hueSat: HUE_WARM,
 };
-export const GRADE_DUSK: GradeParams = {   // deeper S, violet-rose darks, warm highlights
-  ky: [0.04, 0.105, 0.265, 0.555, 0.8, 0.93, 1],
+export const GRADE_DUSK: GradeParams = {   // deeper S, blue-violet darks, warm lamp-lit highlights
+  ky: [0.035, 0.1, 0.26, 0.55, 0.8, 0.93, 1],
   sat: [0.95, 1.08, 1.1],
-  tintS: [0.03, 0.016], tintM: [0.006, 0.006], tintH: [-0.014, 0.01],
+  tintS: [0.02, 0.0], tintM: [-0.008, 0.008], tintH: [-0.02, 0.012],
   vig: [0.3, 0.38],
   hueSat: HUE_WARM,
 };

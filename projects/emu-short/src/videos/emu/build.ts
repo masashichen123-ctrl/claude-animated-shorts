@@ -224,7 +224,7 @@ const addVeg = (b: Batch, k: VegKind, x: number, y: number, z: number, h: number
 // =================================================================================================================
 type Mat = THREE.Material;
 const UP = V(0, 1, 0);
-/** matrix: position, yaw (y), then pitch (z) and roll (x) -> "YZX" like the missile rig */
+/** matrix: position, yaw (y), then pitch (z) and roll (x) -> "YZX" like the truck rig */
 export const M4 = (x: number, y: number, z: number, ry = 0, rz = 0, rx = 0, s: [number, number, number] = [1, 1, 1]) =>
   new THREE.Matrix4().compose(V(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz, "YZX")), V(...s));
 /** flat colour material (two-tone) */
@@ -654,10 +654,12 @@ const windmill = (b: Batch) => {
   b.add(cached("troughWater", () => new THREE.CircleGeometry(1.0, 24).rotateX(-Math.PI / 2)), col("#6d7c74"), M4(mx + 2.3, 0.45, mz + 1.4, 0, 0, 0, [1.3, 1, 0.6]));
 };
 
+/** brown dam water: unlit (it reads as water, not as shaded ground), never in the bloom (max channel < 1) */
+const damWaterM = () => { let m = mats.get("damWaterB"); if (!m) { m = new THREE.MeshBasicMaterial({ map: P.damWaterHD(), color: new THREE.Color(0.92, 0.9, 0.86) }); m.userData.bloom = false; mats.set("damWaterB", m); } return m; };
 // ---- dam: brown water disc in an earthen bank ring (mud inside, dry outside) ----
 const dam = (b: Batch) => {
   const R = SPOT.DAM_R, C = SPOT.BANK_R, Hb = SPOT.BANK_H;
-  b.add(cached("damWater", () => uvFrom(new THREE.CircleGeometry(R + 0.4, 48).rotateX(-Math.PI / 2), (x, _y, z) => [x / 8, z / 8])), texM("damWater", () => P.damWaterHD()), M4(0, -0.25, 0));
+  b.add(cached("damWater", () => uvFrom(new THREE.CircleGeometry(R + 0.4, 48).rotateX(-Math.PI / 2), (x, _y, z) => [x / 8, z / 8])), damWaterM(), M4(0, -0.25, 0));
   const inner = DAM_PROFILE.slice(0, 6), outer = DAM_PROFILE.slice(5); void C; void Hb;
   const ring = (key: string, prof: [number, number][], mat: Mat) => {
     const g = cached(key, () => { const l = new THREE.LatheGeometry(prof.map(([r, y]) => new THREE.Vector2(r, y)), 96); return uvFrom(l, (x, _y, z) => [x / 4, z / 4]); });
@@ -715,7 +717,8 @@ const brassMound = (b: Batch) => {
     l.computeVertexNormals();
     return uvFrom(l, (x, y, z) => [(x + z * 0.3) / 2, (y + z) / 2]);
   });
-  const brass = mats.get("brassPhong") ?? (() => { const m = twoTone(new THREE.MeshPhongMaterial({ map: P.brassHD(), shininess: 40, specular: new THREE.Color("#ffd890") })); mats.set("brassPhong", m); return m; })();
+  // brass keeps a warm self-glow (lamp + dusk sky bounce) so it reads golden even on the shaded side, and a hot specular
+  const brass = mats.get("brassPhong") ?? (() => { const m = twoTone(new THREE.MeshPhongMaterial({ map: P.brassHD(), shininess: 30, specular: new THREE.Color("#ffe0a0"), emissive: new THREE.Color("#7a5214"), emissiveMap: P.brassHD() })); mats.set("brassPhong", m); return m; })();
   b.add(g, brass, M4(bx, 0, bz));
   const r = rng(77);
   for (let i = 0; i < 140; i++) { // spilled casings around the foot
@@ -898,7 +901,7 @@ const buildField = (): SetRig => {
   const r = rng(13);
   for (let i = 0; i < 1900; i++) { // the ending: the lens sits low inside the wheat
     const x = cx - 12 + 26 * r(), z = cz - 26 + 25 * r();
-    if (Math.hypot(x - cx, z - cz) < 1.6) continue;
+    if (Math.hypot(x - cx, z - cz) < 3.6 || (z > cz - 6 && Math.abs(x - cx) < 1.2 + (cz - z) * 0.5)) continue; // keep the lens' sight line open
     const h = WHEAT_H + 0.15 + 0.35 * r();
     c.add(clumpGeo(), wheatCardM(i % 3), M4(x, 0, z, r() * 6.28, 0, 0, [0.9 + 0.4 * r(), h, 0.9 + 0.4 * r()]));
   }
@@ -994,7 +997,8 @@ const buildPaddock = (): SetRig => {
 // ---- dam ----
 const buildDam = (): SetRig => {
   const b = new Batch();
-  terrain(b, paddockM(), -FAR, FAR, -FAR, FAR, 4);
+  // ground with a hole for the dam (the outer bank meets it at BANK_R + 4.2)
+  b.add(cached("damGround", () => { const g = new THREE.RingGeometry(SPOT.BANK_R + 4.0, FAR, 96, 6).rotateX(-Math.PI / 2); return uvFrom(g, (x, _y, z) => [x / 4, z / 4]); }), paddockM());
   dam(b);
   for (const [x, z, h] of [[-24, -10, 16], [21, -18, 15], [-17, 25, 14], [28, 9, 17], [-6, -30, 15], [40, -35, 14]]) gum(b, x, z, h, x * 9 + z, 1);
   scrub(b, 0, 0, 20, 70, 50, 71);
@@ -1012,13 +1016,13 @@ const buildCamp = (): SetRig => {
   bellTent(b, SPOT.TENT[0], SPOT.TENT[2], 0, true);
   bellTent(b, -7.5, -4.5, 0.4, true, 0.95); bellTent(b, 8.5, -5.5, -0.5, false, 0.95); bellTent(b, -14, -9, 0.2, false, 0.9);
   fieldDesk(b); tallyBoard(b);
-  rb(b, col("#6a4a2c"), SPOT.MAJOR10[0] - 0.2, SPOT.MAJOR10[0] + 0.2, 0, 0.45, SPOT.MAJOR10[2] - 0.2, SPOT.MAJOR10[2] + 0.2, 0.03); // stool
   crateStack(b, -3.6, 1.2, 2, 2, 1, 0.3, 91);
   brassMound(b);
   // lantern pole by the desk
-  b.add(rod(V(2.9, 0, 1.4), V(2.9, 2.35, 1.4), 0.035), col("#5a4030"));
-  b.add(rod(V(2.9, 2.3, 1.4), V(2.55, 2.3, 1.4), 0.025), col("#5a4030"));
-  b.add(lathe("lantern", [[0, 0], [0.09, 0], [0.09, 0.03], [0.06, 0.06], [0.07, 0.2], [0.04, 0.26], [0, 0.27]], 12), glow("#ffc46a", 2.2), M4(2.55, 1.98, 1.4));
+  const lx = SPOT.DESK[0] + 1.35, lz = SPOT.DESK[2] - 0.9;
+  b.add(rod(V(lx + 0.35, 0, lz), V(lx + 0.35, 2.35, lz), 0.035), col("#5a4030"));
+  b.add(rod(V(lx + 0.35, 2.3, lz), V(lx, 2.3, lz), 0.025), col("#5a4030"));
+  b.add(lathe("lantern", [[0, 0], [0.09, 0], [0.09, 0.03], [0.06, 0.06], [0.07, 0.2], [0.04, 0.26], [0, 0.27]], 12), glow("#ffc46a", 2.2), M4(lx, 1.98, lz));
   for (const [x, z, h] of [[-20, -16, 16], [18, -22, 15], [-28, 8, 14], [26, 6, 17], [6, -34, 15]]) gum(b, x, z, h, x * 13 + z, 1);
   scrub(b, 0, 0, 16, 60, 30, 92);
   horizon(b, 93);

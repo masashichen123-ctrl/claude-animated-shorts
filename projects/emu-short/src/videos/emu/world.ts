@@ -1,35 +1,29 @@
 // The whole film as one three.js scene graph (owner: world, with lights.ts): sky dome, sun disc + halo, clouds, the
-// sea (shader water, shared by the sea / subdeck / runway sets), the light rig, all seven sets (build.ts, one visible
-// at a time), the Regulus rig and the cast cards. update(id, f, camera, scene) poses everything for shot `id` at frame
-// f (a pure function of id + f) and returns the camera's look point.
+// light rig, all eight sets (build.ts, one visible at a time), the moving rigs (army truck, Lewis guns, loose crates)
+// and the cast cards. update(id, f, camera, scene) poses everything for shot `id` at frame f (a pure function of
+// id + f) and returns the camera's look point.
 import * as THREE from "three";
-import * as PAINT from "./paint";
 import { ctex, cloudHD } from "./paint";
-import { buildSets, buildMissile, poseMissile, SET_META, SetRig, MissileRig } from "./build";
+import { buildSets, buildRigs, poseTruck, poseGuns, poseCrates, SET_META, SetRig, Rigs, WHEAT } from "./build";
 import * as B from "./build";
-import { LIGHTS, LOOK, LightPreset, LightName, lightOf, SHOT_SUN, SHOT_SKY, CUR } from "./lights";
-import { TONE, CHAR, LFB, HAZE, hazeShader, untone } from "./shade";
+import { LIGHTS, LOOK, LightPreset, LightName, lightOf, SHOT_SUN, SHOT_SUN_FROM, SHOT_SKY, CUR } from "./lights";
+import { TONE, CHAR, HAZE, untone } from "./shade";
 import { NOINK } from "./ink";
 import { Pool, Actor, Fx, stage } from "./cast";
-import { FPS, SHOTS, ShotDef, SetName, SPOT, BOOM_AT, camAt, missileAt, noseDir } from "./story";
+import { FPS, SHOTS, ShotDef, SetName, SPOT, camAt, truckAt, gunsAt, cratesAt } from "./story";
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
-/** haze length multiplier per set (the open-sea sets look ~1 km to the horizon; the far sea must stay cyan, not white) */
-// NOTE: hk stretches start / e-fold length, so a LARGER value means LESS haze (round 2 shrank it by mistake)
-const HAZE_K: Partial<Record<SetName, number>> = { sea: 3.4, subdeck: 2.8, runway: 2.4 };
-/** haze cap multiplier per set (Mayport: the hangar darks must reach p2 <= .12, verify_r2 #4) */
-const HAZE_MAXK: Partial<Record<SetName, number>> = { runway: 0.35, sea: 0.85, subdeck: 0.85 };
 /** shots whose sky gets the 4 view-placed hero clouds, and their [azimuth offset, elevation (rad), width m, aspect] */
-const HERO_CLOUD_SHOTS = new Set([1, 3, 7]);
+const HERO_CLOUD_SHOTS = new Set([3, 4, 6, 7, 11, 13, 15, 16]);
 const HERO_CLOUDS: [number, number, number, number][] = [[-0.14, 0.075, 220, 3.2], [0.13, 0.11, 250, 2.8], [0.0, 0.045, 320, 6], [-0.3, 0.05, 200, 5]];
 /** camera-relative sun azimuth actually used for a shot (sun disc only when it is roughly ahead of the lens) */
-const o2 = (id: number) => Math.abs(SHOT_SUN[id]?.az ?? SHOTS[id - 1].sunAz ?? 90);
+const o2 = (id: number) => Math.abs(SHOT_SUN[id]?.az ?? 90);
 type Lamp = { p: [number, number, number]; I: number; halo: number; col?: string };
-/** practical lamps per set (bulb positions match build.ts pendant(): bulb at top - drop - 0.28) */
+/** practical lamps per set: the camp's lit tent doors, the desk lamp and the lantern (dusk) */
+const D = SPOT.DESK;
 const LAMPS: Partial<Record<SetName, Lamp[]>> = {
-  postoffice: [{ p: [-2.5, 3.22, 0.5], I: 9, halo: 1.3 }, { p: [2.5, 3.22, 0.5], I: 9, halo: 1.3 }, { p: [0, 3.22, 4.5], I: 9, halo: 1.3 }],
-  museum: [{ p: [-6, 9.22, -2], I: 25, halo: 1.2 }, { p: [6, 9.22, -2], I: 25, halo: 1.2 }, { p: [-6, 9.22, 8], I: 25, halo: 1.2 },
-    { p: [6, 9.22, 8], I: 25, halo: 1.2 }, { p: [0, 9.22, 14], I: 25, halo: 1.2 }],
+  camp: [{ p: [0, 0.95, 2.6], I: 7, halo: 1.6 }, { p: [D[0] + 0.45, 1.06, D[2] - 0.18], I: 5, halo: 0.55 }, { p: [D[0] + 1.35, 2.1, D[2] - 0.9], I: 6, halo: 0.9 },
+    { p: [-6.6, 0.95, -2.5], I: 5, halo: 1.4 }],
 };
 /** sun disc (solid, soft rim) and the flat golden halo (lighting.md 6 / depth.md 6.4: r50 13-26 % of the frame width) */
 const discTex = () => ctex("sunDisc", 128, 128, (g) => {
@@ -57,8 +51,6 @@ export class World {
   private hemi: THREE.HemisphereLight; private sun: THREE.DirectionalLight;
   private sky: THREE.Mesh; private skyMat: THREE.ShaderMaterial;
   private fog = new THREE.Fog("#bccbec", 25, 420);
-  private WU: Record<string, THREE.IUniform>;
-  private water: THREE.Mesh;
   private sunDisc: THREE.Sprite; private sunHalo: THREE.Sprite;
   private sunCache = new Map<number, THREE.Vector3>();
   private cloudMaps: Record<LightName, THREE.Texture[]>;
@@ -67,7 +59,7 @@ export class World {
   private clouds: THREE.Mesh[] = [];
   private fg = new THREE.Group();
   private sets: Record<SetName, SetRig>;
-  private missile: MissileRig;
+  private rigs: Rigs;
   private frustum = new THREE.Frustum();
   private m4 = new THREE.Matrix4(); private v = new THREE.Vector3(); private sph = new THREE.Sphere();
 
@@ -139,7 +131,7 @@ export class World {
       m.layers.set(NOINK); m.renderOrder = -0.8 + ci * 0.001;
       this.clouds.push(m); R.add(m);
     }
-    // 4 "hero" clouds placed per shot in the camera's view (sea / deck wides, verify_r1 #5: the hook sky was one smear)
+    // 4 "hero" clouds placed per shot in the camera's view (wides with lots of sky)
     for (let k = 0; k < 4; k++, ci++) {
       const mat = new THREE.ShaderMaterial({
         uniforms: { map: { value: this.cloudMaps.day[k] }, mixCol: { value: new THREE.Color() }, mixK: { value: 0.12 }, op: { value: 0.95 }, gain: { value: 1.1 } },
@@ -162,97 +154,53 @@ export class World {
       const sp = new THREE.SpotLight("#ffe2bc", 0, 0, THREE.MathUtils.degToRad(28), 0.6, 2); sp.castShadow = false; sp.visible = false;
       this.spots.push(sp); R.add(sp, sp.target);
     }
-    // ---- the sea: depression-angle gradient + drifting painted marks (one big plane, raised / lowered per set) ----
-    this.WU = {
-      wNearC: { value: new THREE.Color() }, wMidC: { value: new THREE.Color() }, wFarC: { value: new THREE.Color() },
-      wCrest: { value: new THREE.Color() }, wTrough: { value: new THREE.Color() }, wGlint: { value: new THREE.Color() },
-      wShade: { value: new THREE.Vector3(0.5, 0.56, 0.72) }, wNearTex: { value: null }, wFarTex: { value: null }, wTime: { value: 0 },
-    };
-    this.water = this.makeWater();
-    R.add(this.water);
-    // ---- sets + the missile ----
+    // ---- sets + rigs ----
     this.sets = buildSets();
     for (const k of Object.keys(this.sets) as SetName[]) { this.sets[k].group.visible = false; R.add(this.sets[k].group); }
-    this.missile = buildMissile();
-    R.add(this.missile.root);
+    this.rigs = buildRigs();
+    R.add(this.rigs.truck);
     this.fg.name = "foreground"; R.add(this.fg);
   }
 
-  private makeWater() {
-    const { waterNear, waterFar } = PAINT;
-    const wNear = waterNear(), wFar = waterFar();
-    for (const t of [wNear, wFar]) { t.colorSpace = THREE.NoColorSpace; t.anisotropy = 16; t.needsUpdate = true; }
-    this.WU.wNearTex.value = wNear; this.WU.wFarTex.value = wFar;
-    const waterM = new THREE.MeshLambertMaterial({ color: 0xffffff });
-    waterM.onBeforeCompile = (sh) => {
-      Object.assign(sh.uniforms, this.WU);
-      sh.vertexShader = sh.vertexShader
-        .replace("#include <common>", "#include <common>\nvarying vec3 vWP;")
-        .replace("#include <project_vertex>", "#include <project_vertex>\nvWP = (modelMatrix * vec4(transformed, 1.0)).xyz;");
-      sh.fragmentShader = sh.fragmentShader
-        .replace("#include <common>", WATER_DECL)
-        .replace("#include <map_fragment>", WATER_COL)
-        .replace("#include <lights_fragment_begin>", "float sunVis = 1.0;\n" + LFB)
-        .replace("#include <lights_fragment_end>", "#include <lights_fragment_end>\n  reflectedLight.directDiffuse = diffuseColor.rgb * mix(wShade, vec3(1.0), mix(1.0, sunVis, 0.25)) + pracD * 0.6;\n  reflectedLight.indirectDiffuse = vec3(0.0);");
-      hazeShader(sh);
-    };
-    waterM.customProgramCacheKey = () => "sea3";
-    const g = new THREE.PlaneGeometry(5000, 5000).rotateX(-Math.PI / 2);
-    const wm = new THREE.Mesh(g, waterM);
-    wm.receiveShadow = true;
-    return wm;
-  }
-
   /** camera-relative sun, frozen per shot: the shot's mean view direction turned by az toward screen right, lifted by el */
-  private shotSun(id: number, s: ShotDef, L: LightPreset) {
-    let v = this.sunCache.get(id);
+  private shotSun(id: number, s: ShotDef, L: LightPreset, fr: number) {
+    // a shot may switch to a second sun from a later key (SHOT_SUN_FROM): frozen per [range], camera-relative to it
+    const sw = SHOT_SUN_FROM[id], late = !!sw && fr >= sw[0], key = id * 2 + (late ? 1 : 0);
+    let v = this.sunCache.get(key);
     if (v) return v;
     let fx = 0, fz = 0;
-    for (let f = s.a; f < s.b; f += 3) {
+    for (let f = late ? sw![0] : s.a; f < (sw && !late ? sw[0] : s.b); f += 3) {
       const c = camAt(id, f), x = c.look[0] - c.pos[0], z = c.look[2] - c.pos[2], n = Math.hypot(x, z) || 1;
       fx += x / n; fz += z / n;
     }
     const n = Math.hypot(fx, fz) || 1; fx /= n; fz /= n;
-    const o = SHOT_SUN[id];
-    const az = THREE.MathUtils.degToRad(o?.az ?? s.sunAz ?? L.az), el = THREE.MathUtils.degToRad(o?.el ?? s.sunEl ?? L.el);
+    const o = late ? sw![1] : SHOT_SUN[id];
+    const az = THREE.MathUtils.degToRad(o?.az ?? L.az), el = THREE.MathUtils.degToRad(o?.el ?? L.el);
     const hx = fx * Math.cos(az) - fz * Math.sin(az), hz = fz * Math.cos(az) + fx * Math.sin(az); // screen right = (-fz, fx)
     v = new THREE.Vector3(hx * Math.cos(el), Math.sin(el), hz * Math.cos(el)).normalize();
-    this.sunCache.set(id, v);
+    this.sunCache.set(key, v);
     return v;
   }
 
   private actor(i: number) { while (this.actors.length <= i) this.actors.push(new Actor(this.root)); return this.actors[i]; }
   private fx(i: number) { while (this.fxs.length <= i) this.fxs.push(new Fx(this.root)); return this.fxs[i]; }
 
-  /** lamps of the active set + a flame light at the missile's tail + the puff's flash; halos on every bulb */
-  private practicals(set: SetName, ln: LightName, L: LightPreset, flame: number, tail: THREE.Vector3, boom: number, cam: THREE.PerspectiveCamera) {
-    const lamps: Lamp[] = (LAMPS[set] ?? []).slice();
-    const hot: { p: THREE.Vector3; I: number; col: string; halo: number; hk: number }[] = lamps.map((l) => ({ p: V(...l.p), I: l.I, col: l.col ?? L.pracCol, halo: l.halo, hk: 1 }));
-    if (flame > 0) hot.push({ p: tail.clone(), I: 60 * flame, col: "#ff9a4a", halo: (set === "road" ? 1.6 : 4) * flame, hk: set === "road" ? 0.7 : 1.2 });
-    if (boom >= 0 && boom < 1.2) { const k = Math.max(0, 1 - boom / 1.2); hot.push({ p: V(...BOOM_AT), I: 900 * k, col: "#ffb060", halo: 0, hk: 0 }); }
+  /** lamps of the active set; halos on every bulb */
+  private practicals(set: SetName, L: LightPreset) {
+    const hot = (LAMPS[set] ?? []).map((l) => ({ p: V(...l.p), I: l.I, col: l.col ?? L.pracCol, halo: l.halo }));
     for (let i = 0; i < this.points.length; i++) {
       const pl = this.points[i], h = this.halos[i], q = hot[i];
       pl.visible = !!q; h.visible = !!q && q.halo > 0;
       if (!q) continue;
       pl.position.copy(q.p); pl.color.set(q.col); pl.intensity = q.I;
-      if (h.visible) {
-        h.position.copy(q.p); h.scale.setScalar(q.halo);
-        (h.material as THREE.SpriteMaterial).color.set(q.col).multiplyScalar(0.55 * q.hk);
-      }
+      if (h.visible) { h.position.copy(q.p); h.scale.setScalar(q.halo); (h.material as THREE.SpriteMaterial).color.set(q.col).multiplyScalar(0.55); }
     }
-    // museum: two spots from above-front, a warm pool on the exhibit and one on the plaque
-    const sp = set === "museum" ? [{ p: V(2, 11.5, 10), t: V(...SPOT.EXHIBIT), I: 900 }, { p: V(6, 9, 9), t: V(SPOT.PLAQUE[0], 0.6, SPOT.PLAQUE[2]), I: 250 }] : [];
-    for (let i = 0; i < this.spots.length; i++) {
-      const s2 = this.spots[i], q = sp[i];
-      s2.visible = !!q;
-      if (!q) continue;
-      s2.position.copy(q.p); s2.target.position.copy(q.t); s2.target.updateMatrixWorld(); s2.intensity = q.I; s2.color.set(L.pracCol);
-    }
-    void ln; void cam;
+    for (const sp of this.spots) sp.visible = false;
   }
 
   update(id: number, f: number, cam: THREE.PerspectiveCamera, scene: THREE.Scene) {
     const t = f / FPS, s = SHOTS[id - 1], ln = lightOf(id), L = LIGHTS[ln], K = LOOK[ln], meta = SET_META[s.set];
+    WHEAT.uTime.value = t;
     CUR.id = id;
     // ---- camera ----
     const c = camAt(id, f);
@@ -261,12 +209,11 @@ export class World {
     const focus = V(...c.look), dist = cam.position.distanceTo(focus);
     cam.layers.enable(NOINK); // sky, clouds, cards and sun sprites live on the no-ink layer but are still rendered
     // ---- light rig: camera-relative sun frozen per shot, two-tone uniforms, shadow fit around the look point ----
-    const sunDir = this.shotSun(id, s, L);
+    const sunDir = this.shotSun(id, s, L, f);
     this.hemi.color.set(L.sky); this.hemi.groundColor.set(L.ground); this.hemi.intensity = L.hemiI;
     this.sun.color.set(L.sunCol); this.sun.intensity = L.sunI;
     let Rr = THREE.MathUtils.clamp(dist * 1.15 + 7, 12, 95);
     if (ln === "golden" || ln === "dusk" || ln === "morning") Rr = Math.max(Rr, 30);
-    if (s.set === "subdeck") Rr = Math.max(Rr, 30);
     this.sun.position.copy(focus).addScaledVector(sunDir, 220); this.sun.target.position.copy(focus);
     const sc = this.sun.shadow.camera;
     sc.left = -Rr; sc.right = Rr; sc.top = Rr; sc.bottom = -Rr; sc.near = 20; sc.far = 480; sc.updateProjectionMatrix();
@@ -281,9 +228,7 @@ export class World {
     TONE.uLambert.value = L.lambert; TONE.uSideK.value = L.sideK; TONE.uTerm.value = L.term; TONE.uBounce.value.set(...K.bounce); TONE.uSat.value = K.sat;
     TONE.uPrac.value = L.prac; TONE.uAlbFloor.value.set(...L.albFloor); TONE.uRim.value.set(...L.rim);
     TONE.uGobo.value = L.gobo; TONE.uGoboScale.value = L.goboScale; TONE.uGoboOff.value.set(0.04 * t, 0.015 * t); TONE.uSunW.value.copy(sunDir);
-    const indoor = s.set === "postoffice" || s.set === "museum";
-    TONE.uAO.value = L.ao; TONE.uAOR.value = L.aoR; TONE.uFloorY.value = 0; TONE.uCeilY.value = s.set === "postoffice" ? 4.4 : s.set === "museum" ? 12 : 1e4;
-    if (!indoor) TONE.uAO.value = L.ao * 0.6; // outdoors: building / wall bases only
+    TONE.uAO.value = L.ao * 0.6; TONE.uAOR.value = L.aoR; TONE.uFloorY.value = 0; TONE.uCeilY.value = 1e4; // outdoors: wall bases only
     CHAR.uCharTint.value.set(...L.charTint); CHAR.uCharShade.value = L.charShade; CHAR.uGrad.value = L.charGrad;
     CHAR.uBodyGrad.value = L.bodyGrad; CHAR.uSideTint.value.set(...L.sideTint);
     // ---- sky, fog (colour = horizon colour), sun disc + halo, clouds ----
@@ -294,14 +239,14 @@ export class World {
     su.e.value.set(e[1], e[2], e[3], e[4]);
     su.sunDirW.value.copy(sunDir); untone(L.glowCol, su.glowCol.value); su.glowK.value = L.glowK; su.tex.value = K.skyTex;
     this.sky.position.copy(cam.position);
-    // haze (depth.md 3.2): the open-sea sets see 1 km to the horizon, so their e-fold length is stretched
-    const HZ = L.haze, hk = HAZE_K[s.set] ?? 1;
+    // haze (depth.md 3.2): the open wheat belt sees far, so the e-fold length is stretched per set
+    const HZ = L.haze, hk = meta.hazeK;
     untone(HZ.col, this.fog.color);
-    HAZE.uHaze.value.set(HZ.start * hk, HZ.len * hk, HZ.h * hk, HZ.max * (HAZE_MAXK[s.set] ?? 1)); HAZE.uHazeSat.value = HZ.sat; HAZE.uHazeY0.value = meta.water ?? 0;
+    HAZE.uHaze.value.set(HZ.start * hk, HZ.len * hk, HZ.h * hk, HZ.max); HAZE.uHazeSat.value = HZ.sat; HAZE.uHazeY0.value = 0;
     // ink reads scene.fog linearly: near = haze start, far ~ where the haze reaches ~90 %
     this.fog.near = HZ.start * hk; this.fog.far = HZ.max > 0 ? HZ.start * hk + 2.3 * HZ.len * hk : 1e5;
     scene.fog = this.fog; scene.background = null;
-    const outdoors = !indoor;
+    const outdoors = true;
     const showSun = (ln === "golden" || ln === "dusk" || ln === "morning") && (o2(id) < 70);
     this.sunDisc.visible = this.sunHalo.visible = showSun;
     if (showSun) {
@@ -334,28 +279,19 @@ export class World {
       skyAt(m.userData.el as number, mat.uniforms.mixCol.value);
     }
     this.sky.visible = outdoors;
-    // ---- sea: colours (on-screen targets, tone-map-inverted), height per set ----
-    const W = this.WU, wc = K.water;
-    untone(wc.near, W.wNearC.value); untone(wc.mid, W.wMidC.value); untone(wc.far, W.wFarC.value);
-    untone(wc.crest, W.wCrest.value); untone(wc.trough, W.wTrough.value); untone(wc.glint, W.wGlint.value);
-    W.wShade.value.set(...wc.shade); W.wTime.value = t;
-    this.water.visible = meta.water !== null;
-    this.water.position.set(cam.position.x, meta.water ?? 0, cam.position.z);
     // ---- sets: only the active one ----
     for (const k of Object.keys(this.sets) as SetName[]) this.sets[k].group.visible = k === s.set;
     this.sets[s.set].tick?.(t, id);
-    // ---- the missile ----
-    const mp = missileAt(id, f);
-    poseMissile(this.missile, mp);
-    const nd = noseDir(mp.yaw, mp.pitch), dir = V(...nd);
-    const tail = this.missile.tail.clone().applyMatrix4(this.missile.root.matrixWorld);
-    const boosterTails = this.missile.boosterTails.map((b) => b.clone().applyMatrix4(this.missile.root.matrixWorld));
-    // ---- practical lights: set lamps, the booster / sustainer flame ----
-    // the flame light sits 2.5 m behind the nozzle so it lights the deck / smoke, not the airframe itself (verify_r1 #4)
-    this.practicals(s.set, ln, L, mp.flame > 0 && mp.visible ? mp.flame : 0, tail.clone().addScaledVector(dir, -2.5), mp.boom, cam);
+    // ---- rigs: truck, guns, loose crates ----
+    const tp = truckAt(id, f);
+    poseTruck(this.rigs.truck, tp);
+    const gp = gunsAt(id, f);
+    const guns = poseGuns(this.rigs, gp, this.root);
+    poseCrates(this.rigs, cratesAt(id, f), this.root);
+    this.practicals(s.set, L);
     // ---- cast + effects ----
     const right = V(0, 0, 0).setFromMatrixColumn(cam.matrixWorld, 0), up = V(0, 0, 0).setFromMatrixColumn(cam.matrixWorld, 1);
-    const st = stage(id, t, { pos: cam.position, right, up }, { pose: mp, dir, tail, boosterTails });
+    const st = stage(id, t, { pos: cam.position, right, up }, { truck: tp, guns, gunPoses: gp });
     this.frustum.setFromProjectionMatrix(this.m4.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse));
     let ai = 0;
     const used: Actor[] = [];
@@ -367,7 +303,8 @@ export class World {
       a.r = this.pool.req(p.key, w, h, k, p.draw);
       a.mesh.visible = true;
       a.mesh.position.set(p.x, p.y, p.z);
-      a.mesh.rotation.set(0, p.yaw ?? Math.atan2(cam.position.x - p.x, cam.position.z - p.z), p.roll ?? 0);
+      if (p.billboard) { a.mesh.quaternion.copy(cam.quaternion); a.mesh.rotateZ(p.roll ?? 0); }
+      else a.mesh.rotation.set(0, p.yaw ?? Math.atan2(cam.position.x - p.x, cam.position.z - p.z), p.roll ?? 0);
       a.mesh.scale.set(p.mirror ? -sc2 : sc2, sc2, sc2);
       a.mesh.castShadow = L.actorShadow;
       used.push(a);
@@ -400,22 +337,4 @@ export class World {
     return focus;
   }
 }
-
-const WATER_DECL = `#include <common>
-varying vec3 vWP;
-uniform vec3 wNearC, wMidC, wFarC, wCrest, wTrough, wGlint, wShade;
-uniform sampler2D wNearTex, wFarTex;
-uniform float wTime;`;
-const WATER_COL = `
-  vec3 wV = vWP - cameraPosition;
-  float wd = length(wV);
-  float wDep = asin(clamp(-wV.y / wd, 0.0, 1.0));       // depression angle of the view ray
-  float wf = 1.0 - smoothstep(0.0, 0.42, wDep);         // 1 at the horizon .. 0 at 24 deg down
-  vec3 wc = mix(mix(wNearC, wMidC, smoothstep(0.0, 0.55, wf)), wFarC, smoothstep(0.55, 1.0, wf));
-  vec2 wp = vWP.xz + vec2(0.35 * wTime, 0.12 * wTime);   // slow swell drift
-  vec4 mk = mix(texture2D(wNearTex, wp / 8.0), texture2D(wFarTex, wp / 40.0 + 0.37), smoothstep(25.0, 90.0, wd));
-  wc = mix(wc, wTrough, mk.g * 0.6);
-  wc = mix(wc, wCrest, mk.r * 0.7);
-  wc = mix(wc, wGlint, mk.b * (0.3 + 0.5 * wf));
-  diffuseColor.rgb = wc;`;
 

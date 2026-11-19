@@ -35,7 +35,7 @@ const toggles = (): PostToggles => ({ ink: true, lens: true, pre: true, bloom: t
  *  ~1.5 % of the frame height) at 540, 1080 and 1440 widths. ADD blend: HDR-safe (SCREEN darkens values > 1). */
 // Look pass r1 (lighting.md 3.4, "bloom on emissives only"): the bright pass keys on the MAX channel, not luminance,
 // with a threshold above any lit albedo (day lit 1.58 x white .85 = 1.34; golden 1.5 x .95 = 1.43): from 1.45, full
-// at 1.8. A/B on r1 stills: at the old luminance threshold 1.0 the sunlit top of the white missile bloomed (311, 816);
+// at 1.8. (At a luminance threshold of 1.0, sunlit white props bloomed in the missile short's A/B stills);
 // now only emissives do: sun disc (6.0), muzzle flash cards (glow 1.6-2.2), the tent lamp and its glowing door. Max channel
 // so saturated sources (an orange lamp: luminance < 1.3) still bloom. Emissives need k >= 1.8 to glow fully.
 const BLOOM_T = 1.45, BLOOM_S = 0.35;

@@ -15,8 +15,8 @@ process.env.REMOTION_TMP = tmp; process.env.TMPDIR = tmp;
 const [prefix = "out/emu/s_", framesArg = "shots", scaleArg = "0.5", comp = "EmuShort"] = process.argv.slice(2);
 const scale = Number(scaleArg);
 // mid-frame of each shot (story.ts SHOTS / SHOTS.md)
-const SHOT_RANGES = [[0, 121], [121, 176], [176, 249], [249, 374], [374, 463], [463, 497], [497, 574], [574, 659], [659, 785], [785, 848],
-  [848, 931], [931, 1055], [1055, 1189], [1189, 1267], [1267, 1352]];
+const SHOT_RANGES = [[0, 121], [121, 157], [157, 305], [305, 389], [389, 450], [450, 602], [602, 695], [695, 825], [825, 937], [937, 1135],
+  [1135, 1201], [1201, 1270], [1270, 1382], [1382, 1504], [1504, 1656], [1656, 1694], [1694, 1770]];
 const frames = framesArg === "shots" ? SHOT_RANGES.map(([a, b]) => Math.floor((a + b) / 2)) : framesArg.split(",").map(Number);
 const inputProps = process.env.STILLS_PROPS ? JSON.parse(process.env.STILLS_PROPS) : { post: { dpr: scale } };
 const browserExecutable = process.env.STILLS_BROWSER ?? "/opt/pw-browsers/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell";

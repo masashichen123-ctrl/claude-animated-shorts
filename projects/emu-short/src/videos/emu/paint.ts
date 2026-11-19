@@ -5,7 +5,7 @@
 import * as THREE from "three";
 
 export const rng = (seed: number) => {
-  let s = (seed * 9301 + 49297) % 233280 || 1;
+  let s = Math.abs(Math.round(seed * 9301 + 49297)) % 233280 || 1;
   return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
 };
 const cache = new Map<string, THREE.CanvasTexture>();
@@ -416,9 +416,10 @@ export const mudHD = () => ctex("mudHD", 1024, 1024, (g, r) => {
 /** brown farm-dam water (1024 px = 8 m): olive-brown, lighter sky streaks, ripple rings, a few floating feathers */
 export const damWaterHD = () => ctex("damWaterHD", 1024, 1024, (g, r) => {
   const S = 1024;
-  g.fillStyle = "#86704a"; g.fillRect(0, 0, S, S);
-  octaves(g, r, S, S, 128, "200,190,150", "70,55,35", 1.2);
-  for (let i = 0; i < 90; i++) { const x = U(r, 0, S), y = U(r, 0, S), l = U(r, 40, 160); g.strokeStyle = `rgba(225,215,180,${U(r, 0.2, 0.45)})`; g.lineWidth = U(r, 2, 4); g.beginPath(); g.moveTo(x, y); g.lineTo(x + l, y + U(r, -3, 3)); g.stroke(); }
+  g.fillStyle = "#7a6a48"; g.fillRect(0, 0, S, S);
+  g.fillStyle = "rgba(160,190,210,0.18)"; g.fillRect(0, 0, S, S); // sky reflection tint (uniform: the tile repeats seamlessly)
+  octaves(g, r, S, S, 128, "170,160,130", "50,40,25", 1.0);
+  for (let i = 0; i < 140; i++) { const x = U(r, 0, S), y = U(r, 0, S), l = U(r, 60, 220); g.strokeStyle = `rgba(${r() < 0.5 ? '190,215,235' : '235,220,180'},${U(r, 0.35, 0.65)})`; g.lineWidth = U(r, 3, 6); g.beginPath(); g.moveTo(x, y); g.lineTo(x + l, y + U(r, -3, 3)); g.stroke(); }
   for (let i = 0; i < 22; i++) { const x = U(r, 0, S), y = U(r, 0, S); g.strokeStyle = "rgba(230,220,190,0.35)"; g.lineWidth = 2.5; for (const k of [1, 1.8]) { g.beginPath(); g.ellipse(x, y, 16 * k, 7 * k, 0, 0, TAU); g.stroke(); } }
 });
 /** ghost-gum bark (256 x 512 = around x 3 m up): cream-white with salmon / grey peeling patches and long streaks */
