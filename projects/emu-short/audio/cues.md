@@ -12,8 +12,8 @@ Voice = `voice/voice.wav`, gain only (no EQ, no compression, no pitch, no time c
 
 ## Master loudness (own BS.1770-4 meter)
 - Integrated **-14.01 LUFS**, true peak **-1.30 dBTP**, LRA 1.6 LU, max momentary -9.6 LUFS, max short-term -12.9 LUFS; 0 samples at full scale
-- Stems at mix gain: voice -14.3 LUFS (peak -0.5 dBFS), music -22.1 LUFS, sfx -31.3 LUFS (master gain +7.47 dB and the limiter gain curve, the same on every stem)
-- Master limiter (4x oversampled look-ahead, ceiling -1.3 dBTP): max gain reduction 6.19 dB, active (>0.1 dB) on 27.28 % of samples; inside speech: max 6.19 dB, 90th / 99th percentile 0.91 / 3.72 dB, active on 32.1 % of speech samples. This peak limiting is the only processing besides gain that reaches the narration: the TTS voice has an 18.3 dB true-peak-to-loudness ratio, so -14 LUFS at <= -1 dBTP cannot be reached with gain alone.
+- Stems at mix gain: voice -14.3 LUFS (peak -0.5 dBFS), music -22.1 LUFS, sfx -31.3 LUFS (master gain +7.48 dB and the limiter gain curve, the same on every stem)
+- Master limiter (4x oversampled look-ahead, ceiling -1.3 dBTP): max gain reduction 6.58 dB, active (>0.1 dB) on 27.70 % of samples; inside speech: max 6.58 dB, 90th / 99th percentile 0.93 / 3.64 dB, active on 32.6 % of speech samples. This peak limiting is the only processing besides gain that reaches the narration: the TTS voice has an 18.3 dB true-peak-to-loudness ratio, so -14 LUFS at <= -1 dBTP cannot be reached with gain alone.
 - Discontinuity check: 240 boundaries (start + end of every placed SFX event, every music cut-off) checked in the final mix, 0 suspicious.
 
 ffmpeg ebur128 cross-check:
@@ -43,22 +43,22 @@ Columns: integrated LUFS per stem at mix gain; then over 400 ms windows centred 
 | emus | 10.17-12.97 | -13.8 | -22.8 | -33.8 | 9.3 | 8.9 | 3.0 | 0.6 |
 | phone | 12.97-15.00 | -13.4 | -21.5 | -28.4 | 8.5 | 8.1 | 3.8 | 5.7 |
 | army | 15.00-20.07 | -14.0 | -23.4 | -34.1 | 9.1 | 8.8 | 5.1 | 0.9 |
-| firstday | 20.07-23.17 | -13.3 | -22.0 | -28.9 | 9.6 | 9.5 | 4.1 | 2.1 |
+| firstday | 20.07-23.17 | -13.2 | -22.0 | -28.9 | 9.6 | 9.5 | 4.1 | 2.1 |
 | dam | 23.17-26.70 | -14.1 | -22.6 | -38.9 | 9.3 | 9.3 | 3.1 | 6.0 |
 | jam | 26.70-27.50 | -15.1 | -28.8 | -31.4 | 10.0 | 8.4 | 5.1 | -14.3 |
 | truck | 27.50-31.23 | -13.8 | -21.8 | -27.9 | 9.0 | 8.6 | 3.5 | 3.0 |
-| camp | 31.23-37.83 | -14.8 | -23.6 | -35.7 | 9.1 | 8.8 | 5.1 | 0.3 |
+| camp | 31.23-37.83 | -14.8 | -23.6 | -35.8 | 9.1 | 8.8 | 5.1 | 0.3 |
 | dump | 37.83-40.03 | -14.8 | -24.4 | -33.7 | 8.5 | 8.3 | 6.5 | -0.2 |
-| unlucky | 40.03-42.33 | -14.3 | -23.4 | -29.6 | 9.8 | 8.7 | 7.1 | 2.1 |
+| unlucky | 40.03-42.33 | -14.4 | -23.6 | -29.7 | 10.2 | 9.1 | 7.5 | 2.4 |
 | toy | 42.33-46.07 | -14.1 | -23.3 | -32.1 | 8.7 | 8.3 | 5.4 | 1.9 |
 | scatter | 46.07-50.13 | -14.7 | -22.6 | -31.0 | 9.1 | 8.5 | 3.8 | 3.1 |
-| parade | 50.13-55.20 | -14.6 | -23.6 | -38.2 | 8.8 | 8.7 | 4.6 | 5.5 |
+| parade | 50.13-55.20 | -14.6 | -23.6 | -38.3 | 8.8 | 8.7 | 4.6 | 5.5 |
 | home | 55.20-56.47 | -13.5 | -22.1 | -31.1 | 7.9 | 7.5 | 2.8 | -1.0 |
 | ending | 56.47-59.00 | -12.2 | -18.2 | -35.5 | 9.0 | 8.9 | 4.1 | 3.2 |
 
-Applied section gains (dB): hook -9.2, lost -4.6, farm -7.6, emus -6.7, phone -2.5, army -11.8, firstday -7.5, dam -3.7, jam +7.7, truck -7.9, camp -6.7, dump -10.1, unlucky -6.6, toy -5.2, scatter -6.7, parade -7.9, home -5.8, ending -4.1. Music rides: 4.14-4.80 s -2.0 dB, 40.15-40.70 s -3.0 dB.
+Applied section gains (dB): hook -9.2, lost -4.6, farm -7.6, emus -6.7, phone -2.5, army -11.8, firstday -7.5, dam -3.7, jam +7.7, truck -7.9, camp -6.7, dump -10.1, unlucky -6.8, toy -5.2, scatter -6.7, parade -7.9, home -5.8, ending -4.1. Music rides: 4.14-4.80 s -2.0 dB, 40.15-40.70 s -3.0 dB.
 
-Narration gaps (measured on voice.wav), where the loud hits and the music blooms go: 1.43-1.75, 4.75-5.39, 6.48-6.87, 9.84-10.28, 14.57-15.17, 17.31-17.65, 19.81-20.16, 20.91-21.12, 22.92-23.32, 27.13-27.56, 30.94-31.39, 34.43-34.72, 37.46-37.99, 39.90-40.20, 41.88-42.44, 45.86-46.21, 48.04-48.24, 49.71-50.29, 54.68-55.22, 56.31-56.60.
+Narration gaps (measured on voice.wav), where the loud hits and the music blooms go: 1.43-1.75, 4.75-5.39, 6.48-6.87, 9.84-10.28, 14.57-15.17, 17.31-17.65, 19.81-20.16, 20.91-21.12, 22.92-23.32, 27.13-27.56, 30.94-31.39, 34.43-34.72, 37.46-37.99, 39.90-40.20, 41.86-42.44, 45.86-46.21, 48.04-48.24, 49.71-50.29, 54.68-55.22, 56.31-56.60.
 
 ## Music map (original: comic 1930s military march with a bush-band flavour, F major, 120 bpm = 15 frames a beat)
 Themes, both composed here: ARMY theme (pompous dotted march: C-A-F-A-C-F-E | D-C-Bb-D-C ...) and EMU motif (staccato, D minor: D-D-F-E-D-C#-D-A ...). No borrowed melodies (no Waltzing Matilda, no anthems, no known marches); the bugle call is a plain C-C-F arpeggio.
@@ -178,7 +178,7 @@ naive = the event's level vs the voice stem (max momentary, LU); applied = naive
 | 74 | 40.150 | 1204 | emu_step | the emu strolls on, unbothered | -15 | -21.0 | -35.7 | -0.30 |
 | 75 | 40.167 | 1205 | dust_puff | bullet dust puff 1/10 popping round the emu's feet (every 4 f from @1205) | -14 | -20.0 | -37.4 | -0.50 |
 | 76 | 40.300 | 1209 | dust_puff | bullet dust puff 2/10 popping round the emu's feet (every 4 f from @1205) | -14 | -20.0 | -37.5 | -0.40 |
-| 77 | 40.433 | 1213 | dust_puff | bullet dust puff 3/10 popping round the emu's feet (every 4 f from @1205) | -14 | -20.0 | -37.3 | -0.30 |
+| 77 | 40.433 | 1213 | dust_puff | bullet dust puff 3/10 popping round the emu's feet (every 4 f from @1205) | -14 | -20.0 | -37.2 | -0.30 |
 | 78 | 40.567 | 1217 | dust_puff | bullet dust puff 4/10 popping round the emu's feet (every 4 f from @1205) | -14 | -20.0 | -37.2 | -0.20 |
 | 79 | 40.600 | 1218 | emu_step | the emu strolls on, unbothered | -15 | -21.0 | -35.6 | -0.10 |
 | 80 | 40.700 | 1221 | dust_puff | bullet dust puff 5/10 popping round the emu's feet (every 4 f from @1205) | -10 | -16.0 | -31.7 | -0.10 |
@@ -223,14 +223,14 @@ naive = the event's level vs the voice stem (max momentary, LU); applied = naive
 
 ## Verification
 - Mix stream: `stream|sample_rate=48000|channels=2|bits_per_sample=24|duration_ts=2832000`
-- whisper small.en (int8, cpu) on voice.wav: "In 1932, Australia went to war against emus and lost. After World War I, veterans were given farms in Western Australia to grow wheat. Then 20 ,000 emus showed up and ate it, so the farmers called in the army. Major Meredith arrived with two soldiers, two machine guns, and 10 ,000 bullets. On the first day, the emus simply ran out of range. Two days later, a thousand emus walked up to a dam, and the gun jammed. So he bolted a gun onto a truck. The emus outran the truck. After a month, he claimed 986 emus with 9 ,860 bullets. Luckily, the army had plenty of bullets. Unluckily, every emu took ten. You see, a machine gun is made for an enemy that marches in a line. Emus run 50 kilometers an hour, in every direction at once. Meredith said an army that could take bullets like these birds could face any army in the world. The army went home. The emus are still there."
-- whisper small.en on the mix: "In 1932, Australia went to war against emus and lost. After World War I, veterans were given farms in Western Australia to grow wheat. Then 20 ,000 emus showed up and ate it, so the farmers called in the army. Major Meredith arrived with two soldiers, two machine guns, and 10 ,000 bullets. On the first day, the emus simply ran out of range. Two days later, a thousand emus walked up to a dam, and the gun jammed. So he bolted a gun onto a truck. The emus outran the truck. After a month, he claimed 986 emus, with 9 ,860 bullets. Luckily, the army had plenty of bullets. Unluckily, every emu took ten. You see, a machine gun is made for an enemy that marches in a line. Emus run 50 km an hour, in every direction at once. Meredith said an army that could take bullets like these birds could face any army in the world. The army went home. The emus are still there."
+- whisper small.en (int8, cpu) on voice.wav: "In 1932, Australia went to war against emus and lost. After World War I, veterans were given farms in Western Australia to grow wheat. Then 20 ,000 emus showed up and ate it, so the farmers called in the army. Major Meredith arrived with two soldiers, two machine guns, and 10 ,000 bullets. On the first day, the emus simply ran out of range. Two days later, a thousand emus walked up to a dam, and the gun jammed. So he bolted a gun onto a truck. The emus outran the truck. After a month, he claimed 986 emus with 9 ,860 bullets. Luckily, the army had plenty of bullets. Unluckily, every emu took 10. You see, a machine gun is made for an enemy that marches in a line. Emus run 50 kilometers an hour in every direction at once. Meredith said an army that could take bullets like these birds could face any army in the world. The army went home. The emus are still there."
+- whisper small.en on the mix: "In 1932, Australia went to war against emus and lost. After World War I, veterans were given farms in Western Australia to grow wheat. Then 20 ,000 emus showed up and ate it, so the farmers called in the army. Major Meredith arrived with two soldiers, two machine guns, and 10 ,000 bullets. On the first day, the emus simply ran out of range. Two days later, a thousand emus walked up to a dam, and the gun jammed. So he bolted a gun onto a truck. The emus outran the truck. After a month he claimed 986 emus, with 9 ,860 bullets. Luckily, the army had plenty of bullets. Unluckily, every emu took 10. You see, a machine gun is made for an enemy that marches in a line. Emus run 50 km an hour, in every direction at once. Meredith said an army that could take bullets like these birds could face any army in the world. The army went home. The emus are still there."
 - word-level diff voice -> mix: IDENTICAL
-- SCRIPT.md words not literally in the voice-only transcript (whisper writes numbers as digits): ['one', 'twenty', 'nine', 'hundred', 'eighty', 'six', 'nine', 'eight', 'hundred', 'sixty', 'fifty']
-- SCRIPT.md words not literally in the mix transcript: ['one', 'twenty', 'nine', 'hundred', 'eighty', 'six', 'nine', 'eight', 'hundred', 'sixty', 'fifty']
-- 'unluckily': voice-only probs [0.85], mix probs [0.82]
+- SCRIPT.md words not literally in the voice-only transcript (whisper writes numbers as digits): ['one', 'twenty', 'ten', 'nine', 'hundred', 'eighty', 'six', 'nine', 'eight', 'hundred', 'sixty', 'ten', 'fifty']
+- SCRIPT.md words not literally in the mix transcript: ['one', 'twenty', 'ten', 'nine', 'hundred', 'eighty', 'six', 'nine', 'eight', 'hundred', 'sixty', 'ten', 'fifty']
+- 'unluckily': voice-only probs [0.97], mix probs [0.98]
 - 'lost': voice-only probs [1.0], mix probs [1.0]
 - 'jammed': voice-only probs [1.0], mix probs [1.0]
-- 'emus': voice-only probs [0.86, 0.99, 0.99, 1.0, 0.74, 0.99, 0.98, 1.0], mix probs [0.84, 0.99, 0.96, 1.0, 0.73, 0.99, 0.94, 1.0]
-- 'outran': voice-only probs [0.92], mix probs [0.91]
+- 'emus': voice-only probs [0.86, 0.99, 0.99, 1.0, 0.73, 0.99, 0.98, 1.0], mix probs [0.83, 0.99, 0.96, 1.0, 0.73, 0.99, 0.94, 1.0]
+- 'outran': voice-only probs [0.92], mix probs [0.92]
 - 'bullets': voice-only probs [1.0, 0.99, 1.0, 1.0], mix probs [1.0, 0.99, 1.0, 0.99]

@@ -8,7 +8,7 @@ txt=open("SCRIPT.md").read().split("## Narration")[1]
 lines=[re.sub(r"^\d+\.\s*","",l).strip() for l in txt.splitlines() if re.match(r"^\d+\.",l)]
 SPEED={}; PAUSE={0:0.55,3:0.5,8:0.45,9:0.5,10:0.5,11:0.5}   # pause after line i (s); default 0.32
 # inner beats: split "And lost." / "The emus are still there." / "The emus outran the truck." etc. on '. ' with a short gap
-FIX={'ʌnlˈʌkili':'ˌʌnlˈʌkili'}   # 'Unluckily' otherwise sounds like 'and luckily'
+FIX={'ʌnlˈʌkili':'ˈʌnlˌʌkili'}   # 'Unluckily' otherwise sounds like 'and luckily'
 def trim(y,sr):
     th=0.006*np.abs(y).max(); i=np.where(np.abs(y)>th)[0]; return y[max(i[0]-int(.02*sr),0):min(i[-1]+int(.06*sr),len(y))]
 out=[np.zeros(int(0.12*SR))]; t=0.12; L=[]
