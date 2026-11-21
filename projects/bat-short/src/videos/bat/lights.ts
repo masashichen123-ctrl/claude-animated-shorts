@@ -73,15 +73,15 @@ export const LIGHTS: Record<LightName, LightPreset> = {
   night: {
     // moonlight: cool silver-blue key from the moon (usually ahead: a cool rim), deep blue shade, a cool card rim
     az: -12, el: 26,
-    lit: [0.72, 0.86, 1.22], shade: [0.08, 0.1, 0.22], lift: [0.02, 0.03, 0.09], lambert: 0.35, sideK: 0.84, term: 0.12,
+    lit: [0.8, 0.76, 0.8], shade: [0.07, 0.09, 0.2], lift: [0.02, 0.03, 0.09], lambert: 0.35, sideK: 0.84, term: 0.12,
     charTint: [0.74, 0.84, 1.0], charShade: 0.82, charGrad: 0.1, bodyGrad: 0.26, sideTint: [0.8, 0.86, 1.0],
     blob: [0.6, 0.66, 0.86], actorShadow: false,
     top: "#0c1a44", hor: "#3a5890", skyCurve: [0.05, 0.6, 1.0], fog: "#2c4478", fogNear: 40, fogFar: 380, sunDisc: "#f6f0d6",
     sunCol: "#c8dcff", sunI: 2.2, sky: "#4a6aa8", ground: "#2a2a44", hemiI: 0.35,
     bias: -0.0005, normalBias: 0.03,
-    albFloor: [0.025, 0.03, 0.06], gobo: 0, goboScale: 9, rim: [0.45, 0.62, 1.1], ao: 0.08, aoR: 0.7, prac: 2.0, pracCol: "#ffb060",
+    albFloor: [0.025, 0.03, 0.06], gobo: 0, goboScale: 9, rim: [0.12, 0.16, 0.3], ao: 0.08, aoR: 0.7, prac: 2.0, pracCol: "#ffb060",
     bloomI: 0.9, bloomR: 0.7, softM: 0.3,
-    haze: H("#2f4a82", 40, 260, 50, 0.55), glowCol: "#9ab8f0", glowK: 0.4,
+    haze: H("#1e2c58", 40, 260, 50, 0.5), glowCol: "#6a7aa8", glowK: 0.3,
     moon: 4.8, cardGain: 0.86, cardRim: [0.42, 0.62, 1.15], cardRimK: 1,
   },
   interior: {
@@ -171,15 +171,15 @@ export const LOOK: Record<LightName, WorldLook> = {
   },
   dusk: {
     // amber horizon, peach band, then straight into clean blue (no rose / lilac stop)
-    sky: { c: ["#ffbe62", "#ffb878", "#d8c0a0", "#7f9ccc", "#3a5aa2"], e: [0, 2, 6, 13, 30] },
+    sky: { c: ["#ffb256", "#ffbc6c", "#ffc888", "#e8bc94", "#7c90c0"], e: [0, 4, 12, 26, 52] },
     cloud: { lit: "#ffd49a", mid: "#e8a874", shade: "#6f7eae" },
     bounce: [0.05, 0.025, 0.0],
     sat: 1.04,
     skyTex: 0.07,
   },
   night: {
-    sky: { c: ["#3a5890", "#2c4a86", "#1f3a74", "#152a5c", "#0c1a44"], e: [0, 4, 12, 26, 55] },
-    cloud: { lit: "#8fa2cc", mid: "#5a6ca0", shade: "#2e3a6a" },
+    sky: { c: ["#2a3c70", "#1c2c5c", "#14214a", "#0d173a", "#080f2a"], e: [0, 3, 9, 20, 45] },
+    cloud: { lit: "#5a6894", mid: "#3a466e", shade: "#222a4a" },
     bounce: [0.0, 0.01, 0.03],
     sat: 1.02,
     skyTex: 0.06,

@@ -311,12 +311,12 @@ export const sandHD = (key = "sandHD", base = "#d9a96a") => ctex(key, 1024, 1024
   speckle(g, r, S, S, 1400, ["rgba(255,240,205,0.7)", "rgba(120,70,40,0.5)", "rgba(200,170,140,0.6)"], 1.4, 4.5);
 });
 /** sandstone strata (1024 px = 8 m): horizontal bands of buff / rust / cream with cracks and ledges */
-export const rockHD = (key = "rockHD", base = "#c98a58") => ctex(key, 1024, 1024, (g, r) => {
+export const rockHD = (key = "rockHD", base = "#c98a58", pal = ["#d49a64", "#b9764a", "#e0b07c", "#c4824e", "#a96a44"], hb: [number, number] = [30, 110]) => ctex(key, 1024, 1024, (g, r) => {
   const S = 1024;
   g.fillStyle = base; g.fillRect(0, 0, S, S);
   let y = 0;
   while (y < S) {
-    const h = U(r, 30, 110), c = pick(r, ["#d49a64", "#b9764a", "#e0b07c", "#c4824e", "#a96a44"]);
+    const h = U(r, hb[0], hb[1]), c = pick(r, pal);
     g.fillStyle = jit(r, c, 0.05, 3, 0.1); g.fillRect(0, y, S, h);
     detailLine(g, [[0, y + h], [S * 0.5, y + h + U(r, -3, 3)], [S, y + h]], c, U(r, 2, 4), r, 0.55, 0.45);
     y += h;
@@ -438,4 +438,24 @@ export const oliveHD = (key = "oliveHD", base = "#66713a") => ctex(key, 512, 512
   g.fillStyle = base; g.fillRect(0, 0, S, S);
   octaves(g, r, S, S, 256, "220,225,170", "40,45,20", 0.9);
   speckle(g, r, S, S, 140, ["rgba(40,40,25,0.5)", "rgba(230,225,190,0.4)"], 1, 3);
+});
+/** weathered grey-beige limestone (1024 px = 8 m): soft irregular ledges, blotches, cracks, lichen dabs */
+export const limeHD = () => {
+  const t = rockHD("limeHD", "#b7ab95", ["#bcb09a", "#aa9e88", "#c8bda8", "#a09582", "#b3a68e"], [90, 260]);
+  return t;
+};
+/** riveted steel tank plating (1024 px = 4 m): pale silver plates, seams, rivet rows, soft rust streaks */
+export const tankPlateHD = () => ctex("tankPlateHD", 1024, 1024, (g, r) => {
+  const S = 1024;
+  g.fillStyle = "#d6dadd"; g.fillRect(0, 0, S, S);
+  octaves(g, r, S, S, 256, "255,255,255", "90,95,100", 0.7);
+  for (let k = 0; k < 4; k++) { g.fillStyle = "rgba(60,64,70,0.55)"; g.fillRect(0, k * 256, S, 5); g.fillRect(k * 256 + (k % 2) * 128, 0, 5, S); }
+  for (let k = 0; k < 4; k++) for (let i = 0; i < 32; i++) { g.fillStyle = "rgba(70,74,80,0.7)"; g.beginPath(); g.arc(i * 32 + 16, k * 256 + 14, 4, 0, TAU); g.fill(); }
+  for (let i = 0; i < 14; i++) { const x = U(r, 0, S), y = U(r, 0, S); const gr = g.createLinearGradient(x, y, x, y + 160); gr.addColorStop(0, "rgba(150,90,50,0.35)"); gr.addColorStop(1, "rgba(150,90,50,0)"); g.fillStyle = gr; g.fillRect(x - 6, y, 12, 160); }
+});
+/** money sack patch: a cream roundel with a big dark-green "$" symbol (512 px, transparent outside) */
+export const dollarHD = () => ctex("dollarHD", 256, 256, (g) => {
+  g.clearRect(0, 0, 256, 256);
+  g.fillStyle = "#efe6cc"; g.beginPath(); g.arc(128, 128, 116, 0, TAU); g.fill();
+  g.fillStyle = "#2e5a3a"; g.font = "bold 190px Georgia, serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("$", 128, 136);
 });

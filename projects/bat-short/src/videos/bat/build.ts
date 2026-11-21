@@ -480,12 +480,12 @@ const lump = (b: Batch, x: number, y: number, z: number, sx: number, sy: number,
   b.add(gg, rockM(k), m);
 };
 /** flat-topped mesa (far backdrop): an extruded irregular plan with strata */
-const mesa = (b: Batch, cx: number, cz: number, w: number, d: number, h: number, seed: number) => {
+const mesa = (b: Batch, cx: number, cz: number, w: number, d: number, h: number, seed: number, mat?: Mat) => {
   const r = rng(seed), pts: [number, number][] = [];
   for (let i = 0; i < 14; i++) { const a = (i / 14) * Math.PI * 2, k = 0.8 + 0.3 * r(); pts.push([cx + Math.cos(a) * w * k, cz + Math.sin(a) * d * k]); }
   const g = slab(pts, -2, h + 2, 0.6);
   uvFrom(g, (x, y, z) => [(x + z) / 14, y / 14]);
-  b.add(g, rockM(seed % 3));
+  b.add(g, mat ?? rockM(seed % 3));
   // talus skirt
   for (let i = 0; i < 6; i++) { const a = r() * 6.28; lump(b, cx + Math.cos(a) * w * 0.95, 0, cz + Math.sin(a) * d * 0.95, w * 0.3, h * 0.35, d * 0.3, seed + i, a, (seed + 1) % 3); }
 };
@@ -516,8 +516,8 @@ const sage = (b: Batch, cx: number, cz: number, r0: number, r1: number, n: numbe
 };
 /** far backdrop: desert hills + a ring of mesas */
 const desertHorizon = (b: Batch, seed: number, night = false, far = true) => {
-  hillRing(b, 0, 0, 700, 8, 30, seed, night ? "#4a4e72" : "#c9a27a");
-  if (far) hillRing(b, 0, 0, 1100, 30, 90, seed + 1, night ? "#3a4068" : "#a99ab0");
+  hillRing(b, 0, 0, 700, 8, 30, seed, night ? "#2a2230" : "#c9a27a");
+  if (far) hillRing(b, 0, 0, 1100, 30, 90, seed + 1, night ? "#221c2c" : "#a99ab0");
   const r = rng(seed + 2);
   for (let i = 0; i < 9; i++) { const a = (i / 9) * 6.28 + r() * 0.5, d = 260 + 160 * r(); mesa(b, Math.cos(a) * d, Math.sin(a) * d, 30 + 40 * r(), 18 + 20 * r(), 18 + 22 * r(), seed * 7 + i); }
 };
@@ -527,7 +527,7 @@ const shiny = (c: string, sh = 70) => {
   if (!m) { m = twoTone(new THREE.MeshPhongMaterial({ color: c, shininess: sh, specular: new THREE.Color("#8890a0") })); mats.set(key, m); }
   return m;
 };
-const charM = () => col("#2e2a28");
+const charM = () => col("#3c3633");
 const emberM = () => glow("#ff7a2a", 1.9);
 
 // =================================================================================================================
@@ -537,7 +537,7 @@ export type SetRig = { name: SetName; group: THREE.Group; tick?: (t: number, id:
 /** per-set world settings: haze reach multiplier; indoor sets hide the sky and use the light's background colour;
  *  ceil = ceiling height for the corner AO */
 export const SET_META: Record<SetName, { hazeK: number; indoor?: boolean; ceil?: number }> = {
-  desert: { hazeK: 1.8 }, base: { hazeK: 1.5 }, cave: { hazeK: 2.6 },
+  desert: { hazeK: 2.4 }, base: { hazeK: 1.5 }, cave: { hazeK: 2.6 },
   workshop: { hazeK: 1, indoor: true, ceil: 3.1 }, attic: { hazeK: 1, indoor: true, ceil: 3.4 }, oval: { hazeK: 1, indoor: true, ceil: 3.6 },
   lab: { hazeK: 1, indoor: true, ceil: 3.2 }, office: { hazeK: 1, indoor: true, ceil: 3.0 },
 };
@@ -550,13 +550,21 @@ const done = (name: SetName, b: Batch, cards?: Batch): SetRig => {
 const FAR = 600;
 
 // ---- desert: the night sky over the desert (the hook) ----
+/** saguaro-style cactus silhouette: trunk + two bent arms */
+const cactus = (b: Batch, x: number, z: number, h: number, seed: number, m: Mat) => {
+  const r = rng(seed), R = 0.07 * h;
+  b.add(rod(V(x, -0.2, z), V(x, h, z), R, R * 0.9, 10), m); b.add(cached("cTop", () => new THREE.SphereGeometry(1, 10, 6)), m, M4(x, h, z, 0, 0, 0, [R * 0.9, R * 0.9, R * 0.9]));
+  for (const s of [-1, 1]) { const y0 = h * (0.35 + 0.2 * r()), ax = x + s * 0.28 * h, top = y0 + h * (0.25 + 0.15 * r()); b.add(rod(V(x, y0, z), V(ax, y0 + 0.08 * h, z), R * 0.7, R * 0.7, 8), m); b.add(rod(V(ax, y0, z), V(ax, top, z), R * 0.7, R * 0.65, 8), m); b.add(cached("cTop", () => new THREE.SphereGeometry(1, 10, 6)), m, M4(ax, top, z, 0, 0, 0, [R * 0.65, R * 0.65, R * 0.65])); }
+};
 const buildDesert = (): SetRig => {
   const b = new Batch();
-  terrain(b, sandDarkM(), -FAR, FAR, -FAR, FAR, 5, (x, z) => 2.5 * (vn2(x / 40, z / 40, 3) - 0.5) + 1.2 * (vn2(x / 13, z / 13, 4) - 0.5), 8);
-  for (const [x, z, w, d, h] of [[-90, -160, 45, 25, 34], [70, -210, 60, 30, 42], [160, -120, 40, 22, 28], [-200, -90, 50, 26, 30], [10, -330, 70, 30, 50]]) mesa(b, x, z, w, d, h, x + z);
+  terrain(b, groundM("nightSand", () => P.sandHD("nightSandHD3", "#4a3a22")), -FAR, FAR, -FAR, FAR, 5, (x, z) => 2.5 * (vn2(x / 40, z / 40, 3) - 0.5) + 1.2 * (vn2(x / 13, z / 13, 4) - 0.5), 8);
+  const darkRock = col("#3a2c30"), cactM = col("#2c3428");
+  for (const [x, z, w, d, h] of [[-120, -260, 55, 25, 46], [60, -300, 70, 30, 58], [190, -230, 45, 22, 40], [-260, -200, 60, 26, 44], [-20, -420, 90, 30, 70], [300, -330, 70, 30, 52]]) mesa(b, x, z, w, d, h, x + z, darkRock);
+  for (let i = 0; i < 16; i++) { const r = rng(600 + i), x = (r() - 0.5) * 220, z = -60 - 160 * r(); cactus(b, x, z, 6 + 6 * r(), 600 + i, cactM); }
   sage(b, 0, -60, 10, 160, 260, 5);
   for (let i = 0; i < 30; i++) { const r = rng(40 + i); yucca(b, (r() - 0.5) * 140, -20 - 140 * r(), 1.4 + r(), 50 + i); }
-  desertHorizon(b, 11, true);
+  desertHorizon(b, 11, true, true);
   return done("desert", b);
 };
 
@@ -645,7 +653,7 @@ const waterTower = (b: Batch) => {
 };
 const fuelTank = (b: Batch, burnt: boolean) => {
   const [cx, , cz] = SPOT.TANK, R = SPOT.TANK_R, L = SPOT.TANK_L, Y = SPOT.TANK_Y;
-  const shell = burnt ? charM() : shiny("#d4d8dc", 50);
+  const shell = burnt ? charM() : (() => { let m = mats.get("tankPlate"); if (!m) { const t = P.tankPlateHD(); t.repeat.set(3, 2); m = twoTone(new THREE.MeshPhongMaterial({ map: t, shininess: 50, specular: new THREE.Color("#8890a0") })); mats.set("tankPlate", m); } return m; })();
   b.add(cached("tankBody", () => new THREE.CylinderGeometry(R, R, L, 40, 1, true).rotateZ(Math.PI / 2)), shell, M4(cx, Y, cz));
   for (const s of [-1, 1]) b.add(cached("tankCap", () => new THREE.SphereGeometry(R, 32, 12, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.35, 1).rotateZ(-Math.PI / 2)), shell, M4(cx + s * L / 2, Y, cz, s > 0 ? 0 : Math.PI));
   for (const x of [-L / 2 + 0.4, L / 2 - 0.4]) b.add(cached("tankBand", () => new THREE.TorusGeometry(R + 0.03, 0.06, 6, 40).rotateY(Math.PI / 2)), burnt ? charM() : col("#9aa0a6"), M4(cx + x, Y, cz));
@@ -668,7 +676,7 @@ const fuelTank = (b: Batch, burnt: boolean) => {
 const generalCar = (b: Batch, burnt: boolean) => {
   const [x0, , z0] = SPOT.CAR, m = M4(x0, 0, z0, 0);
   const put = (g: THREE.BufferGeometry, mat: Mat, lm: THREE.Matrix4) => b.add(g, mat, m.clone().multiply(lm));
-  const paint = burnt ? col("#2b2624") : shiny("#16161c", 90), chrome = burnt ? col("#3a3432") : shiny("#d8dde4", 110);
+  const paint = burnt ? col("#3a3431") : shiny("#20232c", 90), chrome = burnt ? col("#55504c") : shiny("#d8dde4", 110);
   const tyreY = burnt ? 0.27 : 0.38;
   put(rbox(4.5, 0.62, 1.72, 0.22), paint, M4(0, tyreY + 0.42, 0));                          // body
   put(rbox(2.3, 0.62, 1.52, 0.26), paint, M4(-0.45, tyreY + 1.0, 0));                       // cabin
@@ -752,7 +760,7 @@ const buildCave = (): SetRig => {
   terrain(b, sandM(), -50, 50, -FAR, -80, 4, hf, 8); terrain(b, sandM(), -50, 50, 30, FAR, 4, hf, 8);
   // the hill: buttresses either side of the mouth, a lintel lip over it, the big mass behind, rocks along the rim
   // the cliff: one extruded sandstone butte whose arch-shaped hole IS the cave mouth (the hole's walls are the tunnel)
-  const topY = (x: number) => { const k = 1 - Math.min(1, Math.abs(x) / 46) ** 2.4; return FY + 3 + (17 + 4 * Math.sin((x + 46) / 3.83 * 1.3) + 1.5 * Math.sin(x * 0.9)) * k; };
+  const topY = (x: number) => { const k = 1 - Math.min(1, Math.abs(x) / 46) ** 2.4; return FY + 4 + (10.5 + 2.5 * Math.sin((x + 46) / 3.83 * 1.3) + 1.2 * Math.sin(x * 0.9)) * k; };
   const ext = (pts: [number, number][]) => { const sh = new THREE.Shape(pts.map(([x, y]) => new THREE.Vector2(x, y))); const g = new THREE.ExtrudeGeometry(sh, { depth: 20, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.05, bevelSegments: 1, curveSegments: 4 }); g.translate(0, 0, M[2] - 20); return g; };
   const cliff = cached("cliff", () => {
     const left: [number, number][] = [[-46, FY - 3], [-hw, FY - 3]]; for (let x = -hw; x >= -46; x -= 2) left.push([x, topY(x)]);
@@ -763,13 +771,18 @@ const buildCave = (): SetRig => {
     const g = mergeGeometries([ext(left), ext(right), ext(lint)].map((x) => x.toNonIndexed()), false);
     return uvFrom(g, (x, y, z) => [(x + z) / 10, y / 10]);
   });
-  b.add(cliff, lam("cliffRock", () => ({ map: P.rockHD("rockHD0", "#c98a58"), side: THREE.DoubleSide })));
-  for (const [x, y, z, sx, sy, sz, sd] of [[-hw - 6, FY, M[2] + 0.6, 5, 7, 3, 1], [hw + 7, FY, M[2] + 0.8, 6, 6, 3, 2], [-22, FY, M[2] + 0.5, 9, 9, 4, 3], [24, FY, M[2] + 0.4, 9, 11, 4, 4]] as number[][]) lump(b, x, y, z, sx, sy, sz, sd, 0.2 * sd, sd % 3);
+  b.add(cliff, lam("cliffLime", () => ({ map: P.limeHD(), side: THREE.DoubleSide })));
+  // irregular ledges along the face with sage + agaves on them, agaves and boulders round the mouth
+  const limeM = texM("limeLump", () => P.limeHD()), rl = rng(91);
+  for (let i = 0; i < 16; i++) { const x = -40 + 80 * rl(), y = FY + 2 + 9 * rl(); if (Math.abs(x) < hw + 2 && y < FY + 12) continue; const w = 2 + 4 * rl(); b.add(lumpGeo(i % 7), limeM, M4(x, y, M[2] + 0.4, rl(), 0, 0, [w, 0.5 + 0.5 * rl(), 1.2])); addVeg(b, "bush", x + (rl() - 0.5) * w, y + 0.3, M[2] + 0.8, 0.6 + 0.5 * rl(), 700 + i, 1); }
+  for (let i = 0; i < 12; i++) { const a = rl() * Math.PI, x = Math.cos(a) * (hw + 2 + 8 * rl()), z = M[2] + 1.5 + 7 * rl(); yucca(b, x, z, 0.9 + 0.5 * rl(), 720 + i, caveGround(x, z)); }
+  const limeM0 = texM("limeLump", () => P.limeHD());
+  for (const [x, y, z, sx, sy, sz, sd] of [[-hw - 6, FY, M[2] + 0.6, 5, 7, 3, 1], [hw + 7, FY, M[2] + 0.8, 6, 6, 3, 2], [-22, FY, M[2] + 0.5, 9, 9, 4, 3], [24, FY, M[2] + 0.4, 9, 11, 4, 4]] as number[][]) b.add(lumpGeo(sd % 7), limeM0, M4(x, y, z, 0.2 * sd, 0, 0, [sx, sy, sz]));
   lump(b, SPOT.LIP15[0], SPOT.LIP15[1] + 0.6, SPOT.LIP15[2] + 0.2, 1.3, 0.5, 1.0, 6, 0.4, 2);    // the ledge the medal bat hangs from
   // the back of the tunnel: a dark unlit wall, so the mouth reads as a deep black hole
   b.add(quad(V(-hw - 1, FY - 1, M[2] - 19), V(hw + 1, FY - 1, M[2] - 19), V(hw + 1, FY + 12, M[2] - 19), V(-hw - 1, FY + 12, M[2] - 19)), (() => { let m = mats.get("caveBack"); if (!m) { m = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.012, 0.01, 0.014), fog: false }); mats.set("caveBack", m); } return m; })());
   terrain(b, groundM("caveFloor", () => P.sandHD("caveFloorHD", "#a07850")), -hw - 1, hw + 1, M[2] - 26, M[2] + 2, 4, undefined, 4, FY + 0.02);
-  for (let i = 0; i < 18; i++) { const r = rng(300 + i); lump(b, (r() - 0.5) * 30, caveGround((r() - 0.5) * 30, -10 - 14 * r()) - 0.3, -10 - 14 * r(), 0.8 + 1.6 * r(), 0.6 + r(), 0.8 + 1.4 * r(), i, r() * 6, i % 3); }
+  for (let i = 0; i < 18; i++) { const r = rng(300 + i), x = (r() - 0.5) * 30, z = -10 - 14 * r(); b.add(lumpGeo(i % 7), limeM0, M4(x, caveGround(x, z) - 0.3, z, r() * 6, 0, 0, [0.8 + 1.6 * r(), 0.6 + r(), 0.8 + 1.4 * r()])); }
   // the overlook: flagstone platform, a two-pipe rail on posts, a coin telescope, a bench
   b.add(slab([[-1, -4.9], [13, -4.9], [13, 3], [-1, 3]], -0.3, 0.32, 0.05), texM("flagstone", () => P.concreteHD()));
   const RZ = SPOT.RAIL_Z, railM = col("#41604a");
@@ -987,9 +1000,9 @@ const buildLab = (): SetRig => {
 
 // the War Department office: grey walls, filing cabinets, the desk, the money bags, the wastebasket, the dusk window
 const moneyBag = (b: Batch, x: number, y: number, z: number, s: number, ry: number) => {
-  b.add(lathe("bag", [[0, 0], [0.38, 0.03], [0.5, 0.25], [0.46, 0.55], [0.26, 0.78], [0.12, 0.86], [0.16, 0.95], [0.2, 1.02], [0.1, 1.04], [0, 1.0]], 18), texM("bagCloth", () => P.hessianHD()), M4(x, y, z, ry, 0, 0, [s, s, s]));
+  b.add(lathe("bag", [[0, 0], [0.38, 0.03], [0.5, 0.25], [0.46, 0.55], [0.26, 0.78], [0.12, 0.86], [0.16, 0.95], [0.2, 1.02], [0.1, 1.04], [0, 1.0]], 18), lam("bagTan", () => ({ map: P.hessianHD(), color: "#fff2d8" })), M4(x, y, z, ry, 0, 0, [s, s, s]));
   b.add(cached("bagTie", () => new THREE.TorusGeometry(0.13, 0.03, 6, 14).rotateX(Math.PI / 2)), col("#8a5a34"), M4(x, y + 0.86 * s, z, 0, 0, 0, [s, s, s]));
-  b.add(cached("bagPatch", () => new THREE.CircleGeometry(0.1, 16)), col("#c0353a"), M4(x + Math.sin(ry) * 0.47 * s, y + 0.38 * s, z + Math.cos(ry) * 0.47 * s, ry));
+  b.add(cached("bagPatch", () => new THREE.CircleGeometry(0.2, 20)), lam("dollar", () => ({ map: P.dollarHD(), transparent: true, alphaTest: 0.5 })), M4(x + Math.sin(ry) * 0.475 * s, y + 0.36 * s, z + Math.cos(ry) * 0.475 * s, ry, 0, -0.12));
 };
 const buildOffice = (): SetRig => {
   const b = new Batch(), sh = new Batch();
@@ -1009,13 +1022,13 @@ const buildOffice = (): SetRig => {
   rb(b, col("#6f7570"), dx - 0.92, dx + 0.92, 0, dy - 0.05, dz + 0.32, dz + 0.42, 0.02);
   for (const s of [-1, 1]) rb(b, col("#6f7570"), dx + s * 0.65 - 0.25, dx + s * 0.65 + 0.25, 0, dy - 0.05, dz - 0.42, dz + 0.4, 0.02);
   const [bgx, bgy, bgz] = SPOT.BAGS14;
-  moneyBag(b, bgx - 0.1, bgy, bgz, 0.36, 0.3); moneyBag(b, bgx + 0.22, bgy, bgz - 0.05, 0.32, -0.4); moneyBag(b, bgx + 0.05, bgy, bgz + 0.24, 0.3, 0.9); moneyBag(b, bgx + 0.06, bgy + 0.3, bgz + 0.06, 0.28, 0.1);
+  for (const [dx, dy, dz, sc, ry] of [[-0.2, 0, 0.05, 0.34, 0.25], [0.12, 0, 0.0, 0.34, -0.2], [-0.04, 0, 0.3, 0.32, 0.1], [-0.05, 0.28, 0.1, 0.3, 0.0], [0.3, 0, 0.28, 0.3, -0.45]] as number[][]) moneyBag(b, bgx + dx, bgy + dy, bgz + dz, sc, ry);
   moneyBag(b, -2.4, 0, -2.4, 0.5, 0.4); moneyBag(b, -2.0, 0, -2.6, 0.44, -0.3); moneyBag(b, -2.25, 0.38, -2.5, 0.4, 1.1);
   const [tx, ty, tz] = SPOT.TRAY14;
   rb(b, col("#8a9088"), tx - 0.2, tx + 0.2, ty, ty + 0.015, tz - 0.15, tz + 0.15, 0.005);
   for (const s of [-1, 1]) rb(b, col("#8a9088"), tx + s * 0.2 - 0.01, tx + s * 0.2 + 0.01, ty, ty + 0.07, tz - 0.15, tz + 0.15, 0.003);
   rb(b, col("#8a9088"), tx - 0.2, tx + 0.2, ty, ty + 0.07, tz - 0.16, tz - 0.14, 0.003);
-  deskLamp(b, dx - 0.7, dy, dz - 0.3, "#2f6a4a", 0.6);
+  deskLamp(b, dx + 0.78, dy, dz - 0.2, "#2f6a4a", 2.6);
   rb(b, col("#f6f0e0"), dx - 0.2, dx + 0.2, dy, dy + 0.01, dz - 0.1, dz + 0.18, 0.002);
   const [wx, , wz] = SPOT.BASKET14;
   b.add(lathe("basket", [[0, 0], [0.17, 0], [0.17, 0.01], [0.21, 0.38], [0.2, 0.39], [0.155, 0.02], [0, 0.02]], 20), col("#4f5a4a"), M4(wx, 0, wz));
@@ -1051,6 +1064,8 @@ const buildBomb = (): BombRig => {
     const hinge = new THREE.Group(), pb = new Batch();
     const shell = cached("bombPanel", () => { const g = new THREE.CylinderGeometry(0.6, 0.6, 1.66, 10, 1, true, -Math.PI / 4 + 0.03, Math.PI / 2 - 0.06); g.translate(0, -0.83, 0); return uvFrom(g, (x, y, z) => [Math.atan2(x, z), y]); });
     pb.add(shell, lam("bombPanelM", () => ({ map: P.oliveHD(), side: THREE.DoubleSide })));
+    for (const sa of [-Math.PI / 4 + 0.04, Math.PI / 4 - 0.04]) pb.add(rod(V(0.6 * Math.sin(sa), -0.02, 0.6 * Math.cos(sa)), V(0.6 * Math.sin(sa), -1.64, 0.6 * Math.cos(sa)), 0.022), col("#3a4020"));
+    pb.add(cached("panelBand", () => new THREE.CylinderGeometry(0.612, 0.612, 0.05, 10, 1, true, -Math.PI / 4 + 0.03, Math.PI / 2 - 0.06).translate(0, -0.83, 0)), col("#4a5428"));
     pb.add(cached("panelRivets", () => { const parts: THREE.BufferGeometry[] = []; for (let i = 0; i < 5; i++) parts.push(new THREE.SphereGeometry(0.025, 6, 4).translate(0, -0.2 - i * 0.3, 0.6)); return mergeGeometries(parts, false); }), col("#3a4020"));
     pb.build(hinge, true);
     hinge.position.set(0, 0.84, 0); hinge.rotation.y = (k * Math.PI) / 2;

@@ -30,7 +30,7 @@ const LAMPS: Partial<Record<SetName, Lamp[]>> = {
   attic: [{ p: [0.25, 0.66, -0.22], I: 0.5, halo: 0.12, col: "#ffc070" }, { p: [0.2, 2.4, 1.4], I: 2.2, halo: 0 }],
   oval: [{ p: [SPOT.DESK6[0] - 0.7, SPOT.DESK_Y + 0.36, SPOT.DESK6[2] - 0.23], I: 2.0, halo: 0.3 }],
   lab: [{ p: [0.85, SPOT.LAB_Y + 0.15, -0.15], I: 1.6, halo: 0.35, col: "#7dffa0" }, { p: [-0.95, SPOT.LAB_Y + 0.12, -0.2], I: 1.2, halo: 0.3, col: "#7dffa0" }, { p: [0.45, SPOT.LAB_Y + 0.1, -0.22], I: 0.8, halo: 0.2, col: "#ffb050" }],
-  office: [{ p: [SPOT.ODESK[0] - 0.62, SPOT.ODESK_Y + 0.36, SPOT.ODESK[2] - 0.33], I: 2.4, halo: 0.3 }],
+  office: [{ p: [SPOT.ODESK[0] + 0.78, SPOT.ODESK_Y + 0.36, SPOT.ODESK[2] - 0.23], I: 2.4, halo: 0.3 }, { p: [SPOT.BAGS14[0] - 0.3, 1.6, SPOT.BAGS14[2] + 0.9], I: 1.6, halo: 0, col: "#ffe0b0" }],
 };
 /** the moon: a pale disc with soft craters and a bright limb (bloom keys on it) */
 const moonTex = () => ctex("moonDisc", 256, 256, (g) => {
@@ -173,11 +173,11 @@ export class World {
       for (let i = 0; i < n; i++) {
         const a = rnd2(i) * Math.PI * 2, e = Math.asin(0.06 + 0.94 * rnd2(i + 4000)), d = 1000;
         pos.set([Math.cos(a) * Math.cos(e) * d, Math.sin(e) * d, Math.sin(a) * Math.cos(e) * d], i * 3);
-        const k = rnd2(i + 9000) < 0.08 ? 1.6 : 0.55 + 0.5 * rnd2(i + 7000);
+        const k = rnd2(i + 9000) < 0.1 ? 2.2 : 0.8 + 0.6 * rnd2(i + 7000);
         colr.set([k, k, k * 1.08], i * 3);
       }
       const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); g.setAttribute("color", new THREE.BufferAttribute(colr, 3));
-      this.stars = new THREE.Points(g, new THREE.PointsMaterial({ map: starTex(), size: 5, sizeAttenuation: false, vertexColors: true, transparent: true, depthWrite: false, fog: false }));
+      this.stars = new THREE.Points(g, new THREE.PointsMaterial({ map: starTex(), size: 7, sizeAttenuation: false, vertexColors: true, transparent: true, depthWrite: false, fog: false }));
       this.stars.layers.set(NOINK); this.stars.renderOrder = -0.9; this.stars.frustumCulled = false; this.stars.visible = false;
       R.add(this.stars);
     }
@@ -302,10 +302,10 @@ export class World {
       this.sunDisc.position.copy(cam.position).addScaledVector(sunDir, 900);
       const dm = this.sunDisc.material as THREE.SpriteMaterial;
       dm.map = moon ? this.moonMap : this.discMap;
-      if (moon) dm.color.setRGB(2.1, 2.05, 1.85); else dm.color.setRGB(6.0, 4.4, 2.4);
+      if (moon) dm.color.setRGB(2.6, 2.3, 1.62); else dm.color.setRGB(6.0, 4.4, 2.4);
       this.sunDisc.scale.setScalar(2 * 900 * Math.tan(THREE.MathUtils.degToRad(moon ? L.moon! : 1.7)));
       this.sunHalo.position.copy(this.sunDisc.position); this.sunHalo.scale.setScalar(2 * 900 * Math.tan(THREE.MathUtils.degToRad(moon ? L.moon! * 4.5 : 24)));
-      (this.sunHalo.material as THREE.SpriteMaterial).color.set(moon ? "#6a8acc" : L.sunDisc).multiplyScalar(moon ? 0.55 : 1.3);
+      (this.sunHalo.material as THREE.SpriteMaterial).color.set(moon ? "#c8a878" : L.sunDisc).multiplyScalar(moon ? 0.42 : 1.3);
     }
     const skyAt = (elR: number, out: THREE.Color) => { // the sky stop colour at an elevation (radians), for the cloud pre-mix
       const st = SK.e.map((d) => THREE.MathUtils.degToRad(d));

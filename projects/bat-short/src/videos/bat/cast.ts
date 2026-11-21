@@ -344,7 +344,7 @@ const H = (i: number, s: number) => hh(i, s);
 // ---------------- bats ----------------
 const _cp = new THREE.Vector3(), _up = new THREE.Vector3();
 type BatSpec = { pose: BatPose; phase?: number; expr?: BatExpr; look?: number; gaze?: number; bomb?: 0 | 1 | 2; medal?: boolean; tilt?: number;
-  size?: number; roll?: number; tint?: number; blink?: boolean; spin?: number };
+  size?: number; roll?: number; tint?: number; blink?: boolean; spin?: number; sil?: boolean; capK?: number };
 /** one bat: a square billboard card of `size` metres centred on p; a glowing capsule adds a bloom dot on the belly */
 const bat = (out: Stage, cam: CamInfo, i: number, p: V3, o: BatSpec, t: number) => {
   const size = o.size ?? 0.45, d = cam.pos.distanceTo(_cp.set(p[0], p[1], p[2]));
@@ -355,7 +355,7 @@ const bat = (out: Stage, cam: CamInfo, i: number, p: V3, o: BatSpec, t: number) 
   const bo: BatOpts = {
     pose: o.pose, phase: fly ? q((((o.phase ?? 0) % 1) + 1) % 1, lod ? 12 : 6) : 0, expr: o.expr ?? "open", look: q(o.look ?? 0, 4), gaze: q(o.gaze ?? 0, 4),
     bomb: o.bomb ?? 0, tint: o.tint ?? i % 3, medal: o.medal, tilt: Math.round(o.tilt ?? 0), blink: o.blink === false || !lod ? 0 : lidAt(t, i),
-    light: lod ? light2D(cam, false) : -2.2, lod, spin: Math.round(o.spin ?? 0),
+    light: lod ? light2D(cam, false) : -2.2, lod, spin: Math.round(o.spin ?? 0), sil: o.sil, capK: o.capK,
   };
   out.places.push({ key: `B|${fkey(bo)}`, draw: (pn) => batDraw(pn, bo), x: p[0], y: p[1], z: p[2], scale: size, sq: true, billboard: true, roll: o.roll ?? 0, size: [cw, cw, cw / 600] });
   if (o.bomb === 2) { // the capsule's pilot light: a bloom dot on the belly (just in front of the card)
@@ -417,8 +417,9 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
   switch (id) {
     case 1: { // the hook: the casing pops, hundreds of bats spiral out, one flies into the lens and grins
       const B = rig.bomb.pos;
+      out.lights.push({ p: [B[0] + 3, B[1] + 2, B[2] + 6], I: 7, col: "#ffe6c0", d: 16 });   // a warm fill so the casing reads olive
       if (f >= EV.POP1) {
-        poof(out, [B[0], B[1] - 0.2, B[2] + 0.4], 3.6, f, EV.POP1, 12);
+        sparkle(out, [B[0], B[1] + 0.2, B[2] + 0.6], f, EV.POP1, 2.2, 1.8);
         out.lights.push({ p: [B[0], B[1], B[2] + 1], I: 9 * Math.max(0, 1 - (f - EV.POP1) / 18), col: "#ffb060" });
         for (let i = 1; i < 240; i++) {
           const dl = (i % 30) * 0.45 + Math.floor(i / 30) * 0.5, sec = (f - EV.POP1 - dl) / FPS;
@@ -469,11 +470,11 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
         { f: 290, expr: "awe", look: -1, gaze: -0.8, lean: -5 },          // the column
         { f: EV.TURN3, expr: "shock", look: 0, gaze: 0, lean: -9, shrug: 1, headTilt: 0, dur: 4 }, // "bats": turns to us
       ], t, -1, (fo) => ({ ...fo, hatLift: f >= EV.TURN3 - 1 ? 0.25 * easeOut((f - EV.TURN3 + 1) / 5) : 0 }));
-      if (f >= EV.COLUMN3 - 8) for (let i = 0; i < 360; i++) {
-        const sp = (0.5 + 0.25 * H(i, 21)) * (f - (EV.COLUMN3 - 8)) / FPS - 1.25 * H(i, 22);
+      if (f >= EV.COLUMN3 - 10) for (let i = 0; i < 760; i++) { // a dense spiralling ribbon of dark silhouettes
+        const sp = (0.95 + 0.2 * H(i, 21)) * (f - (EV.COLUMN3 - 10)) / FPS - 1.1 * H(i, 22);
         if (sp <= 0 || sp >= 1) continue;
-        const c = ribbonAt(3, sp), a = i * 2.39996 + f * 0.16 + sp * 9, r = 0.6 + 3.6 * sp;
-        bat(out, cam, 20 + i, [c[0] + r * Math.cos(a), c[1] + 0.6 * r * Math.sin(a * 0.7), c[2] + r * Math.sin(a)], { pose: "fly", phase: flap(f, i), size: 0.85, roll: 0.4 * Math.cos(a), blink: false }, t);
+        const c = ribbonAt(3, sp), a = sp * 26 - f * 0.12 + (H(i, 23) - 0.5) * 1.1, r = 0.9 + 2.6 * sp + 0.5 * H(i, 24);
+        bat(out, cam, 20 + i, [c[0] + r * Math.cos(a), c[1] + 0.5 * Math.sin(a * 2 + i), c[2] + r * Math.sin(a)], { pose: "fly", phase: flap(f, i, 4), size: 0.9 + 0.3 * H(i, 25), roll: 0.5 * Math.cos(a), blink: false, sil: true }, t);
       }
       break;
     }
@@ -528,7 +529,7 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
         bat(out, cam, 1, p, { pose: "fly", phase: flap(f, 1, 4), size: 0.2, bomb: 1, expr: "open", look: -0.6, roll: -0.3 * (1 - u) }, t);
       } else {
         const popped = f >= EV.POOF5, tick = f >= EV.TICK5 && !popped;
-        bat(out, cam, 1, hangC, { pose: "hang", size: 0.2, bomb: tick ? 2 : 1, tilt: 0,
+        bat(out, cam, 1, hangC, { pose: "hang", size: 0.2, bomb: tick ? 2 : 1, tilt: 0, capK: 1.7,
           expr: popped ? "pop" : f < 580 ? "happy" : f < EV.TICK5 ? "shut" : f < 618 ? "shut" : "wide", look: 0, blink: !popped && f < 600 }, t);
         if (tick && F % 6 < 3) sparkle(out, [hangC[0] + 0.03, hangC[1] + 0.06, hangC[2] + 0.04], f, EV.TICK5 + 1, 0.06, 1.2);
         if (popped) {
@@ -611,8 +612,9 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
       break;
     }
     case 10: { // under the fuel tank: five bats in a neat row, timers ticking, all grin
+      out.lights.push({ p: [S.TANK[0] + 4.5, 0.4, S.TANK[2] + 3.2], I: 5, col: "#ffc070", d: 8 });
       for (let k = 0; k < 5; k++) {
-        const p: V3 = [S.TANK[0] + 2.6 - 0.55 * k, 2.12 - 0.06 - 0.23 * 0.5, S.TANK[2] + 1.05];
+        const p: V3 = [S.TANK[0] + 2.75 - 0.5 * k, 2.12 - 0.06 - 0.23 * 0.5, S.TANK[2] + 1.05];
         const g = 1138 + k * 2; // the grin chorus (audio/cues.md bats_giggle @1144)
         bat(out, cam, 70 + k, p, { pose: "hang", size: 0.5, bomb: 2, expr: f < g ? "open" : "grin", look: 0, gaze: 0, tilt: 3 * Math.sin(f * 0.15 + k) }, t);
       }
@@ -642,8 +644,8 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
       roofs.forEach((r, k) => { fireAt(out, r, 2.6 + 1.2 * H(k, 41), f, F0 - 20 + k * 6, k); if (f > F0 + k * 6) smokeCol(out, [r[0], r[1] + 2, r[2]], f, 4, 3.2, SMOKE, 6, 2.2, 0.8, k); });
       const T0 = S.TANK; for (const dx of [-3.5, 0, 3.5]) flame(out, [T0[0] + dx, 0.2, T0[2]], 3, f, 21 + dx, 2.0);
       smokeCol(out, [T0[0], 6, T0[2]], f, 6, 5, SMOKE_D, 5, 2.6, 0.6, 9);
-      for (const p of [[-18, 9, -16], [12, 6, -10], [-3, 4, 4]] as V3[]) out.lights.push({ p: [p[0], p[1], p[2] + 3], I: 26, col: "#ff9a40", d: 60 });
-      const line: V3[] = [[11.2, 0, 15.0], [9.9, 0, 14.0], [8.6, 0, 13.0], [7.3, 0, 12.0]];
+      for (const p of [[-18, 9, -16], [12, 6, -10], [S.TANK[0], 4, 4]] as V3[]) out.lights.push({ p: [p[0], p[1], p[2] + 3], I: 26, col: "#ff9a40", d: 60 });
+      const line: V3[] = [[9.6, 0, 14.6], [8.6, 0, 13.6], [7.6, 0, 12.6], [6.6, 0, 11.6]];
       line.forEach((p, k) => {
         const last = k === 3, swing = [1222, 1236, 1262].some((g) => Math.abs(f - g - k * 2) < 4); // bucket clanks (audio/cues.md)
         actor(out, cam, 11 + k, k % 2 ? SOLDIER2 : SOLDIER, k % 2 ? "soldier2" : "soldier", p, [
@@ -662,7 +664,7 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
         smokeCol(out, [S.TANK[0], 1, S.TANK[2]], f, 6, 4, SMOKE_D, 6, 2, 0.7, 5);
         out.lights.push({ p: [hx, 2, hz + 6], I: 14, col: "#ff8a3a", d: 40 });
       } else { // the General polishes his shiny car... POOF: a charred shell, his moustache singed and smoking
-        const Cr = S.CAR, gp: V3 = [Cr[0] + 0.25, 0, Cr[2] + 1.45], charred = f >= EV.CHAR13;
+        const Cr = S.CAR, gp: V3 = [Cr[0] + 1.5, 0, Cr[2] + 1.4], charred = f >= EV.CHAR13;
         actor(out, cam, 14, charred ? GENERAL_SINGED : GENERAL, charred ? "generalS" : "general", gp, [
           { f: EV.CUT13, expr: "smile_closed", lean: 8, look: -1, headTilt: 4 },
           { f: 1380, expr: "proud", headTilt: -5, lean: 6 },
@@ -670,8 +672,9 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
           { f: EV.KICK13 + 6, expr: "pained", shrug: 1, headTilt: -6 },
         ], t, -1, (fo) => ({ ...fo, prop: "cloth", wave: charred ? 0 : q((f / 10) % 1, 8), hatLift: charred ? 0.12 : 0, hatTilt: charred ? -0.1 : 0 }));
         if (charred) {
-          poof(out, [Cr[0], 1.0, Cr[2] + 0.6], 5.2, f, EV.CHAR13, 16);
-          smokeCol(out, [Cr[0] - 0.8, 1.2, Cr[2]], f, 5, 1.4, SMOKE_D, 5, 1.2, 0.3, 2);
+          poof(out, [Cr[0] + 0.6, 1.0, Cr[2] + 0.6], 4.0, f, EV.CHAR13, 10);
+          smokeCol(out, [Cr[0] - 0.4, 1.3, Cr[2]], f, 5, 0.9, SMOKE_D, 6, 1.1, 0.3, 2); smokeCol(out, [Cr[0] + 1.4, 1.1, Cr[2] + 0.2], f, 4, 0.7, SMOKE, 6, 1.0, 0.2, 7);
+          for (let k = 0; k < 4; k++) if (F % 7 !== k) out.fx.push({ key: "gdot", cw: 64, ch: 64, draw: glowDot, x: Cr[0] - 1.6 + 1.1 * k, y: 0.9 + 0.25 * (k % 2), z: Cr[2] + 0.9, w: 0.14, h: 0.14, soft: true, glow: 2.6 });
           smokeCol(out, [gp[0] - 0.12, 1.48, gp[2] + 0.1], f, 4, 0.22, "#bcb4b8", 4, 0.45, 0.05, 6); // the moustache smokes
         }
       }

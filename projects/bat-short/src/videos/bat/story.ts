@@ -100,8 +100,8 @@ export const EV = {
 // ---------------- set anchors (each set's local frame = world frame) ----------------
 export const SPOT = {
   // desert (shot 1): the camera hangs in the night sky, the desert floor 30 m below
-  CAM1: [0, 30, 8] as V3,
-  BOMB1: [0.25, 32.9, -4.0] as V3,          // where the casing pops
+  CAM1: [0, 8, 8] as V3,
+  BOMB1: [0.2, 10.6, -1.2] as V3,          // where the casing pops
   // base: hangar (doors on +z), control tower, water tower, barracks, the big fuel tank on legs, the General's car
   HANGAR: [-18, 0, -24] as V3, HANGAR_W: 20, HANGAR_D: 20, HANGAR_H: 7.2,
   TOWER: [6, 0, -32] as V3,
@@ -109,7 +109,7 @@ export const SPOT = {
   FLAG: [-3, 0, -11] as V3,
   BARRACKS: [[10, 0, -10, 0], [27, 0, -13, 0.12], [13, 0, -24, 0]] as [number, number, number, number][], // centre + yaw; 14 x 5 m, door + steps on +z
   STEP: [8.0, 0, -7.1] as V3,               // shot 9: the step the bat peeks under
-  TANK: [-3, 0, 4] as V3, TANK_R: 2.3, TANK_L: 10, TANK_Y: 4.7,       // axis along x at TANK_Y; underside at TANK_Y - TANK_R
+  TANK: [-10, 0, 4] as V3, TANK_R: 2.3, TANK_L: 10, TANK_Y: 4.7,       // axis along x at TANK_Y; underside at TANK_Y - TANK_R
   CAR: [-12, 0, -5] as V3,                   // the General's car, nose toward +x
   CRATES9: [1.5, 0, -5.0] as V3,             // the crate stack the bat looks behind
   SOLDIER2: [14.7, 0, 13.8] as V3,
@@ -185,7 +185,7 @@ const keyed = (keys: [number, V3][], f: number): V3 => {
 /** shot 9: one bat cruising the base: under the barracks step, behind the crate stack, on toward the fuel tank */
 export const BAT9_KEYS: [number, V3][] = [
   [968, [11.2, 2.6, 2.4]], [988, [8.6, 0.85, -5.4]], [995, [8.25, 0.42, -6.25]], [1016, [8.2, 0.42, -6.3]],
-  [1032, [3.6, 1.6, -3.4]], [1040, [2.05, 0.75, -4.2]], [1066, [2.0, 0.75, -4.25]], [1100, [-0.4, 2.2, 1.6]], [1110, [-0.7, 2.25, 1.9]],
+  [1032, [3.6, 1.6, -3.4]], [1040, [2.05, 0.75, -4.2]], [1066, [2.0, 0.75, -4.25]], [1100, [-5.4, 2.3, 1.8]], [1110, [-6.4, 2.3, 2.1]],
 ];
 export const bat9At = (f: number): V3 => {
   const p = keyed(BAT9_KEYS, f);
@@ -251,7 +251,7 @@ export const eyes = (p: V3, s = 1): V3 => [p[0], p[1] + 1.52 * s, p[2]];
 // ---- per-shot cameras ----
 // 1 (0-113): in the night sky, the bomb drops into the frame centre, pops; the hero bat flies into the lens
 const S1 = (f: number): Shot => {
-  const a = C([0.2, 30.4, 8.4], [0.1, 33.2, -10], 52, 0.03), b = C([0.0, 30.0, 7.9], [0.15, 32.4, -10], 50, -0.02);
+  const a = C([0.2, 8.4, 8.4], [0.1, 11.4, -10], 52, 0.03), b = C([0.0, 8.0, 7.9], [0.15, 10.6, -10], 50, -0.02);
   const c = between(a, b, gl(f, 0, 100));
   return zoom(c.pos, c.look, c.fov!, pushK(f, 0, 0.001) * pushK(f, EV.POP1, 0, 0.006, 14), { roll: c.roll });
 };
@@ -280,14 +280,14 @@ const S4c = (f: number): Shot => {
 // 5 (547-652): the cutaway model house; push into the attic, then onto the timer; POOF
 const S5 = (f: number): Shot => {
   const R = SPOT.RIDGE5;
-  const a = C([0.35, 1.0, 3.6], [0.0, 0.85, 0.0], 40, 0.02), b = C([0.22, 1.32, 2.3], [R[0], R[1] - 0.3, 0.0], 38, -0.02);
-  const c = C([0.08, 1.26, 0.95], [R[0], R[1] - 0.12, 0.0], 36, 0.01);
-  const s = mix(mix(a, b, gl(f, 553, 40)), c, gl(f, 600, 28));
+  const a = C([0.35, 1.0, 3.2], [0.0, 0.95, 0.0], 40, 0.02), b = C([0.12, 1.3, 1.05], [R[0], R[1] - 0.15, 0.0], 38, -0.02);
+  const c = C([0.05, 1.27, 0.62], [R[0], R[1] - 0.1, 0.0], 36, 0.01);
+  const s = mix(mix(a, b, gl(f, 551, 34)), c, gl(f, 596, 14));
   return P(s, f, 547, 0.0016, 0.009, 12, 626);
 };
 // 6 (653-732): the President's desk from the front-left, Adams on the right; push on the stamp
 const S6 = (f: number): Shot => {
-  const a = C([1.35, 1.55, 2.6], [-0.1, 1.05, -1.4], 46, 0.025), b = C([1.15, 1.5, 2.15], [-0.1, 1.02, -1.4], 46, -0.02);
+  const a = C([0.95, 1.5, 1.9], [0.0, 1.12, -1.6], 44, 0.025), b = C([0.7, 1.42, 1.25], [0.0, 1.12, -1.6], 44, -0.02);
   return P(between(a, b, gl(f, 662, 40)), f, 653, 0.002, 0.008, 14, 709);
 };
 // 7 (733-852): the lab two-shot; glide toward the bat on the bench for the flex
@@ -315,13 +315,13 @@ const S9s = (f: number): Shot => {
   return { pos: pos.map((v) => v / 7) as V3, look: look.map((v) => v / 7) as V3, fov: 46, roll: 0.02 * Math.sin(f * 0.05) };
 };
 // 10 (1110-1149): low under the fuel tank, looking up along the pipe at the row of hanging bats
-const S10 = (f: number): Shot => zoom([0.9, 0.85, 8.2], [-1.5, 1.95, 5.05], 36, pushK(f, 1110, 0.0025) * pushK(f, 1124, 0, 0.006, 14), { roll: -0.04 });
+const S10 = (f: number): Shot => zoom([SPOT.TANK[0] + 2.85, 1.0, 6.75], [SPOT.TANK[0] + 1.85, 1.9, 5.05], 52, pushK(f, 1110, 0.0025) * pushK(f, 1138, 0, 0.006, 14), { roll: -0.04 });
 // 11 (1150-1214): wide on the tank; WHOOMP
-const S11 = (f: number): Shot => P({ pos: [15, 4.2, 25], look: [-2, 4.6, 3], fov: 50, roll: 0.02 }, f, 1150, 0.0018, 0.006, 10, 1186);
+const S11 = (f: number): Shot => P({ pos: [8, 4.2, 25], look: [-9, 4.6, 3], fov: 50, roll: 0.02 }, f, 1150, 0.0018, 0.006, 10, 1186);
 // 12 (1215-1301): the bucket line in the foreground, crane up to the whole base burning by 1274
 const S12 = (f: number): Shot => {
-  const a = C([13.5, 1.75, 19.5], [4, 2.2, 6], 48, -0.02), b = C([22, 19, 36], [-2, 1.5, -10], 52, 0.02);
-  return P(between(a, b, gl(f, 1232, 42)), f, 1215, 0.0012);
+  const a = C([11.2, 1.25, 18.2], [6.5, 2.0, 9.5], 48, -0.02), b = C([20, 17, 34], [-3, 1.5, -10], 52, 0.02);
+  return P(between(a, b, gl(f, 1252, 24)), f, 1215, 0.0016);
 };
 // 13a (1302-1364): smoky glide past the burnt hangar frame; 13b (1365-1417): the General polishes his car
 const S13a = (f: number): Shot => {
@@ -330,7 +330,7 @@ const S13a = (f: number): Shot => {
 };
 const S13b = (f: number): Shot => {
   const Cr = SPOT.CAR;
-  return P({ pos: [Cr[0] + 1.35, 1.52, Cr[2] + 4.3], look: [Cr[0] + 0.1, 1.2, Cr[2] + 0.6], fov: 44, roll: -0.025 }, f, EV.CUT13, 0.0022, 0.008, 12, 1392);
+  return P({ pos: [Cr[0] + 4.6, 1.45, Cr[2] + 4.4], look: [Cr[0] + 1.1, 0.95, Cr[2] + 0.5], fov: 46, roll: -0.025 }, f, EV.CUT13, 0.0022, 0.008, 12, 1392);
 };
 // 14 (1418-1514): the grey office, the officer, the money bags, the wastebasket; push on the drop
 const S14 = (f: number): Shot => {
@@ -431,12 +431,12 @@ export const DOF: Dof[] = [
   { f: 853, cInf: 0 },
   { f: 858, dur: 46, cInf: 7, focus: () => [9.6, 1.4, 12.4] },
   { f: 968, cInf: 10, focus: (f) => bat9At(f) },
-  { f: 1110, cInf: 11, focus: () => [-0.9, 1.95, 5.05] },
+  { f: 1110, cInf: 11, focus: () => [SPOT.TANK[0] + 2.3, 1.95, 5.05] },
   { f: 1150, cInf: 0 },
   { f: 1215, cInf: 7, focus: () => [9, 1.4, 13] },
-  { f: 1232, dur: 42, cInf: 0 },
+  { f: 1252, dur: 24, cInf: 0 },
   { f: 1302, cInf: 3, focus: () => [-16, 4, -14] },
-  { f: EV.CUT13, cInf: 11, focus: () => eyes([SPOT.CAR[0] + 0.2, 0, SPOT.CAR[2] + 1.7]) },
+  { f: EV.CUT13, cInf: 8, focus: () => eyes([SPOT.CAR[0] + 1.5, 0, SPOT.CAR[2] + 1.4]) },
   { f: 1418, cInf: 9, focus: () => eyes(SPOT.OFFICER14) },
   { f: 1515, cInf: 5, focus: () => SPOT.LIP15 },
   { f: 1530, dur: 60, cInf: 12, focus: () => [SPOT.LIP15[0], SPOT.LIP15[1] - 0.22, SPOT.LIP15[2]] },

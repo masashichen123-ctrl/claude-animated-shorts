@@ -967,8 +967,10 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
       g2.restore();
       p.dot(hx, hy, 5.5 * u);
     } else if (prop === "folder") { // a fat manila folder bulging with paper
-      p.poly(rrect(hx - 4 * u, hy - 26 * u, hx + 52 * u * f, hy + 2 * u, 3 * u).map(([x, y]) => [f < 0 ? 2 * hx - (x - hx) - 48 * u : x, y] as P2), "#e8c47a", 2 * u);
-      for (let k = 0; k < 4; k++) p.stroke([[hx, hy - 20 * u + k * 5 * u], [hx + 46 * u * f, hy - 20 * u + k * 5 * u]], 1.2 * u, "#f8f2e2");
+      const x0 = Math.min(hx - 6 * u * f, hx + 66 * u * f), x1 = Math.max(hx - 6 * u * f, hx + 66 * u * f);
+      p.poly(rrect(x0, hy - 40 * u, x1, hy + 4 * u, 4 * u), "#e8c47a", 2.4 * u);
+      for (let k = 0; k < 6; k++) p.stroke([[x0 + 4 * u, hy - 32 * u + k * 5.5 * u], [x1 - 4 * u, hy - 32 * u + k * 5.5 * u]], 1.6 * u, "#f8f2e2");
+      p.poly(rrect(x1 - 18 * u, hy - 46 * u, x1 - 4 * u, hy - 38 * u, 1.5 * u), "#c0353a", 1.4 * u);
       p.dot(hx, hy, 5.5 * u);
     } else if (prop === "stick") { // swagger stick along the forearm, a brass tip
       const [E] = [a.pts[1]], dx = hx - E[0], dy = hy - E[1], l = Math.hypot(dx, dy) || 1;
@@ -1405,6 +1407,8 @@ export type BatExpr = "open" | "grin" | "smug" | "wink" | "meh" | "wide" | "pop"
 export type BatOpts = {
   pose: BatPose; phase?: number; expr?: BatExpr; look?: number; gaze?: number; bomb?: 0 | 1 | 2; tint?: number; medal?: boolean;
   tilt?: number; blink?: number; light?: number; lod?: number; spin?: number;
+  /** sil: a flat dark silhouette (far swarms against a bright sky); capK: capsule size multiplier (close-ups) */
+  sil?: boolean; capK?: number;
 };
 const BAT_FUR = ["#7d6a60", "#74625c", "#86705f"], BAT_BELLY = "#ad978a", BAT_WING = "#563f4a", BAT_WING_L = "#715663", BAT_EAR = "#c98f84";
 const BAT_MUZ = "#c9b09e";
@@ -1436,7 +1440,17 @@ export const toyBomber = (p: Pen, cx: number, cy: number, k: number, f = 1) => {
 };
 
 /** one bat on the 600 x 600 card */
+const batSil = (p: Pen, phase: number) => {
+  const c = "#2a1f2a", fl = Math.cos(phase * Math.PI * 2);
+  for (const s of [-1, 1]) {
+    const tip: P2 = [300 + s * 270, 300 - 150 * fl], w: P2 = [300 + s * 150, 280 - 90 * fl];
+    p.poly([[300 + s * 30, 300], w, tip, [300 + s * 220, 330 - 60 * fl], [300 + s * 180, 360 - 40 * fl], [300 + s * 120, 350 - 20 * fl], [300 + s * 60, 370]], c, 0);
+    p.poly([[300 + s * 20, 250], [300 + s * 60, 160], [300 + s * 64, 260]], c, 0);
+  }
+  p.ell(300, 300, 62, 80, c, 0);
+};
 export const batDraw = (p: Pen, o: BatOpts) => {
+  if (o.sil) { batSil(p, o.phase ?? 0); return; }
   const { pose, phase = 0, look = 0, gaze = 0, bomb = 0, tint = 0, medal = false, tilt = 0, blink = 0, light = DEF_LIGHT, lod = 1, spin = 0 } = o;
   let expr: BatExpr = o.expr ?? "open";
   const g = p.g, two = Math.PI * 2, thick = thickAngle(light), OW = 8.5, n = lod > 0.5 ? 96 : 40;
@@ -1496,7 +1510,7 @@ export const batDraw = (p: Pen, o: BatOpts) => {
   p.inkRing(body.slice().reverse(), OW, thick);
   if (bomb) { // strap + capsule on the belly
     p.stroke(curve([bx - 58, by + 18], [bx, by + 40], [bx + 58, by + 18], 10), 9, INK); p.stroke(curve([bx - 58, by + 18], [bx, by + 40], [bx + 58, by + 18], 10), 5, "#c9a874");
-    capsule(p, bx, by + 34, 1.15, 0, bomb === 2);
+    capsule(p, bx, by + 34, 1.15 * (o.capK ?? 1), 0, bomb === 2);
   }
   if (!flying && !wrapped) { wingFold(-1, false); wingFold(1, pose === "flex"); }
   if (wrapped) { // both wings wrapped round the body like a cloak, the head sticking out on top
@@ -1505,7 +1519,7 @@ export const batDraw = (p: Pen, o: BatOpts) => {
     p.gradFill(sm, BAT_WING_L, BAT_WING, rad(-90), 0.2); p.inkRing(sm, OW, thick, 0.4);
     p.stroke(curve([300, 310], [292, 380], [300, 446], 8), 4, INK);
     for (const s of [-1, 1]) p.stroke(curve([300 + s * 44, 320], [300 + s * 62, 380], [300 + s * 48, 440], 8), 3.5, mul(BAT_WING, [0.7, 0.7, 0.75]));
-    if (bomb) capsule(p, 300, 410, 1.0, 0, bomb === 2);
+    if (bomb) capsule(p, 300, 410 - 10 * ((o.capK ?? 1) - 1), 1.0 * (o.capK ?? 1), 0, bomb === 2);
   }
   if (medal) { // tiny ribbon + gold medal on the chest
     p.poly([[288, 296], [312, 296], [308, 326], [292, 326]], "#3a6ea8", 3); p.poly([[296, 296], [304, 296], [303, 326], [297, 326]], "#f4f1ea", 0);
