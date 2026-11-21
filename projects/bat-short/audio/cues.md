@@ -12,9 +12,9 @@ Voice = `voice/voice.wav`, gain only (no EQ, no compression, no pitch, no time c
 
 ## Master loudness (own BS.1770-4 meter)
 - Integrated **-14.01 LUFS**, true peak **-1.30 dBTP**, LRA 1.5 LU, max momentary -9.5 LUFS, max short-term -13.2 LUFS; 0 samples at full scale
-- Stems at mix gain: voice -14.0 LUFS (peak -0.9 dBFS, max momentary -9.5 LUFS), music -29.7 LUFS, sfx -30.3 LUFS (master gain +8.06 dB and the limiter gain curve, the same on every stem)
-- Master limiter (4x oversampled look-ahead, ceiling -1.3 dBTP): max gain reduction 6.60 dB, active (>0.1 dB) on 32.00 % of samples; inside speech: max 6.60 dB, 90th / 99th percentile 1.26 / 4.33 dB, active on 38.4 % of speech samples. This peak limiting is the only processing besides gain that reaches the narration (same approach as the emu mix): the TTS voice's true-peak-to-loudness ratio is too high to reach -14 LUFS at <= -1 dBTP with gain alone.
-- Discontinuity check: 183 boundaries (start + end of every placed SFX event, every music cut / re-entry) checked on the SFX and music stems, 0 suspicious.
+- Stems at mix gain: voice -14.0 LUFS (peak -0.9 dBFS, max momentary -9.5 LUFS), music -29.7 LUFS, sfx -30.8 LUFS (master gain +8.06 dB and the limiter gain curve, the same on every stem)
+- Master limiter (4x oversampled look-ahead, ceiling -1.3 dBTP): max gain reduction 6.61 dB, active (>0.1 dB) on 32.05 % of samples; inside speech: max 6.61 dB, 90th / 99th percentile 1.26 / 4.34 dB, active on 38.5 % of speech samples. This peak limiting is the only processing besides gain that reaches the narration (same approach as the emu mix): the TTS voice's true-peak-to-loudness ratio is too high to reach -14 LUFS at <= -1 dBTP with gain alone.
+- Discontinuity check: 181 boundaries (start + end of every placed SFX event, every music cut / re-entry) checked on the SFX and music stems, 0 suspicious.
 
 ffmpeg ebur128 cross-check:
 ```
@@ -37,20 +37,20 @@ Columns: integrated LUFS per stem at mix gain; then over 400 ms windows centred 
 
 | section | time s | voice | music | sfx | voice-music (speech, med) | voice-bed med | voice-bed p10 | bloom |
 |---|---|---|---|---|---|---|---|---|
-| hook | 0.00-3.73 | -14.3 | -30.9 | -32.3 | 16.8 | 16.0 | 10.4 | 0.7 |
+| hook | 0.00-3.73 | -14.3 | -30.8 | -32.3 | 16.7 | 16.0 | 10.4 | 0.7 |
 | base | 3.73-5.70 | -13.1 | -29.9 | -26.9 | 17.6 | 14.4 | 9.8 | 3.5 |
-| cave | 5.70-10.93 | -14.2 | -31.1 | -42.2 | 16.6 | 16.6 | 12.9 | -1.6 |
+| cave | 5.70-10.93 | -14.2 | -31.0 | -42.2 | 16.6 | 16.6 | 12.9 | -1.6 |
 | workshop | 10.93-18.23 | -14.3 | -30.7 | -37.3 | 16.5 | 16.2 | 12.2 | 0.3 |
 | attic | 18.23-21.77 | -13.5 | -30.3 | -29.1 | 16.7 | 15.9 | 9.5 | 0.7 |
 | president | 21.77-24.43 | -13.9 | -29.0 | -21.9 | 16.6 | 16.3 | 4.3 | 0.5 |
-| lab | 24.43-28.43 | -13.3 | -30.2 | -38.5 | 16.2 | 16.1 | 12.1 | 1.2 |
+| lab | 24.43-28.43 | -13.3 | -30.2 | -38.4 | 16.2 | 16.1 | 12.1 | 1.2 |
 | escape | 28.43-32.27 | -13.9 | -30.2 | -30.7 | 15.9 | 15.2 | 10.9 | -0.3 |
-| search | 32.27-37.00 | -13.7 | -30.2 | -40.6 | 16.5 | 16.2 | 10.7 | 0.6 |
+| search | 32.27-37.00 | -13.7 | -30.1 | -40.6 | 16.5 | 16.2 | 10.7 | 0.6 |
 | tank | 37.00-38.33 | -12.5 | -30.3 | -36.1 | 18.6 | 17.6 | 14.1 | 0.7 |
 | luckily | 38.33-39.53 | -13.2 | -29.9 | -55.1 | 17.0 | 16.1 | 9.6 | 1.4 |
 | oops | 39.53-40.50 | -15.8 | -53.5 | -24.4 | 44.7 | 9.2 | 5.3 | 17.2 |
 | buckets | 40.50-43.40 | -14.6 | -31.3 | -37.8 | 17.1 | 16.1 | 11.6 | 0.9 |
-| smoke | 43.40-47.27 | -13.7 | -29.4 | -26.0 | 16.8 | 16.7 | 6.2 | 1.4 |
+| smoke | 43.40-47.27 | -13.7 | -29.4 | -29.3 | 16.8 | 16.7 | 8.5 | 1.4 |
 | office | 47.27-50.50 | -14.2 | -28.6 | -31.3 | 16.1 | 14.9 | 8.5 | 6.2 |
 | ending | 50.50-55.00 | -13.3 | -27.7 | -29.0 | 17.7 | 17.3 | 11.4 | 3.8 |
 
@@ -163,7 +163,7 @@ naive = the event's level vs the voice stem (max momentary, LU); applied = naive
 | 61 | 40.000 | 1200 | bats_cheer | ...and cheer: a happy squeak chorus under 'perfectly' (clear of 'Unluckily') | -15 | -23.0 | -38.5 | +0.00 |
 | 62 | 40.733 | 1222 | bucket | tin bucket clank + slosh | -14 | -22.0 | -36.8 | -0.50 |
 | 63 | 40.900 | 1227 | running | soldiers run in a bucket line (quick steps on dirt, across the stereo field) | -15 | -23.0 | -37.1 | +0.00 |
-| 64 | 41.200 | 1236 | bucket | tin bucket clank + slosh | -14 | -22.0 | -36.8 | +0.20 |
+| 64 | 41.200 | 1236 | bucket | tin bucket clank + slosh | -14 | -22.0 | -36.7 | +0.20 |
 | 65 | 41.200 | 1236 | roof_catches | fire spreads to a roof (soft fwump) | -16 | -24.0 | -39.2 | +0.50 |
 | 66 | 42.067 | 1262 | bucket | tin bucket clank + slosh | -14 | -22.0 | -36.8 | -0.20 |
 | 67 | 42.267 | 1268 | roof_catches | fire spreads to a roof (soft fwump) | -16 | -24.0 | -39.1 | -0.50 |
@@ -173,35 +173,34 @@ naive = the event's level vs the voice stem (max momentary, LU); applied = naive
 | 71 | 45.330 | 1360 | polish_squeak | the General polishes his shiny car (1/4) | -15 | -23.0 | -37.7 | +0.20 |
 | 72 | 45.550 | 1366 | polish_squeak | the General polishes his shiny car (2/4) | -15 | -23.0 | -37.8 | +0.20 |
 | 73 | 45.900 | 1377 | polish_squeak | the General polishes his shiny car (3/4) | -19 | -27.0 | -41.7 | +0.20 |
-| 74 | 46.200 | 1386 | polish_squeak | the General polishes his shiny car (4/4) | -19 | -27.0 | -41.7 | +0.20 |
-| 75 | 46.467 | 1394 | car_puff | @1394 'puff': the car becomes a charred shell (soft pfoomf, body sag creak, tyres hissing flat) | +0 | -8.0 | -22.3 | +0.10 |
-| 76 | 46.567 | 1397 | kick | KICK @1397: soft round low thump under the picture kick | +0 | -8.0 | -22.0 | +0.00 |
-| 77 | 46.950 | 1409 | moustache_sizzle | the General's singed moustache smoking (tiny sizzle) | -20 | -28.0 | -42.0 | +0.10 |
-| 78 | 47.220 | 1417 | amb_war_office (bed) | War Department office at dusk: dull room tone, a wall clock (shot 14) | -43 | -43.0 | -57.0 | +0.00 |
-| 79 | 47.267 | 1418 | xf_air | soft air swell through the dissolve @1418 | -18 | -26.0 | -40.0 | +0.00 |
-| 80 | 47.733 | 1432 | money_bags | the officer weighs the folder on the money bags (soft cloth bags + a coin chink) | -17 | -25.0 | -39.0 | -0.20 |
-| 81 | 48.250 | 1448 | money_settle | the bags settle (gap after 'million,') | -15 | -23.0 | -37.0 | -0.20 |
-| 82 | 49.633 | 1489 | folder_thunk | @1489 the folder drops into the wastebasket (paper thunk + tin bin ring) | -1 | -9.0 | -23.3 | +0.15 |
-| 83 | 50.280 | 1508 | bat_snore | the bat asleep in the filing tray: a tiny whistling snore | -19 | -27.0 | -42.2 | -0.35 |
-| 84 | 50.450 | 1514 | amb_night_cave (bed) | moonlit cave mouth: night crickets, soft wind (shot 15) | -37 | -37.0 | -51.0 | +0.00 |
-| 85 | 50.500 | 1515 | bat_ribbon | bats streaming out in a ribbon across the moon (far, soft wing-roar + distant squeaks) | -19 | -27.0 | -42.7 | +0.00 |
-| 86 | 50.500 | 1515 | xf_air | soft air swell through the dissolve @1515 | -18 | -26.0 | -40.0 | +0.00 |
-| 87 | 53.333 | 1600 | medal_turn | @1600 the bat with the tiny medal turns to camera (wing rustle + medal clink) | -17 | -25.0 | -39.0 | +0.10 |
-| 88 | 53.667 | 1610 | wink_ting | @1610 the WINK: a small bright 'ting' | +0 | -8.0 | -22.0 | +0.10 |
+| 74 | 46.467 | 1394 | car_puff | @1394 'puff': the car becomes a charred shell (soft pfoomf, body sag creak, tyres hissing flat) | -20 | -28.0 | -42.8 | +0.10 |
+| 75 | 46.567 | 1397 | kick | KICK @1397: soft round low thump under the picture kick | +0 | -8.0 | -22.0 | +0.00 |
+| 76 | 46.950 | 1409 | moustache_sizzle | the General's singed moustache smoking (tiny sizzle) | -20 | -28.0 | -42.0 | +0.10 |
+| 77 | 47.220 | 1417 | amb_war_office (bed) | War Department office at dusk: dull room tone, a wall clock (shot 14) | -43 | -43.0 | -57.0 | +0.00 |
+| 78 | 47.267 | 1418 | xf_air | soft air swell through the dissolve @1418 | -18 | -26.0 | -40.0 | +0.00 |
+| 79 | 47.733 | 1432 | money_bags | the officer weighs the folder on the money bags (soft cloth bags + a coin chink) | -17 | -25.0 | -39.0 | -0.20 |
+| 80 | 48.250 | 1448 | money_settle | the bags settle (gap after 'million,') | -15 | -23.0 | -37.0 | -0.20 |
+| 81 | 49.633 | 1489 | folder_thunk | @1489 the folder drops into the wastebasket (paper thunk + tin bin ring) | -1 | -9.0 | -23.3 | +0.15 |
+| 82 | 50.280 | 1508 | bat_snore | the bat asleep in the filing tray: a tiny whistling snore | -19 | -27.0 | -42.2 | -0.35 |
+| 83 | 50.450 | 1514 | amb_night_cave (bed) | moonlit cave mouth: night crickets, soft wind (shot 15) | -37 | -37.0 | -51.0 | +0.00 |
+| 84 | 50.500 | 1515 | bat_ribbon | bats streaming out in a ribbon across the moon (far, soft wing-roar + distant squeaks) | -19 | -27.0 | -42.7 | +0.00 |
+| 85 | 50.500 | 1515 | xf_air | soft air swell through the dissolve @1515 | -18 | -26.0 | -40.0 | +0.00 |
+| 86 | 53.333 | 1600 | medal_turn | @1600 the bat with the tiny medal turns to camera (wing rustle + medal clink) | -17 | -25.0 | -39.0 | +0.10 |
+| 87 | 53.667 | 1610 | wink_ting | @1610 the WINK: a small bright 'ting' | +0 | -8.0 | -22.0 | +0.10 |
 
 ## Verification
 - Mix stream: `stream|sample_rate=48000|channels=2|bits_per_sample=24|duration_ts=2640000`
 - exact length 2,640,000 samples, stereo: OK; voice/mix_final.wav identical to public/bat/mix.wav: OK
 - whisper small.en (int8, cpu) on voice.wav: "In 1943, America built a bomb made of bats. Then the bats bombed America. It started with a dentist named Little Adams who visited a cave in New Mexico full of bats. His idea, strap a tiny firebomb to every bat and drop them over Japan where many houses were made of wood and paper. The bats would hide in the attics. Then the timers would go off. Incredibly, President Roosevelt said yes. The man who invented napalm designed bombs small enough for a bat to carry. Then during a test in New Mexico, some armed bats escaped and they did exactly what they were designed to do. They found the nearest dark hiding place, under a fuel tank. Luckily, the bat bomb worked perfectly. Unluckily, it worked on the army's own airbase. The fire burned down the test range and even the general's car. After two million dollars, the project was cancelled. The bats never fought in the war, but they did win one battle."
-- whisper small.en on the mix: "In 1943, America built a bomb made of bats. Then the bats bombed America. It started with a dentist named Little Adams, who visited a cave in New Mexico full of bats. His idea, strap a tiny firebomb to every bat and drop them over Japan, where many houses were made of wood and paper. The bats would hide in the attics, then the timers would go off. Incredibly, President Roosevelt said yes. The man who invented napalm designed bombs small enough for a bat to carry. Then, during a test in New Mexico, some armed bats escaped, and they did exactly what they were designed to do. They found the nearest dark hiding place, under a fuel tank. Luckily, the bat bomb worked perfectly. Unluckily, it worked on the Army's own air base. The fire burned down the test range, and even the general's car. After $2 million, the project was canceled. The bats never fought in the war, but they did win one battle."
+- whisper small.en on the mix: "In 1943, America built a bomb made of bats. Then the bats bombed America. It started with a dentist named Little Adams, who visited a cave in New Mexico full of bats. His idea, strap a tiny firebomb to every bat and drop them over Japan, where many houses were made of wood and paper. The bats would hide in the attics, then the timers would go off. Incredibly, President Roosevelt said yes. The man who invented napalm designed bombs small enough for a bat to carry. Then, during a test in New Mexico, some armed bats escaped, and they did exactly what they were designed to do. They found the nearest dark hiding place, under a fuel tank. Luckily, the bat bomb worked perfectly. Unluckily, it worked on the army's own air base. The fire burned down the test range, and even the general's car. After $2 million, the project was canceled. The bats never fought in the war, but they did win one battle."
 - word-level diff voice -> mix: IDENTICAL
 - SCRIPT.md words not literally in the voice-only transcript (whisper writes numbers as digits): ['lytle']
 - SCRIPT.md words not literally in the mix transcript: ['lytle']
-- 'bats': voice-only probs [0.99, 0.99, 0.99, 0.99, 0.99, 0.99], mix probs [0.99, 0.99, 1.0, 0.99, 0.96, 0.99]
+- 'bats': voice-only probs [0.99, 0.99, 0.99, 0.99, 0.99, 0.99], mix probs [0.99, 0.99, 1.0, 1.0, 0.96, 0.99]
 - 'bombed': voice-only probs [1.0], mix probs [1.0]
-- 'napalm': voice-only probs [0.92], mix probs [0.93]
+- 'napalm': voice-only probs [0.92], mix probs [0.92]
 - 'escaped': voice-only probs [1.0], mix probs [1.0]
 - 'perfectly': voice-only probs [1.0], mix probs [1.0]
-- 'unluckily': voice-only probs [0.97], mix probs [0.9]
-- 'cancelled': voice-only probs [0.53], mix probs [0.56]
+- 'unluckily': voice-only probs [0.97], mix probs [0.91]
+- 'cancelled': voice-only probs [0.53], mix probs [0.55]
 - 'battle': voice-only probs [1.0], mix probs [1.0]

@@ -232,11 +232,12 @@ def cues():
     # ------------------------------------------------ shot 13: the general's car
     add(Cue(44.0, "hangar_creak", "the burnt hangar frame groans as the camera glides past", lambda: (G.creak(0.7, rng(1320), 45, 30, G.TIMBER, None, 0.15, 0.02), 0.0),
             -18, p=-0.3, lpf=2500, send=0.2, frame=1320))
-    for k, tm in enumerate([45.33, 45.55, 45.9, 46.2]):
+    for k, tm in enumerate([45.33, 45.55, 45.9]):   # no squeak under "general's car"
         add(Cue(tm, "polish_squeak", f"the General polishes his shiny car ({k + 1}/4)", (lambda r=rr(): (B.polish_squeak(r), 0.0)),
                 -15 if tm < 45.65 else -19, p=0.2, lpf=4000, frame=int(round(tm * 30))))
     add(Cue(fr(T.CAR_PUFF), "car_puff", "@1394 'puff': the car becomes a charred shell (soft pfoomf, body sag creak, tyres hissing flat)",
-            lambda: (B.car_puff(rng(1394)), 0.0), 0, p=0.1, lpf=3500, send=0.15, frame=T.CAR_PUFF))
+            lambda: (B.car_puff(rng(1394)), 0.0), -20, p=0.1, lpf=1500,   # quieter + darker so it doesn't mask 'car'
+            send=0.15, frame=T.CAR_PUFF))
     add(Cue(46.95, "moustache_sizzle", "the General's singed moustache smoking (tiny sizzle)", lambda: (B.crackle(0.4, rng(1409), 40, 0.5, 1.0), 0.0),
             -20, p=0.1, frame=1409))
 
