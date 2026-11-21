@@ -537,7 +537,7 @@ export type SetRig = { name: SetName; group: THREE.Group; tick?: (t: number, id:
 /** per-set world settings: haze reach multiplier; indoor sets hide the sky and use the light's background colour;
  *  ceil = ceiling height for the corner AO */
 export const SET_META: Record<SetName, { hazeK: number; indoor?: boolean; ceil?: number }> = {
-  desert: { hazeK: 1.8 }, base: { hazeK: 1.5 }, cave: { hazeK: 1.3 },
+  desert: { hazeK: 1.8 }, base: { hazeK: 1.5 }, cave: { hazeK: 2.6 },
   workshop: { hazeK: 1, indoor: true, ceil: 3.1 }, attic: { hazeK: 1, indoor: true, ceil: 3.4 }, oval: { hazeK: 1, indoor: true, ceil: 3.6 },
   lab: { hazeK: 1, indoor: true, ceil: 3.2 }, office: { hazeK: 1, indoor: true, ceil: 3.0 },
 };
@@ -752,18 +752,18 @@ const buildCave = (): SetRig => {
   terrain(b, sandM(), -50, 50, -FAR, -80, 4, hf, 8); terrain(b, sandM(), -50, 50, 30, FAR, 4, hf, 8);
   // the hill: buttresses either side of the mouth, a lintel lip over it, the big mass behind, rocks along the rim
   // the cliff: one extruded sandstone butte whose arch-shaped hole IS the cave mouth (the hole's walls are the tunnel)
+  const topY = (x: number) => { const k = 1 - Math.min(1, Math.abs(x) / 46) ** 2.4; return FY + 3 + (17 + 4 * Math.sin((x + 46) / 3.83 * 1.3) + 1.5 * Math.sin(x * 0.9)) * k; };
+  const ext = (pts: [number, number][]) => { const sh = new THREE.Shape(pts.map(([x, y]) => new THREE.Vector2(x, y))); const g = new THREE.ExtrudeGeometry(sh, { depth: 20, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.05, bevelSegments: 1, curveSegments: 4 }); g.translate(0, 0, M[2] - 20); return g; };
   const cliff = cached("cliff", () => {
-    const sh = new THREE.Shape(), r = rng(71), top: [number, number][] = [];
-    for (let i = 0; i <= 24; i++) { const x = -46 + (92 * i) / 24, k = 1 - (Math.abs(x) / 46) ** 2.4; top.push([x, FY + 3 + (17 + 4 * Math.sin(i * 1.3) + 2 * r()) * k]); }
-    sh.moveTo(-46, FY - 3); for (const [x, y] of top) sh.lineTo(x, y); sh.lineTo(46, FY - 3); sh.closePath();
-    const hole = new THREE.Path(); hole.moveTo(-hw, FY - 1); hole.lineTo(hw, FY - 1);
-    for (let i = 0; i <= 20; i++) { const a = (i / 20) * Math.PI; hole.lineTo(hw * Math.cos(a) * (1 + 0.04 * Math.sin(i * 2.1)), FY + 5 + 5.5 * Math.sin(a) + 0.25 * Math.sin(i * 3.3)); }
-    hole.closePath(); sh.holes.push(hole);
-    const g = new THREE.ExtrudeGeometry(sh, { depth: 20, bevelEnabled: false, curveSegments: 8 });
-    g.translate(0, 0, M[2] - 20);
+    const left: [number, number][] = [[-46, FY - 3], [-hw, FY - 3]]; for (let x = -hw; x >= -46; x -= 2) left.push([x, topY(x)]);
+    const right: [number, number][] = [[hw, FY - 3], [46, FY - 3]]; for (let x = 46; x >= hw; x -= 2) right.push([x, topY(x)]); right.push([hw, topY(hw)]);
+    const lint: [number, number][] = [];
+    for (let i = 0; i <= 20; i++) { const a = (i / 20) * Math.PI; lint.push([hw * Math.cos(a), FY + 5 + 5.5 * Math.sin(a) + 0.25 * Math.sin(i * 3.3) * Math.sin(a)]); }
+    for (let x = -hw; x <= hw + 0.01; x += 1) lint.push([x, topY(x)]);
+    const g = mergeGeometries([ext(left), ext(right), ext(lint)].map((x) => x.toNonIndexed()), false);
     return uvFrom(g, (x, y, z) => [(x + z) / 10, y / 10]);
   });
-  b.add(cliff, rockM(0));
+  b.add(cliff, lam("cliffRock", () => ({ map: P.rockHD("rockHD0", "#c98a58"), side: THREE.DoubleSide })));
   for (const [x, y, z, sx, sy, sz, sd] of [[-hw - 6, FY, M[2] + 0.6, 5, 7, 3, 1], [hw + 7, FY, M[2] + 0.8, 6, 6, 3, 2], [-22, FY, M[2] + 0.5, 9, 9, 4, 3], [24, FY, M[2] + 0.4, 9, 11, 4, 4]] as number[][]) lump(b, x, y, z, sx, sy, sz, sd, 0.2 * sd, sd % 3);
   lump(b, SPOT.LIP15[0], SPOT.LIP15[1] + 0.6, SPOT.LIP15[2] + 0.2, 1.3, 0.5, 1.0, 6, 0.4, 2);    // the ledge the medal bat hangs from
   // the back of the tunnel: a dark unlit wall, so the mouth reads as a deep black hole

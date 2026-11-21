@@ -71,7 +71,7 @@ export const EV = {
   TURN3: 308,       // "bats"@308: Adams turns to the lens, big eyes
   BULB4: 331,       // the light bulb pops on
   CU4: 367,         // "strap": the bench close-up
-  STRAP4: 392,      // the capsule is on
+  STRAP4: 369,      // the capsule is strapped on (audio/cues.md strap_buckle @367)
   MEH4: 413,        // "bat": the bat looks at it, unimpressed
   CUT4: 430,        // the tabletop planning model
   FLUTTER5: 553,    // the bat flutters into the attic
@@ -184,8 +184,8 @@ const keyed = (keys: [number, V3][], f: number): V3 => {
 };
 /** shot 9: one bat cruising the base: under the barracks step, behind the crate stack, on toward the fuel tank */
 export const BAT9_KEYS: [number, V3][] = [
-  [968, [11.2, 2.6, 2.4]], [996, [8.6, 0.85, -5.4]], [1004, [8.25, 0.42, -6.25]], [1030, [8.2, 0.42, -6.3]],
-  [1046, [3.6, 1.6, -3.4]], [1056, [2.05, 0.75, -4.2]], [1078, [2.0, 0.75, -4.25]], [1110, [-0.4, 2.2, 1.6]],
+  [968, [11.2, 2.6, 2.4]], [988, [8.6, 0.85, -5.4]], [995, [8.25, 0.42, -6.25]], [1016, [8.2, 0.42, -6.3]],
+  [1032, [3.6, 1.6, -3.4]], [1040, [2.05, 0.75, -4.2]], [1066, [2.0, 0.75, -4.25]], [1100, [-0.4, 2.2, 1.6]], [1110, [-0.7, 2.25, 1.9]],
 ];
 export const bat9At = (f: number): V3 => {
   const p = keyed(BAT9_KEYS, f);
@@ -261,9 +261,10 @@ const S2 = (f: number): Shot => zoom([16.2, 1.55, 17.2], [-4, 4.4, -16], 48, pus
 // tilt up with the column at 290, punch in on Adams' turn at 308
 const S3 = (f: number): Shot => {
   const a = C([10.5, 6.8, 8.5], [-0.5, -2.5, -30], 50, 0.03), b = C([7.0, 1.95, 0.4], [-0.4, -1.8, -30], 46, -0.02);
-  const c2 = C([7.0, 1.9, 0.4], [-0.6, 4.5, -30], 50, 0.02);
-  const u = gl(f, 176, 52), v = gl(f, 284, 26);
-  const s = mix(mix(a, b, u), c2, v);
+  const c2 = C([7.0, 1.9, 0.4], [-0.6, 9.5, -30], 52, 0.02);
+  const d2 = C([7.4, 1.72, -0.5], [5.4, 3.2, -9], 50, -0.015);           // whip back down onto Adams for his turn
+  const u = gl(f, 176, 52), v = gl(f, 280, 20), w = gl(f, 301, 9);
+  const s = mix(mix(mix(a, b, u), c2, v), d2, w);
   return zoom(s.pos, s.look, s.fov!, pushK(f, 228, 0.0016) * pushK(f, 305, 0, 0.007, 16), { roll: s.roll });
 };
 // 4a (328-366): Adams behind his bench, the bulb pops; 4b (367-429): bench close-up; 4c (430-546): the planning model

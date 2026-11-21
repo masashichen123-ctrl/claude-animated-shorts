@@ -513,7 +513,7 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
         // bomber position on the card (design x ~117, y ~55): offset left 0.395, up 1.99 from the feet
         const rt = cam.right, bomberAt = (g: number): V3 => { const x = SPOT.ADAMS4C[0] + 0.32 * Math.sin((g - 430) / 26); return [x - rt.x * 0.4, 2.0, 0.32 - rt.z * 0.4]; };
         for (let k = 0; k < 30; k++) {
-          const g0 = 452 + k * 3, u = (f - g0) / 26;
+          const g0 = 462 + k * 3, u = (f - g0) / 26;
           if (u < 0 || u >= 1) continue;
           const b0 = bomberAt(g0), p: V3 = [b0[0] + 0.12 * Math.sin(u * 7 + k), lerp(b0[1] - 0.05, SPOT.TABLE_Y + 0.12, easeOut(u)), b0[2] + 0.3 + 0.9 * H(k, 31) * u];
           bat(out, cam, 40 + k, p, { pose: u < 0.85 ? "fly" : "wrap", phase: flap(f, k, 4), size: 0.11, bomb: 1, blink: false, roll: 0.3 * Math.sin(u * 9 + k) }, t);
@@ -589,7 +589,7 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
         { f: EV.CRATE8, expr: "proud", headTilt: 4 },
         { f: EV.LID8, expr: "shock", lean: -6, shrug: 1, gaze: -0.6, dur: 3 },
         { f: EV.ESCAPE8 + 6, expr: i === 9 ? "yell" : "jawdrop", gaze: -1 },
-      ], t, facing, (fo) => ({ ...fo, mode: walking ? "stroll" : "stand", phase: ph + (i === 9 ? 0.5 : 0), armR: f < EV.LID8 ? "out" : i === 9 && f >= EV.ESCAPE8 ? (F % 8 < 4 ? "up" : "wave") : "shrug",
+      ], t, facing, (fo) => ({ ...fo, mode: walking ? "stroll" : "stand", phase: ph + (i === 9 ? 0.5 : 0), armR: f < EV.LID8 ? "out" : i === 9 && f >= 960 ? (f < 968 ? "up" : "point") : "shrug",
         armL: f < EV.LID8 ? "out" : "shrug" }));
       carry(-0.72, 9, SOLDIER, "soldier", 1); carry(0.72, 10, SOLDIER2, "soldier2", -1);
       if (f >= EV.LID8) poof(out, [c[0], c[1] + 0.5, c[2] + 0.1], 1.2, f, EV.LID8, 10);
@@ -602,8 +602,9 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
       break;
     }
     case 9: { // one bat looks for the nearest dark place: under the step (sniff, no), behind the crates (sniff, no), the tank
-      const p = bat9At(f), sniff1 = f >= 1006 && f < 1018, no1 = f >= 1018 && f < 1032, sniff2 = f >= 1058 && f < 1068, no2 = f >= 1068 && f < 1080;
-      const shake = no1 || no2 ? 16 * Math.sin((f - (no1 ? 1018 : 1068)) * 1.4) : 0;
+      // audio/cues.md: sniffs @998, @1044, @1106; the head shake @1053
+      const p = bat9At(f), sniff1 = (f >= 996 && f < 1006) || (f >= 1104 && f < 1110), no1 = f >= 1006 && f < 1016, sniff2 = f >= 1042 && f < 1052, no2 = f >= 1052 && f < 1064;
+      const shake = no2 ? 16 * Math.sin((f - 1052) * 1.4) : 0;
       const nxt = bat9At(f + 4), dir = (nxt[0] - p[0]) * cam.right.x + (nxt[2] - p[2]) * cam.right.z;
       bat(out, cam, 3, p, { pose: "fly", phase: flap(f, 3, sniff1 || sniff2 ? 7 : 5), bomb: 2, size: 0.4, expr: sniff1 || sniff2 ? "sniff" : no1 || no2 ? "meh" : "open",
         look: sniff1 || sniff2 ? 0 : clamp01(Math.abs(dir) * 4) * Math.sign(dir), tilt: shake, roll: -0.25 * clamp01(Math.abs(dir) * 3) * Math.sign(dir) }, t);
@@ -612,14 +613,14 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
     case 10: { // under the fuel tank: five bats in a neat row, timers ticking, all grin
       for (let k = 0; k < 5; k++) {
         const p: V3 = [S.TANK[0] + 2.6 - 0.55 * k, 2.12 - 0.06 - 0.23 * 0.5, S.TANK[2] + 1.05];
-        const g = 1116 + k * 2;
+        const g = 1138 + k * 2; // the grin chorus (audio/cues.md bats_giggle @1144)
         bat(out, cam, 70 + k, p, { pose: "hang", size: 0.5, bomb: 2, expr: f < g ? "open" : "grin", look: 0, gaze: 0, tilt: 3 * Math.sin(f * 0.15 + k) }, t);
       }
       break;
     }
     case 11: { // WHOOMP: the tank goes up in a cartoon fireball; the bats flutter out and cheer
       const Tk = S.TANK, c: V3 = [Tk[0], S.TANK_Y, Tk[2] + 1];
-      fireball(out, c, 15, f, EV.TANK11, 34, 1);
+      fireball(out, c, 15, f, EV.TANK11 - 2, 34, 1);
       fireball(out, [c[0] - 3, c[1] + 2, c[2] - 1], 10, f, EV.TANK11 + 3, 30, 2);
       fireball(out, [c[0] + 3.5, c[1] + 1.5, c[2] - 0.5], 9, f, EV.TANK11 + 5, 30, 3);
       if (f >= EV.TANK11) {
@@ -644,12 +645,12 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
       for (const p of [[-18, 9, -16], [12, 6, -10], [-3, 4, 4]] as V3[]) out.lights.push({ p: [p[0], p[1], p[2] + 3], I: 26, col: "#ff9a40", d: 60 });
       const line: V3[] = [[11.2, 0, 15.0], [9.9, 0, 14.0], [8.6, 0, 13.0], [7.3, 0, 12.0]];
       line.forEach((p, k) => {
-        const last = k === 3, swing = Math.floor((f - F0) / 10 + k) % 2 === 0;
+        const last = k === 3, swing = [1222, 1236, 1262].some((g) => Math.abs(f - g - k * 2) < 4); // bucket clanks (audio/cues.md)
         actor(out, cam, 11 + k, k % 2 ? SOLDIER2 : SOLDIER, k % 2 ? "soldier2" : "soldier", p, [
           { f: F0, expr: last ? "stern" : "pained", lean: 6, look: -1 },
           { f: 1257, expr: last ? "blank" : "nervous", gaze: last ? 1 : 0, headTilt: last ? -8 : 4 },
           { f: 1274, expr: last ? "pained" : "yell", lean: -3 },
-        ], t, -1, (fo) => ({ ...fo, prop: last ? (f >= 1248 ? "bucketTip" : "bucket") : "bucket", armR: last ? undefined : swing ? "out" : "hang", sweat: sweatAt(f, 1230 + 9 * k) }));
+        ], t, -1, (fo) => ({ ...fo, prop: last ? (f >= 1288 ? "bucketTip" : "bucket") : "bucket", armR: last ? undefined : swing ? "out" : "hang", sweat: sweatAt(f, 1230 + 9 * k) }));
       });
       break;
     }
@@ -701,7 +702,7 @@ export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage 
         const sp = ((f - 1490) / FPS * (0.11 + 0.05 * H(i, 51)) + H(i, 52)) % 1;
         const c = ribbonAt(15, sp), a = i * 2.39996 + f * 0.14 + sp * 10, r = 0.5 + 5.5 * sp * sp + 0.6 * sp;
         const p: V3 = [c[0] + r * Math.cos(a), c[1] + 0.5 * r * Math.sin(a), c[2] + r * Math.sin(a) * 0.7];
-        if (cam.pos.distanceTo(_cp.set(p[0], p[1], p[2])) < 2.6) continue;
+        if (cam.pos.distanceTo(_cp.set(p[0], p[1], p[2])) < 4.2) continue;
         bat(out, cam, 100 + i, p, { pose: "fly", phase: flap(f, i), size: 0.55, roll: 0.4 * Math.cos(a), blink: false }, t);
       }
       const L = S.LIP15, bp: V3 = [L[0], L[1] - 0.24 * 0.36, L[2]];
