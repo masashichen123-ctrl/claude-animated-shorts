@@ -45,7 +45,7 @@ vec3 outgoingLight = diffuseColor.rgb * tintK;
     // INNER warm rim, golden only: the outermost ~2 px (at 1080 wide) of the HEAD skin / TORSO silhouette on the
     // sun-facing edge. No offset copy: we only test whether the next pixels toward the sun are outside the card.
     // Hats, legs, rifles and other thin parts are skipped (inner sample must be skin, or torso at least ~40 units thick).
-    float warm = smoothstep( 0.2, 0.4, 1.0 - uCharTint.b );
+    float warm = max( smoothstep( 0.2, 0.4, 1.0 - uCharTint.b ), uRimK );
     float sl = length( sunV.xy );
     vec2 d2 = sunV.xy / max( sl, 1e-4 );
     vec2 duv = 2.0 * uPx * ( d2.x * dFdx( vMapUv ) + d2.y * dFdy( vMapUv ) );
@@ -55,8 +55,13 @@ vec3 outgoingLight = diffuseColor.rgb * tintK;
     vec4 c2 = texture2D( map, vMapUv - dirU * vec2( 0.067, 0.04 ) );    // ~40 units inward: thick parts only
     float skin = step( 0.5, c1.a ) * step( 0.75, min( c1.r, min( c1.g, c1.b ) ) ) * step( max( c1.r, max( c1.g, c1.b ) ) - min( c1.r, min( c1.g, c1.b ) ), 0.12 ); // near-white head
     float torso = step( 0.27, vMapUv.y ) * step( vMapUv.y, 0.57 ) * step( 0.5, c1.a ) * step( 0.5, c2.a ) * step( 0.04, max( c1.r, max( c1.g, c1.b ) ) );
-    float rim = warm * smoothstep( 0.1, 0.4, sl ) * edge * max( skin * head, torso ) * mix( 0.6, 1.0, sunVis );
-    outgoingLight += vec3( 0.95, 0.52, 0.16 ) * rim;
+    #ifdef CARD_ALLRIM
+    float zone = step( 0.5, c1.a );                                                    // creature cards: the whole silhouette
+    #else
+    float zone = max( skin * head, torso );
+    #endif
+    float rim = warm * smoothstep( 0.1, 0.4, sl ) * edge * zone * mix( 0.6, 1.0, sunVis );
+    outgoingLight += uRimCol * rim;
   }
   #endif
 }
@@ -64,10 +69,13 @@ vec3 outgoingLight = diffuseColor.rgb * tintK;
 `;
 
 const DECL = "#include <common>\nuniform vec3 uCharTint; uniform float uCharShade; uniform float uGrad; uniform float uBodyGrad; uniform vec3 uSideTint;"
-  + " uniform float uGradK; uniform float uGradKB; uniform float uTintK; uniform float uNorm; uniform float uGain; uniform float uPx; uniform vec3 uEnvTint;";
+  + " uniform float uGradK; uniform float uGradKB; uniform float uTintK; uniform float uNorm; uniform float uGain; uniform float uPx; uniform vec3 uEnvTint;"
+  + " uniform vec3 uRimCol; uniform float uRimK;";
 /** card-only constants (not per light): gradient share, tint share, overall gain (calibrated: faces ~.93 V) */
 export const CARD_K = { uGradK: { value: GRAD_K }, uGradKB: { value: GRAD_KB }, uTintK: { value: TINT_K }, uNorm: { value: 0.7 }, uGain: { value: 1.0 }, uPx: { value: 0.5 },
-  uEnvTint: { value: new THREE.Vector3(1, 1, 1) } };
+  uEnvTint: { value: new THREE.Vector3(1, 1, 1) },
+  /** card rim colour (warm by default: golden / dusk) and a switch that forces the rim on (night's cool moon rim) */
+  uRimCol: { value: new THREE.Vector3(0.95, 0.52, 0.16) }, uRimK: { value: 0 } };
 
 /** environment tint (charshade.md 3.3): env = mean of the scene's fog (horizon), hemisphere sky and ground colours (linear);
  *  tint = luma-normalised mix(1, env / luma(env), ENV_K). Called by cast.ts once per frame per scene. */
@@ -86,16 +94,16 @@ export function updateEnvTint(scene: THREE.Scene) {
 } // uPx = render height / 1920 (set per draw in cast.ts)
 
 /** MeshLambertMaterial -> lit card: no emissive, scene tint, bright floor, side gradient toward the sun. */
-export function cardShade(m: THREE.MeshLambertMaterial) {
+export function cardShade(m: THREE.MeshLambertMaterial, allRim = false) {
   m.emissive.set(0x000000); m.emissiveIntensity = 0; m.emissiveMap = null;
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, CHAR, CARD_K);
     sh.fragmentShader = sh.fragmentShader
-      .replace("#include <common>", DECL)
+      .replace("#include <common>", (allRim ? "#define CARD_ALLRIM\n" : "") + DECL)
       .replace("#include <lights_fragment_begin>", "float sunVis = 1.0;\n" + LFB)
       .replace("vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + totalEmissiveRadiance;", CARD);
   };
-  m.customProgramCacheKey = () => "card11";
+  m.customProgramCacheKey = () => "card12" + (allRim ? "r" : "");
   return m;
 }
 

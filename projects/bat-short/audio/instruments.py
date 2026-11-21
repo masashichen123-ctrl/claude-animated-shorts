@@ -461,3 +461,25 @@ def shaker(vel=0.3, r=None, dur=0.09):
     t = tt(dur)
     e = np.sin(np.pi * np.clip(t / dur, 0, 1)) ** 2
     return bp(r.standard_normal(len(t)), 4000, 11000, 2) * e * vel
+
+
+# ================================================================ night colours (added for "The Bat Bomb")
+def celesta(f, vel=0.5, r=None, dur=1.4):
+    """celesta: felt hammer on a steel bar over a wooden resonator - nearly pure fundamental, a faint octave,
+    a short metallic overtone, soft felt thump"""
+    r = r or rng(0)
+    t = tt(dur)
+    k = (880.0 / f) ** 0.3
+    y = modal(dur, [(f, 1.0, 0.75 * k), (f * 2.0, 0.07, 0.3 * k), (f * 4.16, 0.06 * vel, 0.04)], r)
+    y += lp(r.standard_normal(len(t)), 1800, 2) * np.exp(-t / 0.002) * 0.08 * vel
+    y *= 1 - np.exp(-t / 0.0015)
+    return fades(y * vel, 0.0005, 0.06)
+
+
+def pizz(f, vel=0.6, r=None, dur=0.45):
+    """string pizzicato (short, round, a little woody body)"""
+    r = r or rng(0)
+    y = pluck(f, vel, r, dur=dur, bright=0.45, pos=0.13)
+    t = tt(dur)
+    body = np.exp(-t / 0.03) * np.sin(TAU * min(f, 300) * 0.98 * t) * 0.12 * vel
+    return fades(lp(y + body, 5000, 2), 0.0005, 0.04)

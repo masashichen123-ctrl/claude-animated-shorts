@@ -1,18 +1,20 @@
-# Every sound effect + ambience bed of "The Great Emu War" as a cue list locked to the picture (timeline.py),
-# rendered into one stereo SFX stem. Level convention (same as the earlier short): each EVENT has a "naive" level
-# (LU relative to the voice stem, measured as the event's max momentary loudness) and is placed SFX_DB = -6 dB under
-# it, plus per-cue offsets; ambience BEDS are integrated loudness and are not reduced. Loud hits sit in the gaps of
-# the narration (gaps measured on voice.wav, listed in cues.md); anything that has to sit under a word is kept low,
-# short, and where it would compete with consonants, low-passed.
+# Every sound effect + ambience bed of "The Bat Bomb" as a cue list locked to the picture (timeline.py), rendered
+# into one stereo SFX stem. Level convention (same as the emu short): each EVENT has a "naive" level (LU relative
+# to the voice stem's integrated loudness, measured as the event's max momentary loudness) and is placed
+# SFX_DB = -8 dB under it, plus per-cue offsets; ambience BEDS are integrated loudness and are not reduced.
+# Almost every picture event of this short lands under a word, so the hits are built low and round (kick thumps,
+# the WHOOMP, the stamp and the folder live mostly below 1.5 kHz) and the bright ones (plink, ticks, squeaks,
+# ting) are short; anything sitting on a consonant is low-passed.
 import numpy as np
 from dsp import (SR, ns, tt, rng, dbg, lp, hp, bp, peq, pan, st, place, fades, widen, make_ir, convolve_st,
                  momentary_max, integrated, smooth_noise, modal)
 import sfx_gen as G
 import sfx_emu as E
+import sfx_bat as B
 import timeline as T
 
 N = ns(T.DUR)
-SFX_DB = -8.0                      # re-score: SFX tamed (was -6); the key hits get +2 back via KEY
+SFX_DB = -8.0                      # chill style: SFX tamed; key hits get their level back via `extra`
 fr = T.fr
 
 
@@ -37,254 +39,226 @@ def _bed(dur, fin, fout, parts):
     return g
 
 
+def night(wind=1.0, crick=0.012):
+    return lambda d, r: B.night_desert(d, r, wind, crick)
+
+
 def breeze(level=1.0, bright=900):
     return lambda d, r: G.breeze(d, r, level, 0.15, bright)
 
 
-def wheat(level=0.35):
-    return lambda d, r: E.wheat_rustle(d, r, level)
+def base():
+    return lambda d, r: B.base_dusk(d, r)
 
 
-def flies(level=0.06, count=2):
-    return lambda d, r: E.flies(d, r, count, level)
+def room(warm=500, level=1.0):
+    return lambda d, r: B.room(d, r, warm, level)
 
 
-def birds(level=0.05, density=0.22):
-    return lambda d, r: lp(E.magpies(d, r, density), 6000, 1) * level
+def clock(level=0.15, rate=1.0, p=0.5):
+    return lambda d, r: B.wall_clock(d, r, rate, level, p)
 
 
-def windmill(level=0.25):
-    def f(d, r):
-        y = np.zeros(ns(d))
-        tm = r.uniform(0.3, 0.9)
-        while tm < d - 0.6:
-            c = G.creak(0.5, r, 140, 210, G.SMALLMETAL, [(0, 0), (0.3, 1), (0.7, 0.8), (1, 0)], 0.1, 0.02, scale=0.6)
-            G._place_mono(y, c * level, tm)
-            tm += 2.4 + r.uniform(-0.1, 0.1)
-        return pan(y, 0.45)
-    return f
+def bubbles(level=0.3):
+    return lambda d, r: pan(B.bubbling(d, r), -0.3) * level
 
 
-def crickets(level=0.01):
-    return lambda d, r: widen(G.crickets(d, r, 4) * level, r, 9, 1.0)
+def fire(size=1.0, level=1.0, density=26.0):
+    return lambda d, r: B.fire_bed(d, r, size, density) * level
 
 
-def lamp(level=0.012):
-    return lambda d, r: pan(E.lamp_hiss(d, r) * level, -0.25)
-
-
-def water(level=0.35):
-    return lambda d, r: G.water_bed(d, r, 0.35, 0.5) * level
-
-
-def yard_emus(level=0.25):
-    return lambda d, r: E.herd(d, r, 3.0, None, 0.7, boom_rate=0.0, grunt_rate=0.6, run=False) * level
+def flag(level=0.1):
+    return lambda d, r: pan(G.flag_flutter(d, r), 0.45) * level
 
 
 def cues():
     C = []
-    R = rng(1932)
+    R = rng(1943)
     rr = lambda: rng(int(R.integers(1 << 30)))
     add = C.append
+    s = lambda i: T.shot_t(i)[0]
 
     # ------------------------------------------------ ambience beds (integrated loudness vs the voice stem)
     beds = [
-        (0.0, 5.32, "amb_morning", "stubble field, morning: breeze, wheat rustle, flies round the sweating soldier, magpies far off (shots 1-2)",
-         [breeze(1.0, 800), wheat(0.3), flies(0.09, 2), birds(0.05)], -28),
-        (5.15, 13.0, "amb_farm", "farm, day: wheat swaying in the wind, windmill squeak every 2.4 s, magpies carolling, a fly (shots 3-4)",
-         [breeze(1.0, 1000), wheat(0.5), windmill(0.3), birds(0.08, 0.3), flies(0.03, 1)], -27),
-        (12.93, 15.06, "amb_verandah", "verandah: breeze, flies, emus pecking and grunting in the yard (shot 5)",
-         [breeze(0.8, 900), flies(0.06, 2), yard_emus(0.3)], -30),
-        (15.0, 20.1, "amb_road", "red dirt road: hot breeze, a far magpie (shot 6)", [breeze(1.0, 900), birds(0.03, 0.15)], -31),
-        (20.03, 23.25, "amb_paddock", "open paddock: wind (shot 7)", [breeze(1.1, 1100), wheat(0.15)], -31),
-        (23.1, 27.55, "amb_dam", "farm dam, golden afternoon: water lapping, emus drinking and grunting, magpies (shot 8)",
-         [breeze(0.7, 800), water(0.5), yard_emus(0.25), birds(0.05, 0.25)], -28),
-        (27.45, 31.3, "amb_paddock2", "paddock: wind (shot 9)", [breeze(1.1, 1100)], -32),
-        (31.15, 37.9, "amb_dusk", "army camp at dusk: crickets, the oil lamp's hiss, a soft breeze (shot 10)",
-         [breeze(0.5, 600), crickets(0.012), lamp(0.02)], -30),
-        (37.8, 40.08, "amb_dump", "supply dump, day: breeze, magpie (shot 11)", [breeze(0.9, 900), birds(0.05, 0.4)], -32),
-        (40.0, 42.4, "amb_paddock3", "paddock: breeze, flies (shot 12)", [breeze(0.9, 900), flies(0.04, 1)], -32),
-        (42.3, 46.1, "amb_parade", "flat parade ground: light breeze (shot 13)", [breeze(0.8, 900)], -35),
-        (46.03, 50.2, "amb_paddock4", "paddock: wind (shot 14)", [breeze(1.0, 1100)], -33),
-        (50.08, 55.25, "amb_golden", "golden parade ground: soft breeze, far magpie (shot 15)", [breeze(0.7, 700), birds(0.04, 0.2)], -32),
-        (55.17, 56.5, "amb_sunset", "sunset road: breeze (shot 16)", [breeze(0.8, 700)], -32),
-        (56.43, 59.0, "amb_wheat", "golden wheat: rustle, breeze, a magpie, a fly (shot 17)",
-         [breeze(0.8, 800), wheat(0.45), birds(0.06, 0.4), flies(0.02, 1)], -29),
+        (0.0, 3.85, "amb_night_sky", "moonlit desert sky: soft high wind, faint crickets far below (shot 1)", [night(1.0, 0.008)], -39),
+        (3.72, 5.80, "amb_base_dusk", "army air base at dusk: breeze, flag lines on the pole, far generator hum (shot 2)", [base()], -39),
+        (4.25, 5.80, "fire_rooftops", "little rooftop fires crackling (after the pops @128-139)", [fire(0.6, 1.0, 20)], -38),
+        (5.62, 11.0, "amb_cave_dusk", "desert cave mouth at sunset: warm breeze over the rocks, first crickets (shot 3)", [night(0.9, 0.006)], -39),
+        (10.9, 18.3, "amb_workshop", "Adams' workshop: warm room tone, a slow wall clock (shot 4)", [room(500, 1.0), clock(0.05, 1.0, 0.5)], -42),
+        (18.18, 21.82, "amb_attic", "cutaway model house: dark attic hush (shot 5)", [room(350, 1.0)], -44),
+        (21.72, 24.48, "amb_office", "presidential office: quiet room, a stately clock (shot 6)", [room(450, 1.0), clock(0.06, 1.0, -0.5)], -42),
+        (24.38, 28.48, "amb_lab", "chemistry lab: flasks bubbling softly, a gas-burner hiss (shot 7)", [room(600, 0.6), bubbles(0.35)], -39),
+        (28.38, 37.05, "amb_desert_day", "test base, bright desert day: dry wind, a flag flapping on the pole (shots 8-9)", [breeze(1.0, 1000), flag(0.08)], -40),
+        (36.95, 39.6, "amb_tank_shade", "under the fuel tank: hollow shade, wind outside (shots 10-11)", [breeze(0.7, 700), room(250, 0.5)], -41),
+        (39.55, 43.45, "fire_base", "the base burning after the WHOOMP: fire roar + crackle (shots 11-12)", [fire(1.0, 1.0, 30), breeze(0.4, 700)], -37),
+        (43.35, 47.32, "fire_smoke", "smoky glide past the burnt hangar: dying fire, crackle, wind (shot 13)", [fire(0.6, 1.0, 16), breeze(0.7, 800)], -39),
+        (47.22, 50.55, "amb_war_office", "War Department office at dusk: dull room tone, a wall clock (shot 14)", [room(400, 1.0), clock(0.05, 1.0, 0.4)], -43),
+        (50.45, T.DUR, "amb_night_cave", "moonlit cave mouth: night crickets, soft wind (shot 15)", [night(0.8, 0.02)], -37),
     ]
     for i, (a, b, name, desc, parts, lvl) in enumerate(beds):
-        lvl -= 6                                   # re-score: ambience much subtler
-        g = _bed(b - a, 0.08 if a > 0 else 0.3, 0.1 if b < T.DUR - 0.01 else 0.6, parts)
-        add(Cue(a, name, desc, (lambda g=g, s=100 + i: g(s)), lvl, "bed", send=0.0))
+        g = _bed(b - a, 0.08 if a > 0 else 0.4, 0.12 if b < T.DUR - 0.01 else 0.8, parts)
+        add(Cue(a, name, desc, (lambda g=g, sd=100 + i: g(sd)), lvl, "bed", send=0.0))
 
-    # ------------------------------------------------ shot 1-2: the hook
-    for k, f in enumerate(T.EMU_STEPS_1):
-        add(Cue(fr(f), "emu_step", f"the big emu steps out of the wheat ({k + 1}/3)",
-                (lambda r=rr(): (E.emu_step(r, 1.3), 0.0)), -11, p=0.15, lpf=5000, frame=f))
-    add(Cue(fr(20), "wheat_part", "wheat stalks pushed aside as the emu steps out", lambda: (E.feathers(rng(20), 0.9) * 0.8, 0.0), -16, p=0.15, frame=20))
-    add(Cue(3.30, "emu_boom", "emu leans in on 'emus' @98: low drumming boom from its chest (stare-down)",
-            lambda: (E.emu_boom(rng(98), 4, 62, 3.6), 0.0), -10, p=0.1, lpf=900, frame=99))
-    add(Cue(fr(T.FLASH), "flash_swell", "reverse swell into the white FLASH @119 (peaks on the frame)",
-            lambda: (G.whoosh(0.58, rng(119), 0.55, 500, 4000, 0.9, 0.04, 0.4), 0.55), -13, frame=T.FLASH))
-    add(Cue(fr(T.KICK), "kick_impact", "KICK @126: the Lewis gun goes over - dull thump + metal clatter in the stubble",
-            lambda: (E.crate_thud(rng(126), 1.0) + np.pad(lp(G.rattle(0.35, rng(127), 60, np.exp(-np.linspace(0, 1, ns(0.35)) * 3), heavy=True), 3500, 1), (0, ns(0.25))), 0.0),
-            -11, p=-0.2, frame=T.KICK))
-    add(Cue(4.80, "emu_boom", "the emu on the crate puffs its chest: short proud boom after 'lost.'",
-            lambda: (E.emu_boom(rng(144), 3, 70, 4.0), 0.0), -10, p=0.2, lpf=900, frame=144))
+    # ------------------------------------------------ kicks (picture camera kicks): soft low thumps, nothing to mask a word
+    for f in T.KICKS:
+        add(Cue(fr(f), "kick", f"KICK @{f}: soft round low thump under the picture kick", (lambda r=rr(): (B.kick_thump(r), 0.0)),
+                0 if f != T.WHOOMP else -3, send=0.02, frame=f))
 
-    # ------------------------------------------------ XF whooshes
+    # ------------------------------------------------ XF air swells
     for f in T.XF:
-        add(Cue(fr(f), "xf_whoosh", f"soft air swell through the dissolve @{f}",
-                (lambda r=rr(): (G.whoosh(0.7, r, 0.3, 300, 1500, 0.9, 0.2, 0.08), 0.3)), -16, send=0.15, frame=f))
+        add(Cue(fr(f), "xf_air", f"soft air swell through the dissolve @{f}",
+                (lambda r=rr(): (G.whoosh(0.7, r, 0.3, 300, 1500, 0.9, 0.2, 0.08), 0.3)), -18, send=0.15, frame=f))
 
-    # ------------------------------------------------ shot 4: twenty thousand emus
-    a4, b4 = T.shot_t(4)
-    d4 = b4 - a4
-    add(Cue(a4, "emu_herd", "100+ emus pour over the hill into the wheat: running feet thunder (swells in), booms and grunts",
-            lambda: (E.herd(d4 + 0.05, rng(305), 55, [(0, 0.15), (1.0, 0.8), (d4 - 0.4, 1.0), (d4, 0.6)], 0.9, 0.7, 1.6), 0.0),
-            -13, lpf=4500, send=0.15, frame=305))
-    def pecks(r):
-        y = np.zeros((2, ns(0.8)))
-        for k in range(16):
-            tm = r.uniform(0, 0.62)
-            place(y, pan(E.peck(r) * r.uniform(0.3, 1.0) * (0.3 if tm < 0.38 else 1.0), r.uniform(-0.6, 0.6)), tm)
-        place(y, E.wheat_rustle(0.7, r, 0.25) * np.interp(tt(0.7), [0, 0.35, 0.45, 0.7], [0.3, 0.3, 1, 1])[None, :], 0.0)
-        return y
-    add(Cue(fr(368), "pecking", "close emus peck the wheat away ('ate' @370): beak pecks + stalks crunching",
-            lambda: (pecks(rng(370)), 0.0), -12, frame=368))
+    # ------------------------------------------------ shot 1: the hook
+    add(Cue(1.15, "bomb_fall", "the olive-drab bomb casing falls past the camera (air whoosh, peaks @60)",
+            lambda: (G.whoosh(1.3, rng(35), 0.85, 250, 1300, 0.9, 0.2, 0.05), 0.0), -14, p=-0.2, lpf=3000, frame=35))
+    add(Cue(fr(T.CASING_POP), "casing_pop", "CASING POPS OPEN @80: latch 'tchk', hollow metal bonk, four panels springing out",
+            lambda: (B.casing_pop(rng(80)), 0.0), -2, p=-0.1, send=0.15, frame=T.CASING_POP))
+    add(Cue(fr(T.CASING_POP) + 0.02, "swarm_burst", "hundreds of bats burst out in a spiral: airy whoosh opening into wings + cute squeaks",
+            lambda: (B.swarm_whoosh(rng(81), 1.9, 0.3), 0.0), -10, lpf=4500, send=0.15, frame=T.CASING_POP))
+    add(Cue(3.44, "bat_grin_eek", "the bat at the lens (grin @95) gives a tiny 'eek-eek' as 'bats.' ends",
+            lambda: (B.squeaks(rng(95), 2, 0.08), 0.0), -13, p=0.1, frame=103))
+    add(Cue(fr(T.FLASH), "flash_swell", "reverse air swell into the white FLASH @112 (peaks on the frame)",
+            lambda: (G.whoosh(0.5, rng(112), 0.47, 500, 4000, 0.9, 0.04, 0.4), 0.47), -13, frame=T.FLASH))
 
-    # ------------------------------------------------ shot 5: wall telephone
-    for k, (fa, fb) in enumerate(T.CRANK):
-        add(Cue(fr(fa), "phone_crank", f"wall telephone: magneto crank + generator whine + bells ringing (burst {k + 1}/2)",
-                (lambda r=rr(), d=fr(fb - fa): (E.phone_crank(r, d), 0.0)), -11 if k else -12, p=-0.3, send=0.12, frame=fa))
+    # ------------------------------------------------ shot 2: the bats bomb America
+    add(Cue(fr(T.DIVE) - 0.1, "swarm_dive", "the swarm dives on the air base @121 (wings + squeaks swooping in; kept low under 'Then the bats')",
+            lambda: (B.swarm_whoosh(rng(121), 1.2, 0.2), 0.0), -16, lpf=2500, send=0.12, frame=T.DIVE))
+    for k, f in enumerate([128, 131, 135, 139]):
+        add(Cue(fr(f), "fire_pop", f"little rooftop fire pops on ({k + 1}/4, @128-139)", (lambda r=rr(): (B.fire_pop(r, 1.0), 0.0)),
+                -13, p=[-0.5, 0.4, -0.15, 0.25][k], lpf=2500, send=0.15, frame=f))
+    add(Cue(fr(140), "cap_flies", "the soldier's cap flies off as his jaw drops (little fwip)",
+            lambda: (G.whoosh(0.25, rng(140), 0.07, 900, 3500, 0.7, 0.06, 0.2), 0.0), -17, p=0.3, lpf=4000, frame=140))
 
-    # ------------------------------------------------ shot 6: the army arrives
-    ts = fr(T.TRUCK_STOP)
-    add(Cue(14.55, "truck_arrive", "army truck rushing in (1930s 4-cylinder, off the throttle) into the stop @456",
-            lambda: (fades(E.engine(ts - 14.55 + 0.05, rng(450), np.linspace(1900, 900, 8), 0.8), 0.1, 0.03), 0.0), -12, p=-0.3, frame=436))
-    add(Cue(ts - 0.56, "truck_skid", "SKID to a stop in red dust, ending exactly on @456 (dirt crunch + scrub, body rock)",
-            lambda: (E.skid(rng(456), 0.6), 0.0), -6, extra=2.0, p=-0.2, frame=T.TRUCK_STOP))
-    add(Cue(ts, "truck_idle", "engine idling (low putter, under the line) until the cut @527",
-            lambda: (fades(E.engine(fr(527) - ts, rng(457), 620, 0.4), 0.05, 0.15), 0.0), -14, p=-0.3, lpf=2500, frame=T.TRUCK_STOP))
-    add(Cue(fr(T.SALUTE), "salute", "two soldiers salute @502: heel clicks + hand swish", lambda: (E.salute(rng(502)), 0.0), -12, p=0.2, frame=T.SALUTE))
-    add(Cue(fr(T.GUNS), "gun_cock", "Lewis gun on its tripod cocked @543", lambda: (E.cock(rng(543)), 0.0), -13, p=0.1, frame=T.GUNS))
-    add(Cue(fr(T.CRATE), "crate_thud", "one more ammo crate on the stack @582: box thud + rounds rattling inside",
-            lambda: (E.crate_thud(rng(582), 1.0), 0.0), -10, p=0.15, lpf=4000, frame=T.CRATE))
+    # ------------------------------------------------ shot 3: the cave
+    tc = fr(T.COLUMN)
+    add(Cue(tc - 0.25, "bat_column", "@290 a vast column of bats spirals out of the cave: rushing wing-roar + far squeaks, swelling in",
+            lambda: (B.swarm(1.6 + 0.4, rng(290), [(0, 0), (0.45, 1.0), (1.4, 0.8), (2.0, 0)], 1.5, 0.9, 10.0), 0.0), -12, lpf=3500, send=0.2, frame=T.COLUMN))
 
-    # ------------------------------------------------ shot 7: the first day (bursts in the narration gaps, a soft one under it)
-    bursts = [(20.075, 2, 0, None), (20.92, 3, 0, None), (21.58, 5, -9, 2500), (22.93, 3, 0, None)]
-    for k, (tb, nr, ex, lpf) in enumerate(bursts):
-        add(Cue(tb, "lewis_burst", f"Lewis gun burst, {nr} rounds at 9.4/s (cracks + drum rattle + casings){' - soft, under the line' if ex else ''}",
-                (lambda r=rr(), nr=nr: (E.lewis_burst(r, nr), 0.005)), -4, p=-0.1, extra=ex + 2.0, lpf=lpf, send=0.2, frame=int(round(tb * 30))))
-        for j in range(nr):
-            tp = tb + j / 9.4 + 0.28
-            add(Cue(tp, "dust_puff_far", "dust puff falling short, far out in the paddock",
-                    (lambda r=rr(): (lp(E.dust_puff(r, 1.0), 2500, 1), 0.0)), -16 + ex, p=float(R.uniform(-0.5, 0.5)), send=0.3, frame=int(round(tp * 30))))
-    add(Cue(20.4, "emus_trot_far", "the emus trot calmly away over the rise (far, fading)",
-            lambda: (E.herd(2.6, rng(674), 18, [(0, 1.0), (2.6, 0.2)], 0.4, 0.0, 0.3, run=False), 0.0), -16, lpf=3000, send=0.3, frame=612))
-
-    # ------------------------------------------------ shot 8: the dam and the jam
-    tj = fr(T.JAM)
-    add(Cue(tj, "jam_clack", "the gun JAMS @801: bolt slams and stops dead (clack) + thunk + smoke puff",
-            lambda: (E.jam_clack(rng(801)), 0.0), -4, extra=2.0, p=0.0, send=0.08, frame=T.JAM))
-    add(Cue(tj + 0.02, "spring_boing", "the drum spring pops out @801: 'sproing' + wobbling twang",
-            lambda: (E.spring_boing(rng(802)), 0.0), -9, p=0.15, send=0.1, frame=T.JAM))
-
-    # ------------------------------------------------ shot 9: hammer + the truck chase
-    for k, f in enumerate(T.HAMMER):
-        add(Cue(fr(f), "hammer_metal", f"Meredith hammers the gun mount onto the truck tray ({k + 1}/4)",
-                (lambda r=rr(), k=k: (E.hammer_metal(r, 1.0 if k < 3 else 1.15), 0.0)), -9, p=0.25, send=0.12, frame=f))
-    tc = fr(T.TRUCK_CUT)
-    add(Cue(tc + 0.02, "gear_crunch", "crash gearbox: teeth grind then the gear clunks in @875", lambda: (E.gear_crunch(rng(875), 0.3), 0.0),
-            -9, p=-0.1, frame=T.TRUCK_CUT))
-    dch = fr(937) - tc
-    add(Cue(tc + 0.15, "truck_engine", "truck engine flat out across the paddock (revs climbing)",
-            lambda: (fades(E.engine(dch - 0.1, rng(876), np.linspace(1100, 2300, 10), 1.0), 0.15, 0.1), 0.0), -10, p=-0.1, frame=880))
-    rb = rng(890)
-    tb = tc + 0.25
-    k = 0
-    while tb < fr(937) - 0.15:
-        add(Cue(tb, "truck_bounce", "truck bounces on the rough paddock (suspension thud, leaf-spring creak, tray + gun rattle)",
-                (lambda r=rr(): (E.truck_bounce(r, 1.0), 0.0)), -13 + float(rb.uniform(-2, 1)), p=-0.1, lpf=5000, frame=int(round(tb * 30))))
-        tb += float(rb.uniform(0.26, 0.4))
-        k += 1
-    add(Cue(tc + 0.1, "emu_herd_run", "the emus sprint ahead and pull away by 'outran' @902",
-            lambda: (E.herd(dch, rng(902), 40, [(0, 1.0), (0.9, 1.0), (dch, 0.2)], 0.6, 0.0, 0.8), 0.0), -12, p=0.3, lpf=5000, frame=878))
-    add(Cue(30.93, "lewis_wild", "the bouncing gunner lets off a wild burst (into the sky)",
-            lambda: (E.lewis_burst(rng(928), 2, casings=False), 0.005), -9, p=-0.1, send=0.2, frame=928))
-
-    # ------------------------------------------------ shot 10: the report and the casings
-    add(Cue(31.55, "pen_scratch", "Meredith writing the report: nib scratching", lambda: (E.pen_scratch(0.48, rng(946), 7.0), 0.0), -16, p=0.2, frame=946))
-    add(Cue(fr(T.PEN) - 0.05, "pen_flourish", "the proud pen FLOURISH @963 ending in a full stop",
-            lambda: (E.pen_flourish(rng(963), 0.45), 0.05), -11, p=0.2, frame=T.PEN))
-    add(Cue(32.75, "pen_tally", "tally marks: five quick strokes", lambda: (E.pen_scratch(0.9, rng(983), 5.5), 0.0), -19, p=0.2, frame=982))
-    ca, cb = fr(T.CASINGS[0]), fr(T.CASINGS[1])
-    add(Cue(ca, "casings", "pull-back reveals the MOUNTAIN of brass casings @1040-1087: casings trickling and glinting, sliding hiss",
-            lambda: (E.casings_cascade(cb - ca + 1.4, rng(1040), [(0, 0.15), (0.35, 0.6), (1.2, 0.5), (cb - ca, 1.0), (cb - ca + 0.5, 0.5), (cb - ca + 1.4, 0.0)], 70), 0.0),
-            -11, p=0.3, send=0.2, frame=T.CASINGS[0]))
-    add(Cue(37.5, "casings_slide", "a little avalanche of casings after 'bullets.'", lambda: (E.casings_cascade(0.5, rng(1125), [(0, 1), (0.5, 0)], 120), 0.0),
-            -12, p=0.4, send=0.2, frame=1125))
-
-    # ------------------------------------------------ shot 11: pats
-    for k, f in enumerate(T.PATS):
-        add(Cue(fr(f), "crate_pat", f"soldier proudly pats the crate wall ({k + 1}/2)", (lambda r=rr(): (E.pat(r), 0.0)), -12, p=0.25, frame=f))
-
-    # ------------------------------------------------ shot 12: ten puffs around one calm emu
-    for k, f in enumerate(T.PUFFS):
-        under = k < 4                                    # 'Unluckily,' (40.20-40.64): keep these low and dull
-        add(Cue(fr(f), "dust_puff", f"bullet dust puff {k + 1}/10 popping round the emu's feet (every 4 f from @1205)",
-                (lambda r=rr(): (E.dust_puff(r, 1.0), 0.0)), -14 if under else -10, p=-0.5 + 0.1 * k, lpf=1600 if under else 3500, frame=f))
-    add(Cue(fr(1203), "lewis_far", "the gun chattering away off screen (distant, low)", lambda: (lp(E.lewis_burst(rng(1203), 10, casings=False), 1500, 2), 0.005),
-            -16, p=-0.6, send=0.3, frame=1203))
-    for k in range(4):
-        tm = 40.15 + k * 0.45
-        add(Cue(tm, "emu_step", "the emu strolls on, unbothered", (lambda r=rr(): (E.emu_step(r, 0.9), 0.0)), -15, p=-0.3 + 0.2 * k, lpf=3000,
+    # ------------------------------------------------ shot 4: the idea
+    add(Cue(fr(T.BULB), "bulb_plink", "@331 the idea light bulb pops on: glassy plink + filament buzz",
+            lambda: (B.bulb_plink(rng(331)), 0.0), -6, p=0.1, send=0.15, frame=T.BULB))
+    add(Cue(fr(T.STRAP) - 0.2, "strap_buckle", "@367 the harness strap pulled snug and buckled on the bat (creak + two clinks)",
+            lambda: (B.strap_buckle(rng(367)), 0.2), -11, p=-0.1, frame=T.STRAP))
+    add(Cue(fr(422), "bat_hmph", "the bat looks at its bomb, unimpressed (@413): one flat little squeak after 'bat'",
+            lambda: (B.squeak(rng(413), 1800, 0.09, False), 0.0), -16, p=-0.1, frame=422))
+    for k, (tm, pk) in enumerate([(14.55, 0.25), (15.75, 0.3)]):
+        add(Cue(tm, "toy_swoosh", f"Adams 'flies' the toy bomber on its stick over the diorama ({k + 1}/2)",
+                (lambda r=rr(), pk=pk: (G.whoosh(0.6, r, pk, 300, 1500, 0.9, 0.15, 0.05), 0.0)), -17, p=[-0.4, 0.4][k], lpf=3000,
                 frame=int(round(tm * 30))))
-    add(Cue(fr(1259), "emu_peck", "the emu pecks once (after 'ten.')", lambda: (E.peck(rng(1259)) + np.pad(E.emu_grunt(rng(1260), 0.12) * 0.5, (0, 0))[: ns(0.12)], 0.0), -9, p=0.3, frame=1259))
 
-    # ------------------------------------------------ shot 13: toy soldiers marching in step (on the music's beat)
-    for k, f in enumerate(T.MARCH13):
-        add(Cue(fr(f), "boots_step", f"enemy line marching in step: boots on hard ground, all together ({k + 1}/8)",
-                (lambda r=rr(), k=k: E.parade_step(r, 14, 0.005, 0.8, toy=0.25)), -9, p=0.0, extra=-2.0 if k % 2 else 0.0, lpf=7000, send=0.12, frame=f))
-
-    # ------------------------------------------------ shot 14: the scatter
-    t14 = fr(T.SCATTER)
-    add(Cue(t14, "scatter_whoosh", "SCATTER @1382: big outward whoosh as 60+ emus burst from the centre",
-            lambda: (widen(G.whoosh(0.8, rng(1382), 0.12, 300, 3000, 0.9, 0.3, 0.3), rng(1383), 14, 1.0), 0.12), -9, send=0.15, frame=T.SCATTER))
-    d14 = fr(1504) - t14
-    add(Cue(t14, "emu_stampede", "running thunder of the herd radiating in every direction (wide stereo)",
-            lambda: (E.herd(d14, rng(1384), 80, [(0, 1.0), (0.6, 0.85), (2.2, 0.55), (d14 - 0.3, 0.4), (d14, 0.0)], 1.0, 0.3, 1.2), 0.0),
-            -12, lpf=6000, send=0.12, frame=T.SCATTER))
-    for k, tm in enumerate([fr(T.SPIN_CUT), fr(T.SPIN_CUT) + 0.42, fr(T.SPIN_CUT) + 0.84, fr(T.SPIN_CUT) + 1.26]):
-        add(Cue(tm, "spin_whoosh", f"the gunner spins on the spot (whoosh {k + 1}/4, panning round)",
-                (lambda r=rr(), k=k: (pan(G.whoosh(0.42, r, 0.2, 500, 2500, 0.8, 0.12, 0.15), [-0.7, 0.7, -0.7, 0.7][k]), 0.2)),
-                -10 if k == 0 else -15, send=0.1, frame=int(round(tm * 30))))
-
-    # ------------------------------------------------ shot 15: the emu army booms
-    for tm, pls, lvl in [(fr(1506), 4, -14), (52.1, 3, -16), (53.12, 3, -15)]:
-        add(Cue(tm, "emu_boom", "helmeted emus in formation boom, low", (lambda r=rr(), pls=pls: (E.emu_boom(r, pls), 0.0)), lvl, p=float(R.uniform(-0.5, 0.5)),
-                lpf=800, send=0.2, frame=int(round(tm * 30))))
-    def chorus(r):
-        y = np.zeros((2, ns(1.4)))
+    def sprinkle(r):
+        y = np.zeros(ns(0.45))
         for k in range(9):
-            place(y, pan(E.emu_boom(r, int(r.integers(3, 6)), r.uniform(55, 85)) * r.uniform(0.4, 1.0), r.uniform(-0.8, 0.8)), r.uniform(0, 0.25))
+            G._place_mono(y, E.pat(r)[: ns(0.08)] * r.uniform(0.3, 1.0) * 0.6, r.uniform(0, 0.35))
         return y
-    add(Cue(54.70, "emu_boom_chorus", "the whole emu army booms back after 'world.' (a chorus of drumming)", lambda: (chorus(rng(1641)), 0.0),
-            -12, lpf=1200, send=0.25, frame=1641))
+    add(Cue(15.52, "toy_bats_sprinkle", "toy bats sprinkle down on the paper houses (tiny wooden pitter-patter after 'Japan,')",
+            lambda: (pan(sprinkle(rng(465)), 0.2), 0.0), -15, frame=466))
 
-    # ------------------------------------------------ shot 16: the army goes home
-    t16 = fr(1656)
-    add(Cue(t16 + 0.02, "gear_crunch", "gear crunch as the truck pulls away", lambda: (E.gear_crunch(rng(1656), 0.2), 0.0), -12, p=0.1, frame=1657))
-    add(Cue(t16 + 0.1, "truck_away", "truck driving away down the road into the sunset (engine receding, getting duller)",
-            lambda: (E.engine(1.7, rng(1660), np.linspace(1500, 1300, 6), 0.7) * np.interp(tt(1.7), [0, 0.3, 1.7], [1.0, 0.8, 0.12]), 0.0),
-            -10, p=0.1, lpf=1800, frame=1659))
-    add(Cue(56.33, "gun_sag", "the gun on the back sags: slow metal creak (in the gap before 'The emus...')",
-            lambda: (G.creak(0.32, rng(1689), 60, 35, G.CHAIN[:5], [(0, 0), (0.2, 1), (0.8, 0.6), (1, 0)], 0.12, 0.02), 0.0), -14, p=0.1, lpf=4000, frame=1690))
+    # ------------------------------------------------ shot 5: the attic and the timer
+    add(Cue(fr(T.ATTIC), "attic_flutter", "@553 a bat flutters into the dark attic", lambda: (B.flutter(0.75, rng(553), 1, 0.4, 12.0), 0.0),
+            -13, lpf=4000, frame=T.ATTIC))
+    add(Cue(fr(T.HANG), "hang_settle", "@565 it hangs upside down, cosy: wings folding", lambda: (B.flaps(0.25, rng(565), 14, 1.2) * 0.6, 0.0),
+            -18, p=0.1, frame=T.HANG))
+    add(Cue(19.80, "bat_content", "a contented little squeak in the gap after 'attics.'", lambda: (B.squeak(rng(595), 2200, 0.09, True), 0.0),
+            -19, p=0.1, frame=594))
+    add(Cue(fr(T.TICK[0]), "timer_tick", "push-in on the belly timer ticking @607-628", lambda: (B.ticking(fr(T.TICK[1] - T.TICK[0]), rng(607), 6.0, 1), 0.0),
+            -13, p=0.05, frame=T.TICK[0]))
+    add(Cue(fr(T.POOF), "poof", "@628 'off': cartoon POOF spark puff (soft pff + pop + sparkle fizz)", lambda: (B.poof(rng(628)), 0.0),
+            -3, p=0.0, send=0.15, frame=T.POOF))
+    add(Cue(21.36, "bat_eek", "the bat's eyes pop: surprised 'eek!' in the gap after 'off.'", lambda: (B.squeak(rng(641), 3000, 0.08, True), 0.0),
+            -13, p=0.05, frame=641))
 
-    # ------------------------------------------------ shot 17: head turn + blink
-    add(Cue(fr(T.TURN[0]), "head_turn", "the foreground emu slowly turns its head to camera: feather rustle",
-            lambda: (E.feathers(rng(1736), fr(T.TURN[1] - T.TURN[0]) + 0.1), 0.0), -14, p=0.05, frame=T.TURN[0]))
-    add(Cue(fr(T.BLINK), "blink", "...and BLINKS @1756: tiny soft double plip", lambda: (E.blink(rng(1756)), 0.0), -12, p=0.05, send=0.15, frame=T.BLINK))
-    add(Cue(58.2, "emu_grunt", "a contented little grunt", lambda: (E.emu_grunt(rng(1746), 0.2), 0.0), -16, p=0.05, lpf=2000, frame=1746))
+    # ------------------------------------------------ shot 6: the President
+    add(Cue(22.3, "paper_rustle", "the President picks up the bat drawing (paper rustle, gap after 'Incredibly,')",
+            lambda: (E.feathers(rng(669), 0.4) * 0.8, 0.0), -17, p=0.2, frame=669))
+    add(Cue(fr(T.STAMP), "stamp", "@711 the big approval stamp slams down (desk thunk, paper slap, ink squish)", lambda: (B.stamp(rng(711)), 0.0),
+            +1, p=0.0, send=0.15, frame=T.STAMP))
+
+    # ------------------------------------------------ shot 7: the lab
+    add(Cue(fr(T.TWEEZERS), "tweezers", "@800 the chemist holds up the tiny capsule in tweezers (delicate clinks)",
+            lambda: (B.tweezers_clink(rng(800)), 0.0), -12, p=-0.2, send=0.15, frame=T.TWEEZERS))
+    add(Cue(27.62, "capsule_click", "the bat clicks a capsule onto its belly", lambda: (lp(G.clink(rng(829), 2600, 0.1, 0.5), 6000, 1), 0.0),
+            -17, p=0.2, frame=829))
+    add(Cue(fr(T.FLEX), "flex", "@845 the bat flexes a tiny bicep (cute rising rubbery squeak)", lambda: (B.flex(rng(845)), 0.0),
+            -10, p=0.2, send=0.1, frame=T.FLEX))
+    add(Cue(28.62, "wing_thumbsup", "thumbs-up wing (a single soft flap)", lambda: (B.flaps(0.12, rng(859), 10, 1.1), 0.0), -17, p=0.25, frame=859))
+
+    # ------------------------------------------------ shot 8: the escape
+    add(Cue(fr(T.CRATE_CARRY), "crate_carry", "@880 soldiers carry the bat crate (wood creak + rope, a few steps on dirt)",
+            lambda: (np.concatenate([G.creak(0.5, rng(880), 90, 140, G.WOOD, None, 0.15, 0.05, 1.0), np.zeros(ns(0.2))]) * 0.5, 0.0),
+            -17, p=-0.2, lpf=4000, frame=T.CRATE_CARRY))
+    add(Cue(fr(T.CRATE_POP), "crate_lid_pop", "@940 the crate lid pops (nail squeak, thock, lid clattering down)", lambda: (B.crate_lid_pop(rng(940)), 0.11),
+            -2, p=0.1, send=0.12, frame=T.CRATE_POP))
+    add(Cue(fr(T.ESCAPE) - 0.1, "bats_escape", "@947 a handful of armed bats flutter out (wings + cute squeaks)",
+            lambda: (B.flutter(1.6, rng(947), 6, 0.9, 12.0, 3.5), 0.0), -10, lpf=4500, send=0.1, frame=T.ESCAPE))
+    add(Cue(32.15, "grab_air", "a soldier grabs at the air (swish)", lambda: (G.whoosh(0.25, rng(964), 0.08, 700, 3000, 0.7, 0.07, 0.15), 0.0),
+            -15, p=-0.3, frame=964))
+
+    # ------------------------------------------------ shot 9: looking for a dark place
+    add(Cue(32.4, "bat_cruise", "one bat cruising over the base, peeking into shadows (soft wingbeats panning across)",
+            lambda: (B.flutter(4.5, rng(972), 1, 0.7, 10.0), 0.0), -18, lpf=3500, frame=972))
+    for k, f in enumerate(T.SNIFFS):
+        add(Cue(fr(f), "sniff", f"the bat sniffs at a shadow ({k + 1}/{len(T.SNIFFS)})", (lambda r=rr(), k=k: (B.sniff(r, 1 if k == 0 else 2), 0.0)),
+                -17 if k == 0 else -12, p=[-0.2, 0.15, 0.3][k], frame=f))
+    add(Cue(fr(T.SHAKE), "head_shake", "shakes its head: nope (ears flapping)", lambda: (B.head_shake(rng(1053)), 0.0), -16, p=0.15, frame=T.SHAKE))
+
+    # ------------------------------------------------ shot 10: five timers under the fuel tank
+    add(Cue(fr(T.TANK[0]) + 0.05, "five_timers", "five bats in a row under the tank, five timers ticking out of phase (L to R)",
+            lambda: (B.ticking(fr(T.TANK[1] - T.TANK[0]) - 0.05, rng(1110), 5.5, 5, 0.037), 0.0), -12, send=0.05, frame=T.TANK[0]))
+    add(Cue(38.12, "bats_giggle", "they all grin: a tiny chorus of squeaks after 'tank.'",
+            lambda: (pan(B.squeaks(rng(1144), 3, 0.06), -0.4) + pan(B.squeaks(rng(1145), 2, 0.07), 0.4), 0.0), -13, frame=1144))
+
+    # ------------------------------------------------ shot 11: WHOOMP
+    add(Cue(fr(T.WHOOMP), "whoomp", "@1186 the fuel tank goes WHOOMP: suck-in, round low boom, fireball roar, crackle (built under 1.5 kHz)",
+            lambda: B.whoomp(rng(1186)), 2, p=0.0, send=0.2, frame=T.WHOOMP))
+    add(Cue(39.75, "bats_flutter_out", "the bats flutter out of the smoke unharmed", lambda: (B.flutter(0.8, rng(1199), 5, 0.9, 13.0), 0.0),
+            -15, lpf=4000, frame=1199))
+    add(Cue(40.0, "bats_cheer", "...and cheer: a happy squeak chorus under 'perfectly' (clear of 'Unluckily')",
+            lambda: (pan(B.squeaks(rng(1212), 4, 0.06), -0.3) + pan(B.squeaks(rng(1213), 3, 0.07), 0.35), 0.0), -15, lpf=4500, frame=1200))
+
+    # ------------------------------------------------ shot 12: buckets and running
+    add(Cue(40.9, "running", "soldiers run in a bucket line (quick steps on dirt, across the stereo field)",
+            lambda: (B.running(2.45, rng(1218), 5, 3.3, 0.8) * np.interp(tt(2.45), [0, 0.4, 2.1, 2.45], [0, 1, 1, 0])[None, :], 0.0),
+            -15, lpf=3000, frame=1227))
+    for k, f in enumerate(T.BUCKETS):
+        empty = k == len(T.BUCKETS) - 1
+        add(Cue(fr(f), "bucket" if not empty else "bucket_empty", "tin bucket clank + slosh" if not empty else "the empty bucket: hollow clonk, no water",
+                (lambda r=rr(), e=empty: (B.bucket(r, not e), 0.0)), -14, p=[-0.5, 0.2, -0.2, 0.45][k], lpf=4500, frame=f))
+    for k, f in enumerate([1236, 1268]):
+        add(Cue(fr(f), "roof_catches", "fire spreads to a roof (soft fwump)", (lambda r=rr(): (B.fire_pop(r, 1.0), 0.0)), -16,
+                p=[0.5, -0.5][k], lpf=1800, send=0.2, frame=f))
+
+    # ------------------------------------------------ shot 13: the general's car
+    add(Cue(44.0, "hangar_creak", "the burnt hangar frame groans as the camera glides past", lambda: (G.creak(0.7, rng(1320), 45, 30, G.TIMBER, None, 0.15, 0.02), 0.0),
+            -18, p=-0.3, lpf=2500, send=0.2, frame=1320))
+    for k, tm in enumerate([45.33, 45.55, 45.9, 46.2]):
+        add(Cue(tm, "polish_squeak", f"the General polishes his shiny car ({k + 1}/4)", (lambda r=rr(): (B.polish_squeak(r), 0.0)),
+                -15 if tm < 45.65 else -19, p=0.2, lpf=4000, frame=int(round(tm * 30))))
+    add(Cue(fr(T.CAR_PUFF), "car_puff", "@1394 'puff': the car becomes a charred shell (soft pfoomf, body sag creak, tyres hissing flat)",
+            lambda: (B.car_puff(rng(1394)), 0.0), 0, p=0.1, lpf=3500, send=0.15, frame=T.CAR_PUFF))
+    add(Cue(46.95, "moustache_sizzle", "the General's singed moustache smoking (tiny sizzle)", lambda: (B.crackle(0.4, rng(1409), 40, 0.5, 1.0), 0.0),
+            -20, p=0.1, frame=1409))
+
+    # ------------------------------------------------ shot 14: cancelled
+    add(Cue(fr(1432), "money_bags", "the officer weighs the folder on the money bags (soft cloth bags + a coin chink)",
+            lambda: (E.pat(rng(1433)) + lp(G.rattle(0.25, rng(1434), 40, None), 5000, 1) * 0.3, 0.0), -17, p=-0.2, frame=1432))
+    add(Cue(48.25, "money_settle", "the bags settle (gap after 'million,')", lambda: (E.pat(rng(1448)) * 0.8 + lp(G.rattle(0.25, rng(1449), 30, None), 5000, 1) * 0.25, 0.0),
+            -15, p=-0.2, frame=1448))
+    add(Cue(fr(T.FOLDER), "folder_thunk", "@1489 the folder drops into the wastebasket (paper thunk + tin bin ring)", lambda: (B.folder_thunk(rng(1489)), 0.0),
+            -1, p=0.15, lpf=3000, send=0.15, frame=T.FOLDER))
+    add(Cue(50.28, "bat_snore", "the bat asleep in the filing tray: a tiny whistling snore", lambda: (B.squeak(rng(1508), 1500, 0.22, True) * 0.5, 0.0),
+            -19, p=-0.35, lpf=3000, frame=1508))
+
+    # ------------------------------------------------ shot 15: the bat ribbon and the wink
+    d15 = T.DUR - fr(T.XF[-1])
+    add(Cue(fr(T.XF[-1]), "bat_ribbon", "bats streaming out in a ribbon across the moon (far, soft wing-roar + distant squeaks)",
+            lambda: (B.swarm(d15, rng(1515), [(0, 0), (1.0, 0.8), (3.0, 1.0), (d15 - 0.5, 0.5), (d15, 0)], 1.2, 1.0, 4.0), 0.0),
+            -19, lpf=2800, send=0.25, frame=T.XF[-1]))
+    add(Cue(fr(T.WINK_TURN), "medal_turn", "@1600 the bat with the tiny medal turns to camera (wing rustle + medal clink)",
+            lambda: (B.flaps(0.15, rng(1600), 12, 1.2) * 0.5 + np.pad(lp(G.clink(rng(1601), 3300, 0.1, 0.4), 6000, 1) * 0.4, (0, ns(0.05)))[: ns(0.15)], 0.0),
+            -17, p=0.1, frame=T.WINK_TURN))
+    add(Cue(fr(T.WINK), "wink_ting", "@1610 the WINK: a small bright 'ting'", lambda: (B.wink_ting(rng(1610)), 0.0), 0, p=0.1, send=0.25, frame=T.WINK))
     return C
 
 

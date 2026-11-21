@@ -1,20 +1,20 @@
-# The Great Emu War - soundtrack cue sheet
+# The Bat Bomb - soundtrack cue sheet
 
-All sound is original and synthesized in numpy/scipy: instruments in `instruments.py` (brass, snare, glock, timpani from the shared kit + banjo, Rhodes, soft kick, shaker and more added here), SFX in `sfx_emu.py` / `sfx_gen.py`; placed by `music.py` / `sfx.py` from `timeline.py` (frames from SHOTS.md), mixed by `mix.py`.
+All sound is original and synthesized in numpy/scipy: instruments in `instruments.py` (guitar pluck, Rhodes, upright bass, brushes, shaker, soft kick, vibes from the shared kit + celesta and pizzicato added here), SFX in `sfx_bat.py` (bats, fire, timers, stamp, whoomp...) with helpers from `sfx_gen.py` / `sfx_emu.py`; placed by `music.py` / `sfx.py` from `timeline.py` (frames from SHOTS.md), mixed by `mix.py`.
 Voice = `voice/voice.wav`, gain only (no EQ, no compression, no pitch, no time change). Rebuild everything + verify: `bash audio/build.sh` (about 1.5 min; mix only: `python3 audio/mix.py --fresh`).
 
 ## Files
 | file | content |
 |---|---|
-| `public/emu/mix.wav` = `voice/mix_final.wav` | final mix, 48 kHz, stereo, 24-bit, 2,832,000 samples = 59.000 s |
+| `public/bat/mix.wav` = `voice/mix_final.wav` | final mix, 48 kHz, stereo, 24-bit, 2,640,000 samples = 55.000 s |
 | `audio/out/stem_voice.wav` / `stem_music.wav` / `stem_sfx.wav` | stems at mix gain, after the master limiter's gain curve: voice + music + sfx = mix.wav |
-| `audio/check.py` | verification: transcription of voice.wav vs the mix (faster-whisper small.en), clicks, duration, loudness |
+| `audio/check.py` | verification: whisper transcription of voice.wav vs the mix (faster-whisper small.en), sample count |
 
 ## Master loudness (own BS.1770-4 meter)
-- Integrated **-14.02 LUFS**, true peak **-1.30 dBTP**, LRA 1.6 LU, max momentary -9.6 LUFS, max short-term -13.2 LUFS; 0 samples at full scale
-- Stems at mix gain: voice -14.0 LUFS (peak -0.9 dBFS), music -30.8 LUFS, sfx -33.8 LUFS (master gain +7.81 dB and the limiter gain curve, the same on every stem)
-- Master limiter (4x oversampled look-ahead, ceiling -1.3 dBTP): max gain reduction 6.13 dB, active (>0.1 dB) on 28.02 % of samples; inside speech: max 6.13 dB, 90th / 99th percentile 0.93 / 3.74 dB, active on 33.0 % of speech samples. This peak limiting is the only processing besides gain that reaches the narration: the TTS voice has an 18.3 dB true-peak-to-loudness ratio, so -14 LUFS at <= -1 dBTP cannot be reached with gain alone.
-- Discontinuity check: 240 boundaries (start + end of every placed SFX event, every music cut-off) checked in the final mix, 0 suspicious.
+- Integrated **-14.01 LUFS**, true peak **-1.30 dBTP**, LRA 1.5 LU, max momentary -9.5 LUFS, max short-term -13.2 LUFS; 0 samples at full scale
+- Stems at mix gain: voice -14.0 LUFS (peak -0.9 dBFS, max momentary -9.5 LUFS), music -29.7 LUFS, sfx -30.3 LUFS (master gain +8.06 dB and the limiter gain curve, the same on every stem)
+- Master limiter (4x oversampled look-ahead, ceiling -1.3 dBTP): max gain reduction 6.60 dB, active (>0.1 dB) on 32.00 % of samples; inside speech: max 6.60 dB, 90th / 99th percentile 1.26 / 4.33 dB, active on 38.4 % of speech samples. This peak limiting is the only processing besides gain that reaches the narration (same approach as the emu mix): the TTS voice's true-peak-to-loudness ratio is too high to reach -14 LUFS at <= -1 dBTP with gain alone.
+- Discontinuity check: 183 boundaries (start + end of every placed SFX event, every music cut / re-entry) checked on the SFX and music stems, 0 suspicious.
 
 ffmpeg ebur128 cross-check:
 ```
@@ -23,203 +23,185 @@ Summary:
     I:         -14.0 LUFS
     Threshold: -24.4 LUFS
   Loudness range:
-    LRA:         1.6 LU
-    Threshold: -34.4 LUFS
-    LRA low:   -15.2 LUFS
-    LRA high:  -13.6 LUFS
+    LRA:         1.5 LU
+    Threshold: -34.3 LUFS
+    LRA low:   -15.0 LUFS
+    LRA high:  -13.5 LUFS
   True peak:
     Peak:       -1.3 dBFS
 ```
 
 ## Voice on top: per-section loudness
-Key: words.json spans, widened by the voice's own measured activity (TTS word times drift by up to 0.25 s). Music: -3 dB gentle duck under speech (attack 250 ms, release 600 ms) + +4 dB bloom in gaps >= 0.55 s; section gain set so the music sits -18.5 LU (+ per-section offset) under the voice over the spoken parts. SFX: -3 dB duck under speech.
+Key: words.json spans, widened by the voice's own measured activity. Music: -3 dB gentle duck under speech (attack 250 ms, release 600 ms) + +6 dB bloom in gaps >= 0.55 s; section gain set so the music sits -17.6 LU (+ per-section offset) under the voice over the spoken parts. SFX: -3 dB duck under speech (attack 30 ms, release 250 ms).
 Columns: integrated LUFS per stem at mix gain; then over 400 ms windows centred on speech: median voice-music, median and 10th percentile voice-bed (bed = music + sfx); bloom = median music level in the gaps minus in speech (LU).
 
 | section | time s | voice | music | sfx | voice-music (speech, med) | voice-bed med | voice-bed p10 | bloom |
 |---|---|---|---|---|---|---|---|---|
-| hook | 0.00-3.97 | -13.8 | -31.3 | -35.6 | 17.9 | 17.1 | 11.9 | -0.2 |
-| lost | 3.97-5.23 | -12.6 | -28.9 | -35.5 | 16.9 | 16.0 | 9.3 | 2.0 |
-| farm | 5.23-10.17 | -14.0 | -30.9 | -45.9 | 17.6 | 17.5 | 13.1 | 0.1 |
-| emus | 10.17-12.97 | -13.4 | -31.8 | -39.1 | 18.6 | 18.0 | 11.0 | -0.3 |
-| phone | 12.97-15.00 | -13.2 | -30.8 | -31.0 | 17.8 | 17.6 | 13.8 | 3.6 |
-| army | 15.00-20.07 | -13.8 | -31.9 | -37.8 | 18.5 | 17.8 | 13.3 | -0.7 |
-| firstday | 20.07-23.17 | -12.9 | -31.0 | -29.7 | 18.1 | 16.4 | 11.8 | -1.2 |
-| dam | 23.17-26.70 | -13.7 | -31.9 | -40.8 | 18.8 | 17.8 | 13.7 | 1.9 |
-| jam | 26.70-27.50 | -14.4 | -50.8 | -30.6 | 32.7 | 14.1 | 13.1 | 9.6 |
-| truck | 27.50-31.23 | -13.5 | -30.8 | -31.0 | 16.7 | 15.0 | 10.7 | 1.2 |
-| camp | 31.23-37.83 | -14.5 | -32.2 | -38.5 | 18.6 | 17.6 | 12.9 | 2.9 |
-| dump | 37.83-40.03 | -14.6 | -31.8 | -36.5 | 16.2 | 15.9 | 14.0 | 4.1 |
-| unlucky | 40.03-42.33 | -14.1 | -32.3 | -32.4 | 18.6 | 16.1 | 14.2 | 1.6 |
-| toy | 42.33-46.07 | -13.9 | -32.0 | -34.9 | 18.0 | 16.2 | 13.8 | 0.9 |
-| scatter | 46.07-50.13 | -14.4 | -31.7 | -36.7 | 17.5 | 16.5 | 12.9 | -0.2 |
-| parade | 50.13-55.20 | -14.3 | -32.2 | -40.8 | 18.0 | 17.6 | 11.2 | 1.1 |
-| home | 55.20-56.47 | -13.2 | -30.7 | -35.6 | 17.6 | 16.5 | 10.5 | -2.3 |
-| ending | 56.47-59.00 | -11.8 | -24.7 | -35.6 | 22.4 | 22.3 | 18.3 | 10.0 |
+| hook | 0.00-3.73 | -14.3 | -30.9 | -32.3 | 16.8 | 16.0 | 10.4 | 0.7 |
+| base | 3.73-5.70 | -13.1 | -29.9 | -26.9 | 17.6 | 14.4 | 9.8 | 3.5 |
+| cave | 5.70-10.93 | -14.2 | -31.1 | -42.2 | 16.6 | 16.6 | 12.9 | -1.6 |
+| workshop | 10.93-18.23 | -14.3 | -30.7 | -37.3 | 16.5 | 16.2 | 12.2 | 0.3 |
+| attic | 18.23-21.77 | -13.5 | -30.3 | -29.1 | 16.7 | 15.9 | 9.5 | 0.7 |
+| president | 21.77-24.43 | -13.9 | -29.0 | -21.9 | 16.6 | 16.3 | 4.3 | 0.5 |
+| lab | 24.43-28.43 | -13.3 | -30.2 | -38.5 | 16.2 | 16.1 | 12.1 | 1.2 |
+| escape | 28.43-32.27 | -13.9 | -30.2 | -30.7 | 15.9 | 15.2 | 10.9 | -0.3 |
+| search | 32.27-37.00 | -13.7 | -30.2 | -40.6 | 16.5 | 16.2 | 10.7 | 0.6 |
+| tank | 37.00-38.33 | -12.5 | -30.3 | -36.1 | 18.6 | 17.6 | 14.1 | 0.7 |
+| luckily | 38.33-39.53 | -13.2 | -29.9 | -55.1 | 17.0 | 16.1 | 9.6 | 1.4 |
+| oops | 39.53-40.50 | -15.8 | -53.5 | -24.4 | 44.7 | 9.2 | 5.3 | 17.2 |
+| buckets | 40.50-43.40 | -14.6 | -31.3 | -37.8 | 17.1 | 16.1 | 11.6 | 0.9 |
+| smoke | 43.40-47.27 | -13.7 | -29.4 | -26.0 | 16.8 | 16.7 | 6.2 | 1.4 |
+| office | 47.27-50.50 | -14.2 | -28.6 | -31.3 | 16.1 | 14.9 | 8.5 | 6.2 |
+| ending | 50.50-55.00 | -13.3 | -27.7 | -29.0 | 17.7 | 17.3 | 11.4 | 3.8 |
 
-Music under the voice: median over the sections' speech windows 18.0 LU; in the longer gaps (>= 0.55 s) the music's median momentary level is 12.3 LU under the voice's integrated loudness.
+Music under the voice: median over the sections' speech windows **16.7 LU**; in the longer gaps (>= 0.55 s) the music's median momentary level is **11.8 LU** under the voice's integrated loudness.
 
-Applied section gains (dB): hook -17.5, lost -15.5, farm -19.3, emus -19.6, phone -20.7, army -19.9, firstday -18.5, dam -19.7, jam -19.7, truck -19.8, camp -19.9, dump -21.0, unlucky -15.5, toy -21.2, scatter -21.6, parade -19.7, home -16.6, ending -16.1. Music rides: 40.15-40.70 s -2.0 dB.
+Applied section gains (dB): hook -18.6, base -17.3, cave -19.0, workshop -19.8, attic -18.3, president -18.5, lab -18.0, escape -18.7, search -18.7, tank -14.5, luckily -19.2, oops -19.2, buckets -17.1, smoke -17.8, office -16.0, ending -18.2. Music rides: 3.76-4.03 s -20.0 dB, 40.32-41.12 s -4.0 dB SFX rides: 3.76-4.03 s -20.0 dB, 40.32-41.12 s -9.0 dB (60 ms ramps), to keep the short 'Then' and 'Unluckily' clear.
 
-Narration gaps (measured on voice.wav), where the loud hits and the music blooms go: 1.43-1.75, 4.75-5.39, 6.48-6.87, 9.84-10.28, 14.57-15.17, 17.31-17.65, 19.81-20.16, 20.91-21.12, 22.92-23.32, 27.13-27.56, 30.94-31.39, 34.43-34.72, 37.46-37.99, 39.90-40.20, 41.86-42.44, 45.86-46.21, 48.04-48.24, 49.71-50.29, 54.68-55.22, 56.31-56.60.
+Narration gaps (measured on voice.wav), where the louder hits and the music blooms go: 1.39-1.70, 3.55-3.86, 5.13-5.78, 7.95-8.30, 10.65-11.02, 11.71-12.08, 15.61-15.86, 17.92-18.32, 19.75-20.04, 21.27-21.85, 22.43-22.65, 24.19-24.56, 30.47-30.71, 31.94-32.42, 36.87-37.12, 38.04-38.50, 40.36-40.68, 43.08-43.58, 45.41-45.64, 46.84-47.48, 50.10-50.70, 52.11-52.40.
 
-## Music map (chill re-score: laid-back acoustic / lo-fi bed, F major, 88 bpm, swung eighths)
-Fingerpicked nylon guitar, warm Rhodes, round upright bass, brushes + shaker + soft kick (no snare, no crashes, no rolls), vibes sparkles, and a small playful EMU figure (A-D-C-A..G-A, muted banjo), all composed here; progressions Fmaj7-Dm7-Gm7-C9 and Dm7-Bbmaj7-Gm7-C9. The first brass-march score is kept for reference in `music_march.py` (not used).
+## Music map (chill score: laid-back acoustic / lo-fi bed, 88 bpm, swung eighths; D-dorian night colour, F-major day)
+Fingerpicked nylon guitar, warm Rhodes, round upright bass, brushes + shaker + soft kick (no snare, no crashes, no rolls), vibes sparkles; for the bats a light pizzicato BAT figure (D5 F5 E5 D5 A4 . B4 C5, swung) and a soft celesta. Loops: night Dm9 Bbmaj7 Gm9 A7b9, day Fmaj7 Am7 Bbmaj7 C9, lab Gm9 C9 Fmaj7 Dm9; resolve on Fmaj9 at the wink. All composed here. The emu short's brass march stays in `music_march.py` for reference (not used).
 
 | time s | frame | music |
 |---|---|---|
-| 0.00 | 0 | HOOK: fingerpicked nylon guitar + warm Rhodes (Fmaj7 - Dm7), no drums; the emu figure peeks in on 'emus' |
-| 3.97 | 119 | FLASH @119: soft shimmer - reversed vibes swell into the frame, a light high vibes chord on it |
-| 4.32 | 130 | 'And lost.' @128: one soft muted-trombone 'wah' sliding down a tritone |
-| 5.23 | 157 | FARM (XF @157): the laid-back groove starts - guitar, upright bass, Rhodes, brushes + shaker + soft kick (Fmaj7 Dm7 Bbmaj7 Gm7, one bar each, through shot 5) |
-| 10.17 | 305 | EMUS ARRIVE: the groove carries on; the little muted-banjo emu figure hops in (and again after 'ate it.') |
-| 15.00 | 450 | ARMY ARRIVES / FIRST DAY: loop A, unhurried - no fanfare; emu figure after 'range.' as they trot off |
-| 23.17 | 695 | DAM (XF @695): thinner - guitar, bass, Rhodes, shaker; emu figure |
-| 26.70 | 801 | JAM @801: the music simply stops (30 ms fade) - silence for the clack, the spring and 'jammed.' |
-| 27.50 | 825 | TRUCK @825: the groove comes back as if nothing happened; emu figure on 'outran' |
-| 31.23 | 937 | CAMP (XF @937): dusk, no drums - guitar, bass, Rhodes (Fmaj7 Bbmaj7); vibes sparkle on the pen flourish @963 |
-| 34.67 | 1040 | CASINGS reveal @1040: mellow chord change to Dbmaj7 -> C9, vibes glints across the stereo field |
-| 37.83 | 1135 | DUMP: groove (loop A) |
-| 40.03 | 1201 | UNLUCKILY: only bass + Rhodes under the line; the emu figure after 'ten.' |
-| 42.33 | 1270 | TOY MARCH: groove back; the toy soldiers' boots fall on 42.5 + k/2 (SFX), the music stays relaxed underneath |
-| 46.07 | 1382 | SCATTER: emu figure flung left / right / centre (transposed) over the minor loop |
-| 50.13 | 1504 | PARADE (XF @1504): no drums, Bbmaj7 - Am7, warm; vibes sparkle as 'world.' ends |
-| 55.20 | 1656 | HOME: guitar + Rhodes only (Gm7 - C9), unresolved |
-| 57.93 | 1738 | ENDING: warm resolve on Fmaj9 (guitar strum, Rhodes, low F) landing with the blink @1756, vibes chime on the blink; fade to 59.0 |
+| 0.00 | 0 | HOOK: night colour - fingerpicked nylon guitar + Rhodes (Dm9 - Bbmaj7), no drums; the pizzicato BAT figure peeks in |
+| 2.67 | 80 | CASING POPS @80: soft celesta spiral up D dorian (left to right) with the swarm |
+| 3.73 | 112 | FLASH @112: soft shimmer - reversed vibes swell into the frame, a light high vibes chord on it |
+| 4.03 | 121 | AIR BASE: bass + Rhodes + shaker (Gm9) enter on 'bats' @121, after the short 'Then'; pizz notes dive with the swarm @121; a soft low vibes dyad on the kick @139 |
+| 5.70 | 171 | CAVE (XF @171): the groove starts - guitar, upright bass, Rhodes, brushes + shaker + soft kick on the night loop (Dm9 Bbmaj7 Gm9 A7b9) |
+| 9.67 | 290 | BAT COLUMN @290: celesta arpeggio climbing with the column |
+| 10.93 | 328 | WORKSHOP: warm day loop (Fmaj7 Am7 Bbmaj7 C9); one high vibes note answers the bulb @331 |
+| 14.07 | 422 | the bat is unimpressed (@413): a flat little two-note pizz 'hmph' (A - G#) |
+| 15.55 | 466 | toy bats sprinkle on the diorama: four falling celesta notes |
+| 18.23 | 547 | ATTIC: night loop, no drums - guitar, bass, Rhodes; the BAT figure flutters in with the bat @553 |
+| 20.23 | 607 | TIMER @607: the band thins to bass + Rhodes (A7b9, held) so the ticking reads; a celesta pop-sparkle on the POOF @628 |
+| 21.77 | 653 | PRESIDENT: warm groove (Fmaj7 - C9sus) |
+| 23.42 | 703 | the President pauses: the band holds its breath (120 ms fade, ~0.28 s of near silence)... |
+| 23.70 | 711 | STAMP @711: ...and lands on a warm Fmaj9 (rolled guitar, Rhodes, low F) with a soft vibes glint |
+| 24.43 | 733 | LAB: Gm9 C9 Fmaj7 Dm9, guitar, bass, Rhodes, brushes + shaker; a high celesta glint on the tweezers @800 |
+| 28.17 | 845 | FLEX @845: a small vibes 'ta-da' (C - F) |
+| 28.43 | 853 | TEST BASE (XF @853): full day groove |
+| 31.57 | 947 | ESCAPE @947: the BAT figure (pizz + celesta) flits out with the bats |
+| 32.27 | 968 | SEARCH: night loop again, lighter (no kick, no brushes) - the bat looking for a dark place |
+| 37.00 | 1110 | UNDER THE TANK: held A7b9 (bass + Rhodes) under the five ticking timers; a little celesta grin after 'tank.' |
+| 38.33 | 1150 | LUCKILY: day groove (Fmaj7 - C9) |
+| 39.47 | 1184 | WHOOMP @1186: the music simply stops (60 ms fade) for the fireball |
+| 40.34 | 1210 | 'oops' after 'perfectly.': soft vibes C - A falling third + a low pizz G#, damped before 'Unluckily' |
+| 41.12 | 1234 | BUCKETS: the groove creeps back in after 'Unluckily,' - guitar, bass, Rhodes, shaker (Dm9 - Gm9), unbothered |
+| 43.40 | 1302 | SMOKE: Bbmaj7 Am7 Gm9, brushes + shaker, no kick |
+| 46.47 | 1394 | CAR PUFF @1394: a little descending pizz 'deflate' (F E Eb D, low D) |
+| 47.27 | 1418 | OFFICE (XF @1418): guitar, bass, Rhodes, no drums (Gm9 - C9); a low pizz 'plunk' on the folder @1489 |
+| 50.50 | 1515 | NIGHT CAVE (XF @1515): night again - guitar, bass, Rhodes, rubato (Bbmaj7 - Gm9 - C9sus), the BAT figure once more |
+| 53.67 | 1610 | WINK @1610: warm resolve on Fmaj9 (rolled guitar, Rhodes, low F) with a celesta 'ting' (E7 - A7); rings out to 55.0 |
 
 ## SFX events
-naive = the event's level vs the voice stem (max momentary, LU); applied = naive - 6 dB + offsets; beds are integrated loudness. 'mix LUFS' = max momentary in the final mix (before the speech duck). Frames marked * are chosen here (not pinned in SHOTS.md): emu steps [24, 38, 52], crank [(389, 402), (436, 449)], pats [1166, 1180], toy march 1275+15k, head turn (1736, 1750), blink 1756.
+naive = the event's level vs the voice stem (max momentary, LU); applied = naive - 8 dB + offsets; beds are integrated loudness. 'mix LUFS' = the event's max momentary at mix gain, before the -3 dB speech duck (compare: voice max momentary -9.5 LUFS, integrated -14.0 LUFS). Frames not pinned in SHOTS.md, chosen here: sniffs [998, 1044, 1106], head shake 1053, buckets [1222, 1236, 1262, 1291], polish squeaks ~(1366, 1392), and the small squeaks placed in narration gaps (frames listed).
 
 | # | time s | frame | cue | what | naive | applied | mix LUFS | pan |
 |---|---|---|---|---|---|---|---|---|
-| 1 | 0.000 | 0 | amb_morning (bed) | stubble field, morning: breeze, wheat rustle, flies round the sweating soldier, magpies far off (shots 1-2) | -34 | -34.0 | -48.0 | +0.00 |
-| 2 | 0.667 | 20 | wheat_part | wheat stalks pushed aside as the emu steps out | -16 | -24.0 | -38.0 | +0.15 |
-| 3 | 0.800 | 24 | emu_step | the big emu steps out of the wheat (1/3) | -11 | -19.0 | -33.1 | +0.15 |
-| 4 | 1.267 | 38 | emu_step | the big emu steps out of the wheat (2/3) | -11 | -19.0 | -33.1 | +0.15 |
-| 5 | 1.733 | 52 | emu_step | the big emu steps out of the wheat (3/3) | -11 | -19.0 | -33.1 | +0.15 |
-| 6 | 3.300 | 99 | emu_boom | emu leans in on 'emus' @98: low drumming boom from its chest (stare-down) | -10 | -18.0 | -32.0 | +0.10 |
-| 7 | 3.967 | 119 | flash_swell | reverse swell into the white FLASH @119 (peaks on the frame) | -13 | -21.0 | -35.0 | +0.00 |
-| 8 | 4.200 | 126 | kick_impact | KICK @126: the Lewis gun goes over - dull thump + metal clatter in the stubble | -11 | -19.0 | -33.0 | -0.20 |
-| 9 | 4.800 | 144 | emu_boom | the emu on the crate puffs its chest: short proud boom after 'lost.' | -10 | -18.0 | -32.0 | +0.20 |
-| 10 | 5.150 | 154 | amb_farm (bed) | farm, day: wheat swaying in the wind, windmill squeak every 2.4 s, magpies carolling, a fly (shots 3-4) | -33 | -33.0 | -47.0 | +0.00 |
-| 11 | 5.233 | 157 | xf_whoosh | soft air swell through the dissolve @157 | -16 | -24.0 | -38.0 | +0.00 |
-| 12 | 10.167 | 305 | emu_herd | 100+ emus pour over the hill into the wheat: running feet thunder (swells in), booms and grunts | -13 | -21.0 | -35.1 | +0.00 |
-| 13 | 12.267 | 368 | pecking | close emus peck the wheat away ('ate' @370): beak pecks + stalks crunching | -12 | -20.0 | -34.0 | +0.00 |
-| 14 | 12.930 | 388 | amb_verandah (bed) | verandah: breeze, flies, emus pecking and grunting in the yard (shot 5) | -36 | -36.0 | -50.0 | +0.00 |
-| 15 | 12.967 | 389 | phone_crank | wall telephone: magneto crank + generator whine + bells ringing (burst 1/2) | -12 | -20.0 | -34.0 | -0.30 |
-| 16 | 14.533 | 436 | phone_crank | wall telephone: magneto crank + generator whine + bells ringing (burst 2/2) | -11 | -19.0 | -33.0 | -0.30 |
-| 17 | 14.550 | 436 | truck_arrive | army truck rushing in (1930s 4-cylinder, off the throttle) into the stop @456 | -12 | -20.0 | -34.0 | -0.30 |
-| 18 | 14.640 | 456 | truck_skid | SKID to a stop in red dust, ending exactly on @456 (dirt crunch + scrub, body rock) | -6 | -12.0 | -26.0 | -0.20 |
-| 19 | 15.000 | 450 | amb_road (bed) | red dirt road: hot breeze, a far magpie (shot 6) | -37 | -37.0 | -51.0 | +0.00 |
-| 20 | 15.200 | 456 | truck_idle | engine idling (low putter, under the line) until the cut @527 | -14 | -22.0 | -38.3 | -0.30 |
-| 21 | 16.733 | 502 | salute | two soldiers salute @502: heel clicks + hand swish | -12 | -20.0 | -34.0 | +0.20 |
-| 22 | 18.100 | 543 | gun_cock | Lewis gun on its tripod cocked @543 | -13 | -21.0 | -35.0 | +0.10 |
-| 23 | 19.400 | 582 | crate_thud | one more ammo crate on the stack @582: box thud + rounds rattling inside | -10 | -18.0 | -32.1 | +0.15 |
-| 24 | 20.030 | 601 | amb_paddock (bed) | open paddock: wind (shot 7) | -37 | -37.0 | -51.0 | +0.00 |
-| 25 | 20.075 | 602 | lewis_burst | Lewis gun burst, 2 rounds at 9.4/s (cracks + drum rattle + casings) | -4 | -10.0 | -24.0 | -0.10 |
-| 26 | 20.355 | 611 | dust_puff_far | dust puff falling short, far out in the paddock | -16 | -24.0 | -38.0 | +0.34 |
-| 27 | 20.400 | 612 | emus_trot_far | the emus trot calmly away over the rise (far, fading) | -16 | -24.0 | -38.3 | +0.00 |
-| 28 | 20.461 | 614 | dust_puff_far | dust puff falling short, far out in the paddock | -16 | -24.0 | -38.0 | -0.41 |
-| 29 | 20.920 | 628 | lewis_burst | Lewis gun burst, 3 rounds at 9.4/s (cracks + drum rattle + casings) | -4 | -10.0 | -24.0 | -0.10 |
-| 30 | 21.200 | 636 | dust_puff_far | dust puff falling short, far out in the paddock | -16 | -24.0 | -38.0 | -0.32 |
-| 31 | 21.306 | 639 | dust_puff_far | dust puff falling short, far out in the paddock | -16 | -24.0 | -38.0 | +0.47 |
-| 32 | 21.413 | 642 | dust_puff_far | dust puff falling short, far out in the paddock | -16 | -24.0 | -38.0 | -0.04 |
-| 33 | 21.580 | 647 | lewis_burst | Lewis gun burst, 5 rounds at 9.4/s (cracks + drum rattle + casings) - soft, under the line | -4 | -19.0 | -34.8 | -0.10 |
-| 34 | 21.860 | 656 | dust_puff_far | dust puff falling short, far out in the paddock | -25 | -33.0 | -47.0 | -0.44 |
-| 35 | 21.966 | 659 | dust_puff_far | dust puff falling short, far out in the paddock | -25 | -33.0 | -47.0 | +0.11 |
-| 36 | 22.073 | 662 | dust_puff_far | dust puff falling short, far out in the paddock | -25 | -33.0 | -47.0 | -0.16 |
-| 37 | 22.179 | 665 | dust_puff_far | dust puff falling short, far out in the paddock | -25 | -33.0 | -47.0 | +0.31 |
-| 38 | 22.286 | 669 | dust_puff_far | dust puff falling short, far out in the paddock | -25 | -33.0 | -47.0 | -0.28 |
-| 39 | 22.930 | 688 | lewis_burst | Lewis gun burst, 3 rounds at 9.4/s (cracks + drum rattle + casings) | -4 | -10.0 | -24.0 | -0.10 |
-| 40 | 23.100 | 693 | amb_dam (bed) | farm dam, golden afternoon: water lapping, emus drinking and grunting, magpies (shot 8) | -34 | -34.0 | -48.0 | +0.00 |
-| 41 | 23.167 | 695 | xf_whoosh | soft air swell through the dissolve @695 | -16 | -24.0 | -38.0 | +0.00 |
-| 42 | 23.210 | 696 | dust_puff_far | dust puff falling short, far out in the paddock | -16 | -24.0 | -38.0 | +0.26 |
-| 43 | 23.316 | 699 | dust_puff_far | dust puff falling short, far out in the paddock | -16 | -24.0 | -38.0 | +0.43 |
-| 44 | 23.423 | 703 | dust_puff_far | dust puff falling short, far out in the paddock | -16 | -24.0 | -38.0 | -0.44 |
-| 45 | 26.700 | 801 | jam_clack | the gun JAMS @801: bolt slams and stops dead (clack) + thunk + smoke puff | -4 | -10.0 | -24.0 | +0.00 |
-| 46 | 26.720 | 801 | spring_boing | the drum spring pops out @801: 'sproing' + wobbling twang | -9 | -17.0 | -31.0 | +0.15 |
-| 47 | 27.450 | 824 | amb_paddock2 (bed) | paddock: wind (shot 9) | -38 | -38.0 | -52.0 | +0.00 |
-| 48 | 27.900 | 837 | hammer_metal | Meredith hammers the gun mount onto the truck tray (1/4) | -9 | -17.0 | -31.0 | +0.25 |
-| 49 | 28.033 | 841 | hammer_metal | Meredith hammers the gun mount onto the truck tray (2/4) | -9 | -17.0 | -31.0 | +0.25 |
-| 50 | 28.200 | 846 | hammer_metal | Meredith hammers the gun mount onto the truck tray (3/4) | -9 | -17.0 | -31.0 | +0.25 |
-| 51 | 28.333 | 850 | hammer_metal | Meredith hammers the gun mount onto the truck tray (4/4) | -9 | -17.0 | -31.0 | +0.25 |
-| 52 | 29.187 | 875 | gear_crunch | crash gearbox: teeth grind then the gear clunks in @875 | -9 | -17.0 | -31.0 | -0.10 |
-| 53 | 29.267 | 878 | emu_herd_run | the emus sprint ahead and pull away by 'outran' @902 | -12 | -20.0 | -34.1 | +0.30 |
-| 54 | 29.317 | 880 | truck_engine | truck engine flat out across the paddock (revs climbing) | -10 | -18.0 | -32.0 | -0.10 |
-| 55 | 29.417 | 882 | truck_bounce | truck bounces on the rough paddock (suspension thud, leaf-spring creak, tray + gun rattle) | -14 | -21.8 | -35.8 | -0.10 |
-| 56 | 29.790 | 894 | truck_bounce | truck bounces on the rough paddock (suspension thud, leaf-spring creak, tray + gun rattle) | -14 | -22.0 | -36.1 | -0.10 |
-| 57 | 30.083 | 902 | truck_bounce | truck bounces on the rough paddock (suspension thud, leaf-spring creak, tray + gun rattle) | -14 | -22.2 | -36.3 | -0.10 |
-| 58 | 30.384 | 912 | truck_bounce | truck bounces on the rough paddock (suspension thud, leaf-spring creak, tray + gun rattle) | -13 | -20.6 | -34.8 | -0.10 |
-| 59 | 30.666 | 920 | truck_bounce | truck bounces on the rough paddock (suspension thud, leaf-spring creak, tray + gun rattle) | -13 | -21.4 | -35.5 | -0.10 |
-| 60 | 30.930 | 928 | lewis_wild | the bouncing gunner lets off a wild burst (into the sky) | -9 | -17.0 | -31.0 | -0.10 |
-| 61 | 31.032 | 931 | truck_bounce | truck bounces on the rough paddock (suspension thud, leaf-spring creak, tray + gun rattle) | -15 | -22.7 | -36.9 | -0.10 |
-| 62 | 31.150 | 934 | amb_dusk (bed) | army camp at dusk: crickets, the oil lamp's hiss, a soft breeze (shot 10) | -36 | -36.0 | -50.0 | +0.00 |
-| 63 | 31.233 | 937 | xf_whoosh | soft air swell through the dissolve @937 | -16 | -24.0 | -38.0 | +0.00 |
-| 64 | 31.550 | 946 | pen_scratch | Meredith writing the report: nib scratching | -16 | -24.0 | -38.0 | +0.20 |
-| 65 | 32.050 | 963 | pen_flourish | the proud pen FLOURISH @963 ending in a full stop | -11 | -19.0 | -33.0 | +0.20 |
-| 66 | 32.750 | 982 | pen_tally | tally marks: five quick strokes | -19 | -27.0 | -41.0 | +0.20 |
-| 67 | 34.667 | 1040 | casings | pull-back reveals the MOUNTAIN of brass casings @1040-1087: casings trickling and glinting, sliding hiss | -11 | -19.0 | -33.0 | +0.30 |
-| 68 | 37.500 | 1125 | casings_slide | a little avalanche of casings after 'bullets.' | -12 | -20.0 | -34.0 | +0.40 |
-| 69 | 37.800 | 1134 | amb_dump (bed) | supply dump, day: breeze, magpie (shot 11) | -38 | -38.0 | -52.0 | +0.00 |
-| 70 | 38.867 | 1166 | crate_pat | soldier proudly pats the crate wall (1/2) | -12 | -20.0 | -34.0 | +0.25 |
-| 71 | 39.333 | 1180 | crate_pat | soldier proudly pats the crate wall (2/2) | -12 | -20.0 | -34.0 | +0.25 |
-| 72 | 40.000 | 1200 | amb_paddock3 (bed) | paddock: breeze, flies (shot 12) | -38 | -38.0 | -52.0 | +0.00 |
-| 73 | 40.100 | 1203 | lewis_far | the gun chattering away off screen (distant, low) | -16 | -24.0 | -38.0 | -0.60 |
-| 74 | 40.150 | 1204 | emu_step | the emu strolls on, unbothered | -15 | -23.0 | -37.4 | -0.30 |
-| 75 | 40.167 | 1205 | dust_puff | bullet dust puff 1/10 popping round the emu's feet (every 4 f from @1205) | -14 | -22.0 | -39.1 | -0.50 |
-| 76 | 40.300 | 1209 | dust_puff | bullet dust puff 2/10 popping round the emu's feet (every 4 f from @1205) | -14 | -22.0 | -39.2 | -0.40 |
-| 77 | 40.433 | 1213 | dust_puff | bullet dust puff 3/10 popping round the emu's feet (every 4 f from @1205) | -14 | -22.0 | -38.9 | -0.30 |
-| 78 | 40.567 | 1217 | dust_puff | bullet dust puff 4/10 popping round the emu's feet (every 4 f from @1205) | -14 | -22.0 | -38.9 | -0.20 |
-| 79 | 40.600 | 1218 | emu_step | the emu strolls on, unbothered | -15 | -23.0 | -37.3 | -0.10 |
-| 80 | 40.700 | 1221 | dust_puff | bullet dust puff 5/10 popping round the emu's feet (every 4 f from @1205) | -10 | -18.0 | -33.4 | -0.10 |
-| 81 | 40.833 | 1225 | dust_puff | bullet dust puff 6/10 popping round the emu's feet (every 4 f from @1205) | -10 | -18.0 | -33.4 | +0.00 |
-| 82 | 40.967 | 1229 | dust_puff | bullet dust puff 7/10 popping round the emu's feet (every 4 f from @1205) | -10 | -18.0 | -33.4 | +0.10 |
-| 83 | 41.050 | 1232 | emu_step | the emu strolls on, unbothered | -15 | -23.0 | -37.4 | +0.10 |
-| 84 | 41.100 | 1233 | dust_puff | bullet dust puff 8/10 popping round the emu's feet (every 4 f from @1205) | -10 | -18.0 | -33.4 | +0.20 |
-| 85 | 41.233 | 1237 | dust_puff | bullet dust puff 9/10 popping round the emu's feet (every 4 f from @1205) | -10 | -18.0 | -33.4 | +0.30 |
-| 86 | 41.367 | 1241 | dust_puff | bullet dust puff 10/10 popping round the emu's feet (every 4 f from @1205) | -10 | -18.0 | -33.4 | +0.40 |
-| 87 | 41.500 | 1245 | emu_step | the emu strolls on, unbothered | -15 | -23.0 | -37.3 | +0.30 |
-| 88 | 41.967 | 1259 | emu_peck | the emu pecks once (after 'ten.') | -9 | -17.0 | -31.0 | +0.30 |
-| 89 | 42.300 | 1269 | amb_parade (bed) | flat parade ground: light breeze (shot 13) | -41 | -41.0 | -55.0 | +0.00 |
-| 90 | 42.500 | 1275 | boots_step | enemy line marching in step: boots on hard ground, all together (1/8) | -9 | -17.0 | -31.1 | +0.00 |
-| 91 | 43.000 | 1290 | boots_step | enemy line marching in step: boots on hard ground, all together (2/8) | -9 | -19.0 | -33.1 | +0.00 |
-| 92 | 43.500 | 1305 | boots_step | enemy line marching in step: boots on hard ground, all together (3/8) | -9 | -17.0 | -31.1 | +0.00 |
-| 93 | 44.000 | 1320 | boots_step | enemy line marching in step: boots on hard ground, all together (4/8) | -9 | -19.0 | -33.3 | +0.00 |
-| 94 | 44.500 | 1335 | boots_step | enemy line marching in step: boots on hard ground, all together (5/8) | -9 | -17.0 | -31.1 | +0.00 |
-| 95 | 45.000 | 1350 | boots_step | enemy line marching in step: boots on hard ground, all together (6/8) | -9 | -19.0 | -33.0 | +0.00 |
-| 96 | 45.500 | 1365 | boots_step | enemy line marching in step: boots on hard ground, all together (7/8) | -9 | -17.0 | -31.3 | +0.00 |
-| 97 | 46.000 | 1380 | boots_step | enemy line marching in step: boots on hard ground, all together (8/8) | -9 | -19.0 | -33.2 | +0.00 |
-| 98 | 46.030 | 1381 | amb_paddock4 (bed) | paddock: wind (shot 14) | -39 | -39.0 | -53.0 | +0.00 |
-| 99 | 46.067 | 1382 | emu_stampede | running thunder of the herd radiating in every direction (wide stereo) | -12 | -20.0 | -34.1 | +0.00 |
-| 100 | 46.067 | 1382 | scatter_whoosh | SCATTER @1382: big outward whoosh as 60+ emus burst from the centre | -9 | -17.0 | -31.0 | +0.00 |
-| 101 | 48.333 | 1450 | spin_whoosh | the gunner spins on the spot (whoosh 1/4, panning round) | -10 | -18.0 | -32.0 | +0.00 |
-| 102 | 48.753 | 1463 | spin_whoosh | the gunner spins on the spot (whoosh 2/4, panning round) | -15 | -23.0 | -37.0 | +0.00 |
-| 103 | 49.173 | 1475 | spin_whoosh | the gunner spins on the spot (whoosh 3/4, panning round) | -15 | -23.0 | -37.0 | +0.00 |
-| 104 | 49.593 | 1488 | spin_whoosh | the gunner spins on the spot (whoosh 4/4, panning round) | -15 | -23.0 | -37.0 | +0.00 |
-| 105 | 50.080 | 1502 | amb_golden (bed) | golden parade ground: soft breeze, far magpie (shot 15) | -38 | -38.0 | -52.0 | +0.00 |
-| 106 | 50.133 | 1504 | xf_whoosh | soft air swell through the dissolve @1504 | -16 | -24.0 | -38.0 | +0.00 |
-| 107 | 50.200 | 1506 | emu_boom | helmeted emus in formation boom, low | -14 | -22.0 | -36.0 | -0.40 |
-| 108 | 52.100 | 1563 | emu_boom | helmeted emus in formation boom, low | -16 | -24.0 | -38.0 | -0.16 |
-| 109 | 53.120 | 1594 | emu_boom | helmeted emus in formation boom, low | -15 | -23.0 | -37.0 | +0.14 |
-| 110 | 54.700 | 1641 | emu_boom_chorus | the whole emu army booms back after 'world.' (a chorus of drumming) | -12 | -20.0 | -34.0 | +0.00 |
-| 111 | 55.170 | 1655 | amb_sunset (bed) | sunset road: breeze (shot 16) | -38 | -38.0 | -52.0 | +0.00 |
-| 112 | 55.220 | 1657 | gear_crunch | gear crunch as the truck pulls away | -12 | -20.0 | -34.0 | +0.10 |
-| 113 | 55.300 | 1659 | truck_away | truck driving away down the road into the sunset (engine receding, getting duller) | -10 | -18.0 | -34.7 | +0.10 |
-| 114 | 56.330 | 1690 | gun_sag | the gun on the back sags: slow metal creak (in the gap before 'The emus...') | -14 | -22.0 | -38.6 | +0.10 |
-| 115 | 56.430 | 1693 | amb_wheat (bed) | golden wheat: rustle, breeze, a magpie, a fly (shot 17) | -35 | -35.0 | -49.0 | +0.00 |
-| 116 | 57.867 | 1736 | head_turn | the foreground emu slowly turns its head to camera: feather rustle | -14 | -22.0 | -36.0 | +0.05 |
-| 117 | 58.200 | 1746 | emu_grunt | a contented little grunt | -16 | -24.0 | -39.0 | +0.05 |
-| 118 | 58.533 | 1756 | blink | ...and BLINKS @1756: tiny soft double plip | -12 | -20.0 | -34.0 | +0.05 |
+| 1 | 0.000 | 0 | amb_night_sky (bed) | moonlit desert sky: soft high wind, faint crickets far below (shot 1) | -39 | -39.0 | -53.0 | +0.00 |
+| 2 | 1.150 | 35 | bomb_fall | the olive-drab bomb casing falls past the camera (air whoosh, peaks @60) | -14 | -22.0 | -37.1 | -0.20 |
+| 3 | 2.667 | 80 | casing_pop | CASING POPS OPEN @80: latch 'tchk', hollow metal bonk, four panels springing out | -2 | -10.0 | -24.0 | -0.10 |
+| 4 | 2.687 | 80 | swarm_burst | hundreds of bats burst out in a spiral: airy whoosh opening into wings + cute squeaks | -10 | -18.0 | -33.2 | +0.00 |
+| 5 | 3.440 | 103 | bat_grin_eek | the bat at the lens (grin @95) gives a tiny 'eek-eek' as 'bats.' ends | -13 | -21.0 | -35.0 | +0.10 |
+| 6 | 3.720 | 112 | amb_base_dusk (bed) | army air base at dusk: breeze, flag lines on the pole, far generator hum (shot 2) | -39 | -39.0 | -53.0 | +0.00 |
+| 7 | 3.733 | 112 | flash_swell | reverse air swell into the white FLASH @112 (peaks on the frame) | -13 | -21.0 | -35.0 | +0.00 |
+| 8 | 3.933 | 121 | swarm_dive | the swarm dives on the air base @121 (wings + squeaks swooping in; kept low under 'Then the bats') | -16 | -24.0 | -40.4 | +0.00 |
+| 9 | 4.250 | 128 | fire_rooftops (bed) | little rooftop fires crackling (after the pops @128-139) | -38 | -38.0 | -52.0 | +0.00 |
+| 10 | 4.267 | 128 | fire_pop | little rooftop fire pops on (1/4, @128-139) | -13 | -21.0 | -35.6 | -0.50 |
+| 11 | 4.367 | 131 | fire_pop | little rooftop fire pops on (2/4, @128-139) | -13 | -21.0 | -35.6 | +0.40 |
+| 12 | 4.500 | 135 | fire_pop | little rooftop fire pops on (3/4, @128-139) | -13 | -21.0 | -35.7 | -0.15 |
+| 13 | 4.633 | 139 | fire_pop | little rooftop fire pops on (4/4, @128-139) | -13 | -21.0 | -35.6 | +0.25 |
+| 14 | 4.633 | 139 | kick | KICK @139: soft round low thump under the picture kick | +0 | -8.0 | -22.0 | +0.00 |
+| 15 | 4.667 | 140 | cap_flies | the soldier's cap flies off as his jaw drops (little fwip) | -17 | -25.0 | -41.7 | +0.30 |
+| 16 | 5.620 | 169 | amb_cave_dusk (bed) | desert cave mouth at sunset: warm breeze over the rocks, first crickets (shot 3) | -39 | -39.0 | -53.0 | +0.00 |
+| 17 | 5.700 | 171 | xf_air | soft air swell through the dissolve @171 | -18 | -26.0 | -40.0 | +0.00 |
+| 18 | 9.417 | 290 | bat_column | @290 a vast column of bats spirals out of the cave: rushing wing-roar + far squeaks, swelling in | -12 | -20.0 | -35.4 | +0.00 |
+| 19 | 10.900 | 327 | amb_workshop (bed) | Adams' workshop: warm room tone, a slow wall clock (shot 4) | -42 | -42.0 | -56.0 | +0.00 |
+| 20 | 11.033 | 331 | bulb_plink | @331 the idea light bulb pops on: glassy plink + filament buzz | -6 | -14.0 | -28.0 | +0.10 |
+| 21 | 12.033 | 367 | strap_buckle | @367 the harness strap pulled snug and buckled on the bat (creak + two clinks) | -11 | -19.0 | -33.0 | -0.10 |
+| 22 | 14.067 | 422 | bat_hmph | the bat looks at its bomb, unimpressed (@413): one flat little squeak after 'bat' | -16 | -24.0 | -38.0 | -0.10 |
+| 23 | 14.550 | 436 | toy_swoosh | Adams 'flies' the toy bomber on its stick over the diorama (1/2) | -17 | -25.0 | -40.2 | -0.40 |
+| 24 | 15.520 | 466 | toy_bats_sprinkle | toy bats sprinkle down on the paper houses (tiny wooden pitter-patter after 'Japan,') | -15 | -23.0 | -37.0 | +0.00 |
+| 25 | 15.750 | 472 | toy_swoosh | Adams 'flies' the toy bomber on its stick over the diorama (2/2) | -17 | -25.0 | -40.2 | +0.40 |
+| 26 | 18.180 | 545 | amb_attic (bed) | cutaway model house: dark attic hush (shot 5) | -44 | -44.0 | -58.0 | +0.00 |
+| 27 | 18.433 | 553 | attic_flutter | @553 a bat flutters into the dark attic | -13 | -21.0 | -36.0 | +0.00 |
+| 28 | 18.833 | 565 | hang_settle | @565 it hangs upside down, cosy: wings folding | -18 | -26.0 | -40.0 | +0.10 |
+| 29 | 19.800 | 594 | bat_content | a contented little squeak in the gap after 'attics.' | -19 | -27.0 | -41.0 | +0.10 |
+| 30 | 20.233 | 607 | timer_tick | push-in on the belly timer ticking @607-628 | -13 | -21.0 | -35.0 | +0.05 |
+| 31 | 20.933 | 628 | kick | KICK @628: soft round low thump under the picture kick | +0 | -8.0 | -22.0 | +0.00 |
+| 32 | 20.933 | 628 | poof | @628 'off': cartoon POOF spark puff (soft pff + pop + sparkle fizz) | -3 | -11.0 | -25.0 | +0.00 |
+| 33 | 21.360 | 641 | bat_eek | the bat's eyes pop: surprised 'eek!' in the gap after 'off.' | -13 | -21.0 | -35.0 | +0.05 |
+| 34 | 21.720 | 652 | amb_office (bed) | presidential office: quiet room, a stately clock (shot 6) | -42 | -42.0 | -56.0 | +0.00 |
+| 35 | 22.300 | 669 | paper_rustle | the President picks up the bat drawing (paper rustle, gap after 'Incredibly,') | -17 | -25.0 | -39.0 | +0.20 |
+| 36 | 23.700 | 711 | stamp | @711 the big approval stamp slams down (desk thunk, paper slap, ink squish) | +1 | -7.0 | -21.0 | +0.00 |
+| 37 | 23.767 | 713 | kick | KICK @713: soft round low thump under the picture kick | +0 | -8.0 | -22.0 | +0.00 |
+| 38 | 24.380 | 731 | amb_lab (bed) | chemistry lab: flasks bubbling softly, a gas-burner hiss (shot 7) | -39 | -39.0 | -53.0 | +0.00 |
+| 39 | 26.667 | 800 | tweezers | @800 the chemist holds up the tiny capsule in tweezers (delicate clinks) | -12 | -20.0 | -34.0 | -0.20 |
+| 40 | 27.620 | 829 | capsule_click | the bat clicks a capsule onto its belly | -17 | -25.0 | -39.0 | +0.20 |
+| 41 | 28.167 | 845 | flex | @845 the bat flexes a tiny bicep (cute rising rubbery squeak) | -10 | -18.0 | -32.0 | +0.20 |
+| 42 | 28.380 | 851 | amb_desert_day (bed) | test base, bright desert day: dry wind, a flag flapping on the pole (shots 8-9) | -40 | -40.0 | -54.0 | +0.00 |
+| 43 | 28.433 | 853 | xf_air | soft air swell through the dissolve @853 | -18 | -26.0 | -40.0 | +0.00 |
+| 44 | 28.620 | 859 | wing_thumbsup | thumbs-up wing (a single soft flap) | -17 | -25.0 | -39.0 | +0.25 |
+| 45 | 29.333 | 880 | crate_carry | @880 soldiers carry the bat crate (wood creak + rope, a few steps on dirt) | -17 | -25.0 | -41.7 | -0.20 |
+| 46 | 31.333 | 940 | crate_lid_pop | @940 the crate lid pops (nail squeak, thock, lid clattering down) | -2 | -10.0 | -24.0 | +0.10 |
+| 47 | 31.467 | 947 | bats_escape | @947 a handful of armed bats flutter out (wings + cute squeaks) | -10 | -18.0 | -32.9 | +0.00 |
+| 48 | 32.150 | 964 | grab_air | a soldier grabs at the air (swish) | -15 | -23.0 | -37.0 | -0.30 |
+| 49 | 32.400 | 972 | bat_cruise | one bat cruising over the base, peeking into shadows (soft wingbeats panning across) | -18 | -26.0 | -41.1 | +0.00 |
+| 50 | 33.267 | 998 | sniff | the bat sniffs at a shadow (1/3) | -17 | -25.0 | -39.0 | -0.20 |
+| 51 | 34.800 | 1044 | sniff | the bat sniffs at a shadow (2/3) | -12 | -20.0 | -34.0 | +0.15 |
+| 52 | 35.100 | 1053 | head_shake | shakes its head: nope (ears flapping) | -16 | -24.0 | -38.0 | +0.15 |
+| 53 | 36.867 | 1106 | sniff | the bat sniffs at a shadow (3/3) | -12 | -20.0 | -34.0 | +0.30 |
+| 54 | 36.950 | 1108 | amb_tank_shade (bed) | under the fuel tank: hollow shade, wind outside (shots 10-11) | -41 | -41.0 | -55.0 | +0.00 |
+| 55 | 37.050 | 1110 | five_timers | five bats in a row under the tank, five timers ticking out of phase (L to R) | -12 | -20.0 | -34.0 | +0.00 |
+| 56 | 38.120 | 1144 | bats_giggle | they all grin: a tiny chorus of squeaks after 'tank.' | -13 | -21.0 | -35.0 | +0.00 |
+| 57 | 39.533 | 1186 | kick | KICK @1186: soft round low thump under the picture kick | -3 | -11.0 | -25.0 | +0.00 |
+| 58 | 39.533 | 1186 | whoomp | @1186 the fuel tank goes WHOOMP: suck-in, round low boom, fireball roar, crackle (built under 1.5 kHz) | +2 | -6.0 | -20.0 | +0.00 |
+| 59 | 39.550 | 1186 | fire_base (bed) | the base burning after the WHOOMP: fire roar + crackle (shots 11-12) | -37 | -37.0 | -51.0 | +0.00 |
+| 60 | 39.750 | 1199 | bats_flutter_out | the bats flutter out of the smoke unharmed | -15 | -23.0 | -38.1 | +0.00 |
+| 61 | 40.000 | 1200 | bats_cheer | ...and cheer: a happy squeak chorus under 'perfectly' (clear of 'Unluckily') | -15 | -23.0 | -38.5 | +0.00 |
+| 62 | 40.733 | 1222 | bucket | tin bucket clank + slosh | -14 | -22.0 | -36.8 | -0.50 |
+| 63 | 40.900 | 1227 | running | soldiers run in a bucket line (quick steps on dirt, across the stereo field) | -15 | -23.0 | -37.1 | +0.00 |
+| 64 | 41.200 | 1236 | bucket | tin bucket clank + slosh | -14 | -22.0 | -36.8 | +0.20 |
+| 65 | 41.200 | 1236 | roof_catches | fire spreads to a roof (soft fwump) | -16 | -24.0 | -39.2 | +0.50 |
+| 66 | 42.067 | 1262 | bucket | tin bucket clank + slosh | -14 | -22.0 | -36.8 | -0.20 |
+| 67 | 42.267 | 1268 | roof_catches | fire spreads to a roof (soft fwump) | -16 | -24.0 | -39.1 | -0.50 |
+| 68 | 43.033 | 1291 | bucket_empty | the empty bucket: hollow clonk, no water | -14 | -22.0 | -36.6 | +0.45 |
+| 69 | 43.350 | 1300 | fire_smoke (bed) | smoky glide past the burnt hangar: dying fire, crackle, wind (shot 13) | -39 | -39.0 | -53.0 | +0.00 |
+| 70 | 44.000 | 1320 | hangar_creak | the burnt hangar frame groans as the camera glides past | -18 | -26.0 | -44.2 | -0.30 |
+| 71 | 45.330 | 1360 | polish_squeak | the General polishes his shiny car (1/4) | -15 | -23.0 | -37.7 | +0.20 |
+| 72 | 45.550 | 1366 | polish_squeak | the General polishes his shiny car (2/4) | -15 | -23.0 | -37.8 | +0.20 |
+| 73 | 45.900 | 1377 | polish_squeak | the General polishes his shiny car (3/4) | -19 | -27.0 | -41.7 | +0.20 |
+| 74 | 46.200 | 1386 | polish_squeak | the General polishes his shiny car (4/4) | -19 | -27.0 | -41.7 | +0.20 |
+| 75 | 46.467 | 1394 | car_puff | @1394 'puff': the car becomes a charred shell (soft pfoomf, body sag creak, tyres hissing flat) | +0 | -8.0 | -22.3 | +0.10 |
+| 76 | 46.567 | 1397 | kick | KICK @1397: soft round low thump under the picture kick | +0 | -8.0 | -22.0 | +0.00 |
+| 77 | 46.950 | 1409 | moustache_sizzle | the General's singed moustache smoking (tiny sizzle) | -20 | -28.0 | -42.0 | +0.10 |
+| 78 | 47.220 | 1417 | amb_war_office (bed) | War Department office at dusk: dull room tone, a wall clock (shot 14) | -43 | -43.0 | -57.0 | +0.00 |
+| 79 | 47.267 | 1418 | xf_air | soft air swell through the dissolve @1418 | -18 | -26.0 | -40.0 | +0.00 |
+| 80 | 47.733 | 1432 | money_bags | the officer weighs the folder on the money bags (soft cloth bags + a coin chink) | -17 | -25.0 | -39.0 | -0.20 |
+| 81 | 48.250 | 1448 | money_settle | the bags settle (gap after 'million,') | -15 | -23.0 | -37.0 | -0.20 |
+| 82 | 49.633 | 1489 | folder_thunk | @1489 the folder drops into the wastebasket (paper thunk + tin bin ring) | -1 | -9.0 | -23.3 | +0.15 |
+| 83 | 50.280 | 1508 | bat_snore | the bat asleep in the filing tray: a tiny whistling snore | -19 | -27.0 | -42.2 | -0.35 |
+| 84 | 50.450 | 1514 | amb_night_cave (bed) | moonlit cave mouth: night crickets, soft wind (shot 15) | -37 | -37.0 | -51.0 | +0.00 |
+| 85 | 50.500 | 1515 | bat_ribbon | bats streaming out in a ribbon across the moon (far, soft wing-roar + distant squeaks) | -19 | -27.0 | -42.7 | +0.00 |
+| 86 | 50.500 | 1515 | xf_air | soft air swell through the dissolve @1515 | -18 | -26.0 | -40.0 | +0.00 |
+| 87 | 53.333 | 1600 | medal_turn | @1600 the bat with the tiny medal turns to camera (wing rustle + medal clink) | -17 | -25.0 | -39.0 | +0.10 |
+| 88 | 53.667 | 1610 | wink_ting | @1610 the WINK: a small bright 'ting' | +0 | -8.0 | -22.0 | +0.10 |
 
 ## Verification
-- Mix stream: `stream|sample_rate=48000|channels=2|bits_per_sample=24|duration_ts=2832000`
-- whisper small.en (int8, cpu) on voice.wav: "In 1932, Australia went to war against emus and lost. After World War I, veterans were given farms in Western Australia to grow wheat. Then 20 ,000 emus showed up and ate it, so the farmers called in the army. Major Meredith arrived with two soldiers, two machine guns, and 10 ,000 bullets. On the first day, the emus simply ran out of range. Two days later, a thousand emus walked up to a dam, and the gun jammed. So he bolted a gun onto a truck. The emus outran the truck. After a month, he claimed 986 emus with 9 ,860 bullets. Luckily, the army had plenty of bullets. Unluckily, every emu took 10. You see, a machine gun is made for an enemy that marches in a line. Emus run 50 kilometers an hour in every direction at once. Meredith said an army that could take bullets like these birds could face any army in the world. The army went home. The emus are still there."
-- whisper small.en on the mix: "In 1932, Australia went to war against emus and lost. After World War I, veterans were given farms in Western Australia to grow wheat. Then 20 ,000 emus showed up and ate it. So the farmers called in the army. Major Meredith arrived with two soldiers, two machine guns and 10 ,000 bullets. On the first day, the emus simply ran out of range. Two days later, a thousand emus walked up to a dam and the gun jammed. So he bolted a gun onto a truck. The emus outran the truck. After a month, he claimed 986 emus, with 9 ,860 bullets. Luckily, the army had plenty of bullets. Unluckily, every emu took 10. You see, a machine gun is made for an enemy that marches in a line. Emus run 50 km an hour, in every direction at once. Meredith said an army that could take bullets like these birds could face any army in the world. The army went home. The emus are still there."
+- Mix stream: `stream|sample_rate=48000|channels=2|bits_per_sample=24|duration_ts=2640000`
+- exact length 2,640,000 samples, stereo: OK; voice/mix_final.wav identical to public/bat/mix.wav: OK
+- whisper small.en (int8, cpu) on voice.wav: "In 1943, America built a bomb made of bats. Then the bats bombed America. It started with a dentist named Little Adams who visited a cave in New Mexico full of bats. His idea, strap a tiny firebomb to every bat and drop them over Japan where many houses were made of wood and paper. The bats would hide in the attics. Then the timers would go off. Incredibly, President Roosevelt said yes. The man who invented napalm designed bombs small enough for a bat to carry. Then during a test in New Mexico, some armed bats escaped and they did exactly what they were designed to do. They found the nearest dark hiding place, under a fuel tank. Luckily, the bat bomb worked perfectly. Unluckily, it worked on the army's own airbase. The fire burned down the test range and even the general's car. After two million dollars, the project was cancelled. The bats never fought in the war, but they did win one battle."
+- whisper small.en on the mix: "In 1943, America built a bomb made of bats. Then the bats bombed America. It started with a dentist named Little Adams, who visited a cave in New Mexico full of bats. His idea, strap a tiny firebomb to every bat and drop them over Japan, where many houses were made of wood and paper. The bats would hide in the attics, then the timers would go off. Incredibly, President Roosevelt said yes. The man who invented napalm designed bombs small enough for a bat to carry. Then, during a test in New Mexico, some armed bats escaped, and they did exactly what they were designed to do. They found the nearest dark hiding place, under a fuel tank. Luckily, the bat bomb worked perfectly. Unluckily, it worked on the Army's own air base. The fire burned down the test range, and even the general's car. After $2 million, the project was canceled. The bats never fought in the war, but they did win one battle."
 - word-level diff voice -> mix: IDENTICAL
-- SCRIPT.md words not literally in the voice-only transcript (whisper writes numbers as digits): ['one', 'twenty', 'nine', 'hundred', 'eighty', 'six', 'nine', 'eight', 'hundred', 'sixty', 'fifty']
-- SCRIPT.md words not literally in the mix transcript: ['one', 'twenty', 'nine', 'hundred', 'eighty', 'six', 'nine', 'eight', 'hundred', 'sixty', 'fifty']
-- 'unluckily': voice-only probs [0.97], mix probs [0.98]
-- 'lost': voice-only probs [1.0], mix probs [1.0]
-- 'jammed': voice-only probs [1.0], mix probs [1.0]
-- 'emus': voice-only probs [0.86, 0.99, 0.99, 1.0, 0.73, 0.99, 0.98, 1.0], mix probs [0.86, 0.99, 0.96, 1.0, 0.74, 0.99, 0.98, 1.0]
-- 'outran': voice-only probs [0.92], mix probs [0.92]
-- 'bullets': voice-only probs [1.0, 0.99, 1.0, 1.0], mix probs [1.0, 0.99, 1.0, 0.99]
+- SCRIPT.md words not literally in the voice-only transcript (whisper writes numbers as digits): ['lytle']
+- SCRIPT.md words not literally in the mix transcript: ['lytle']
+- 'bats': voice-only probs [0.99, 0.99, 0.99, 0.99, 0.99, 0.99], mix probs [0.99, 0.99, 1.0, 0.99, 0.96, 0.99]
+- 'bombed': voice-only probs [1.0], mix probs [1.0]
+- 'napalm': voice-only probs [0.92], mix probs [0.93]
+- 'escaped': voice-only probs [1.0], mix probs [1.0]
+- 'perfectly': voice-only probs [1.0], mix probs [1.0]
+- 'unluckily': voice-only probs [0.97], mix probs [0.9]
+- 'cancelled': voice-only probs [0.53], mix probs [0.56]
+- 'battle': voice-only probs [1.0], mix probs [1.0]

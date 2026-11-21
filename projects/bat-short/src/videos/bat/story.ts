@@ -1,15 +1,15 @@
-// Timeline of "The Great Emu War" (1932): 17 shots locked to the voice (voice/words.json, SHOTS.md), the props that
-// move (the army truck, the Lewis guns, loose ammo crates; one rig each, posed per frame), set anchors shared by sets /
+// Timeline of "The Bat Bomb" (USA, 1943): 15 shots locked to the voice (voice/words.json, SHOTS.md), the props that
+// move (the bomb casing of the hook, the bat crate of the test, the bats' flight paths), set anchors shared by sets /
 // cast / cameras, the camera grammar of the template (continuous slow push-ins; symmetric smootherstep glides 18-40 f;
 // big reframes are cuts; impacts are 7-frame flip kicks; no hand-held float) and the per-shot depth of field.
 //
 // CONTRACTS (other owners import these; change them only together with the readers):
-//   SetName, Light, ShotDef, SHOTS, XFADE, FLASH_AT, layersAt          -> Emu.tsx, world.ts, cast.ts, build.ts
+//   SetName, Light, ShotDef, SHOTS, XFADE, FLASH_AT, layersAt          -> Bat.tsx, world.ts, cast.ts, build.ts
 //   SPOT (set anchors in each set's own local frame; every set sits at the world origin, only one is visible)
-//   truckAt / gunsAt / cratesAt (rig poses), truckPt (truck-local -> world)  -> world.ts poses the rigs, cast.ts rides them
-//   camAt, keyEnd, kickAt, dofAt, focusAt, FOREGROUND                  -> world.ts, Emu.tsx, build.ts
+//   bombAt / crateAt (rig poses), bat9At / ribbonAt (flight paths)     -> world.ts poses the rigs, cast.ts flies the bats
+//   camAt, keyEnd, kickAt, dofAt, focusAt, FOREGROUND                  -> world.ts, Bat.tsx, build.ts
 export const FPS = 30;
-export const TOTAL = 1770;
+export const TOTAL = 1650;
 export type V3 = [number, number, number];
 
 export const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
@@ -17,39 +17,38 @@ export const smooth = (x: number) => { const u = clamp01(x); return u * u * (3 -
 export const easeOut = (u: number) => 1 - (1 - clamp01(u)) ** 4;
 /** reference camera ease: symmetric smootherstep (attack = release) */
 export const glide = (u: number) => { const x = clamp01(u); return x * x * x * (x * (6 * x - 15) + 10); };
-const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
-const add = (a: V3, b: V3): V3 => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+export const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
+export const add = (a: V3, b: V3): V3 => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+export const lerp3 = (a: V3, b: V3, k: number): V3 => [lerp(a[0], b[0], k), lerp(a[1], b[1], k), lerp(a[2], b[2], k)];
 
 // ---------------- shots ----------------
 /** one THREE.Group per set in build.ts (buildSets); only the active shot's set is visible */
-export type SetName = "field" | "farm" | "road" | "paddock" | "dam" | "camp" | "dump" | "parade";
-/** light presets (lights.ts LIGHTS / LOOK, grade.ts GRADES): morning hook -> hot day -> golden dam -> lamp-lit dusk camp
- *  -> day explainers -> golden ending */
-export type Light = "day" | "golden" | "dusk" | "morning";
+export type SetName = "desert" | "base" | "cave" | "workshop" | "attic" | "oval" | "lab" | "office";
+/** light presets (lights.ts LIGHTS / LOOK, grade.ts GRADES): moonlit hook -> desert sunset -> warm interiors / cool lab
+ *  -> bright desert day (the test and the fire) -> grey dusk office -> moonlit ending */
+export type Light = "night" | "dusk" | "day" | "interior" | "lab" | "office";
 export type ShotDef = { id: number; a: number; b: number; set: SetName; light: Light };
 // frame ranges from SHOTS.md (b = exclusive end)
 export const SHOTS: ShotDef[] = [
-  { id: 1, a: 0, b: 121, set: "field", light: "morning" },     // hook: gunner vs ONE emu
-  { id: 2, a: 121, b: 157, set: "field", light: "morning" },   // "And lost." emu on the crate, gun tipped over
-  { id: 3, a: 157, b: 305, set: "farm", light: "day" },        // farm establishing, the veteran farmer
-  { id: 4, a: 305, b: 389, set: "farm", light: "day" },        // 20,000 emus pour over the hill and eat the wheat
-  { id: 5, a: 389, b: 450, set: "farm", light: "day" },        // verandah telephone
-  { id: 6, a: 450, b: 602, set: "road", light: "day" },        // the army arrives: truck, Meredith, soldiers, guns, crates
-  { id: 7, a: 602, b: 695, set: "paddock", light: "day" },     // first day: out of range
-  { id: 8, a: 695, b: 825, set: "dam", light: "golden" },      // the dam ambush, the gun jams
-  { id: 9, a: 825, b: 937, set: "paddock", light: "day" },     // gun bolted onto the truck, the emus outrun it
-  { id: 10, a: 937, b: 1135, set: "camp", light: "dusk" },     // the report, the tally board, the mountain of brass
-  { id: 11, a: 1135, b: 1201, set: "dump", light: "day" },     // plenty of bullets
-  { id: 12, a: 1201, b: 1270, set: "paddock", light: "day" },  // every emu took ten
-  { id: 13, a: 1270, b: 1382, set: "parade", light: "day" },   // explainer: an enemy that marches in a line
-  { id: 14, a: 1382, b: 1504, set: "paddock", light: "day" },  // explainer: every direction at once
-  { id: 15, a: 1504, b: 1656, set: "parade", light: "golden" }, // the emu army at attention
-  { id: 16, a: 1656, b: 1694, set: "road", light: "golden" },  // the army went home
-  { id: 17, a: 1694, b: TOTAL, set: "field", light: "golden" }, // the emus are still there
+  { id: 1, a: 0, b: 114, set: "desert", light: "night" },       // hook: the bomb opens, the bats burst out
+  { id: 2, a: 114, b: 171, set: "base", light: "dusk" },        // "Then the bats bombed America."
+  { id: 3, a: 171, b: 328, set: "cave", light: "dusk" },        // Adams at the cave, the column of bats
+  { id: 4, a: 328, b: 547, set: "workshop", light: "interior" }, // the idea, the capsule, the tabletop model
+  { id: 5, a: 547, b: 653, set: "attic", light: "interior" },   // cutaway model house: the attic, the timer, POOF
+  { id: 6, a: 653, b: 733, set: "oval", light: "interior" },    // the President says yes
+  { id: 7, a: 733, b: 853, set: "lab", light: "lab" },          // the chemist, the tiny bomb, the flexing bat
+  { id: 8, a: 853, b: 968, set: "base", light: "day" },         // the test base, the crate, the escape
+  { id: 9, a: 968, b: 1110, set: "base", light: "day" },        // one bat looking for a dark place
+  { id: 10, a: 1110, b: 1150, set: "base", light: "day" },      // under the fuel tank
+  { id: 11, a: 1150, b: 1215, set: "base", light: "day" },      // WHOOMP
+  { id: 12, a: 1215, b: 1302, set: "base", light: "day" },      // the base burns, the bucket line
+  { id: 13, a: 1302, b: 1418, set: "base", light: "day" },      // burnt hangar; the General's car
+  { id: 14, a: 1418, b: 1515, set: "office", light: "office" }, // the project is cancelled
+  { id: 15, a: 1515, b: TOTAL, set: "cave", light: "night" },   // the medal, the wink
 ];
 /** 5-frame anchored dissolves (place / time changes); a white flash after the hook */
-export const XFADE: Record<number, number> = { 3: 5, 8: 5, 10: 5, 15: 5 };
-export const FLASH_AT = 119;
+export const XFADE: Record<number, number> = { 3: 5, 8: 5, 14: 5, 15: 5 };
+export const FLASH_AT = 112;
 
 export const shotAt = (f: number) => SHOTS.find((s) => f >= s.a && f < s.b) ?? SHOTS[SHOTS.length - 1];
 /** layers to draw at frame f: base shot, plus the next shot fading in during a crossfade */
@@ -63,203 +62,143 @@ export const layersAt = (f: number): { id: number; alpha: number }[] => {
 
 // ---------------- event frames (SHOTS.md, locked: the sound is timed to them) ----------------
 export const EV = {
-  EMU1_OUT: 14,     // shot 1: the emu steps out of the wheat
-  EMU1_LEAN: 96,    // "emus"@98: head forward
-  KICK2: 126,       // shot 2 kick
-  STOP6: 456,       // truck skid stop
-  SALUTE6: 500,     // "soldiers"@502
-  GUNS6: [533, 540] as number[], // the two tripods thump down (533-543)
-  CRATE6: 582,      // the last crate lands on the stack
-  FIRE7: [[602, 608], [628, 637], [647, 662], [688, 695]] as [number, number][], // shot 7 bursts (audio/cues.md: 2 / 3 / 5 / 3 rounds)
-  STRIKE7: [611, 614, 636, 639, 642, 656, 659, 662, 665, 669] as number[], // dust puffs falling short
-  JAM8: 801,        // the drum spring pops, KICK
-  CLACK8: 801,      // "clack" + puff (audio/cues.md: clack, spring and puff all @801)
-  HAMMER9: [837, 841, 846, 850] as number[], // hammer strikes (audio/cues.md)
-  CUT9: 875,
-  FLOURISH10: 961,  // pen flourish ("claimed"@963)
-  PUFF12: 1205,     // 10 dust puffs every 4 f from @1205
-  PECK12: 1259,     // the single peck (audio/cues.md)
-  MARCH13: 1275,    // boots on every 15 f from here
-  SCATTER14: 1382,  // the burst
-  SPIN14: [1450, 1457, 1463, 1469, 1475, 1482, 1488, 1494] as number[], // facing flips on the whooshes
-  SAG16: 1688,      // the gun on the truck sags (creak @1690)
-  TURN17: [1736, 1750] as [number, number], // head turn to the lens
-  BLINK17: 1756,
-  CRANK5: [[389, 402], [436, 449]] as [number, number][],
-  PATS11: [1166, 1180] as number[],
-  EMU1_STEPS: 24,   // footfalls 24 / 38 / 52
-  CUT14: 1450,
-  DIZZY14: 1476,    // swirl eyes by "once"@1479
+  POP1: 80,         // the casing's panels pop open, the bats burst out
+  GRIN1: 95,        // "bats"@95: the hero bat grins in the lens
+  DIVE2: 121,       // "bats"@121: the swarm dives in
+  FIRES2: [128, 131, 134, 137, 139] as number[], // little roof fires pop ("bombed"@128 .. "America"@139)
+  KICK2: 139,       // the soldier's cap flies off, jaw drop, KICK
+  COLUMN3: 290,     // the column of bats spirals out of the cave
+  TURN3: 308,       // "bats"@308: Adams turns to the lens, big eyes
+  BULB4: 331,       // the light bulb pops on
+  CU4: 367,         // "strap": the bench close-up
+  STRAP4: 392,      // the capsule is on
+  MEH4: 413,        // "bat": the bat looks at it, unimpressed
+  CUT4: 430,        // the tabletop planning model
+  FLUTTER5: 553,    // the bat flutters into the attic
+  HANG5: 565,       // "hide": hangs upside down, cosy
+  TICK5: 607,       // "timers": push in on the ticking timer
+  POOF5: 628,       // "off": POOF, the bat's eyes pop, KICK
+  STAMP6: 711,      // the stamp slams down ("yes"@713 KICK)
+  YES6: 713,
+  TWEEZ7: 800,      // the chemist holds up the capsule
+  FIT7: 828,        // the bat has tried one on
+  FLEX7: 845,       // flexes a tiny bicep, thumbs-up wing
+  CRATE8: 880,      // soldiers carry the crate of bats
+  LID8: 940,        // the lid pops
+  ESCAPE8: 947,     // the bats flutter out
+  TANK11: 1186,     // WHOOMP, KICK
+  CRANE12: 1274,    // the whole base burning
+  CUT13: 1365,      // the General polishing his car
+  CHAR13: 1394,     // puff: the car is a charred shell
+  KICK13: 1397,
+  WEIGH14: [1430, 1450] as [number, number],
+  DROP14: 1489,     // folder into the wastebasket (thunk)
+  TURN15: 1600,     // the medal bat turns to the lens, smug
+  WINK15: 1610,
 };
 
-// ---------------- set anchors (each set's local frame = world frame; ground y = 0) ----------------
+// ---------------- set anchors (each set's local frame = world frame) ----------------
 export const SPOT = {
-  // field: stubble for z > WHEAT_Z, standing wheat beyond
-  WHEAT_Z: -7.2,
-  GUN1: [-0.15, 0, -0.85] as V3,     // shot 1 tripod gun, muzzle toward -z
-  GUNNER1: [0.22, 0, -0.15] as V3,     // crouched behind it
-  EMU1: [-1.3, 0, -7.0] as V3,       // where the emu stops, at the wheat edge
-  CRATE2: [-0.55, 0, -2.6] as V3,    // the ammo crate the emu stands on
-  GUNNER2: [0.4, 0, -1.0] as V3,
-  GUN2: [0.15, 0, -1.7] as V3,
-  CAM17: [1.7, 1.4, -13.4] as V3,   // shot 17 lens, inside the wheat
-  EMU17: [0.45, 0, -18.7] as V3,      // the foreground emu that turns to the lens
-  // farm: track along x (z 1..4), fence on z = 0, wheat beyond, the yard + house on the left
-  FARMER3: [3.9, 0, 1.25] as V3,
-  HOUSE: [-7.8, 0, -19] as V3,         // farmhouse centre; front wall at HOUSE_Z
-  HOUSE_Z: -15,
-  VERANDA_D: 2.6,                     // verandah depth (front edge at HOUSE_Z + VERANDA_D)
-  FLOOR: 0.45,                        // verandah floor height
-  PHONE: [-4.4, 2.05, -14.92] as V3,  // the wall telephone (box centre) on the front wall
-  FARMER5: [-3.95, 0.45, -14.3] as V3,
-  MILL: [-1.6, 0, -9.5] as V3,        // windmill tower base
-  HILL_Z: -150,                       // crest line of the low hill the herd pours over
-  EAT: [[1, 11], [-15, -1.2]] as [[number, number], [number, number]], // x0,x1 / z0,z1 of the patch that gets eaten
-  // road: red road along x (z -3..3), wheat + fence on -z, paddock on +z
-  TRUCK6: [0, 0, 0] as V3,
-  MAJOR6: [2.6, 0, 2.2] as V3,
-  SOLDIERS6: [[0.5, 0, 2.7], [-0.6, 0, 2.5]] as V3[],
-  TRIPODS6: [[5.0, 0, 4.6], [6.6, 0, 3.9]] as V3[],
-  STACK6: [-7.0, 0, 4.6] as V3,       // ammo crate stack centre (bottom)
-  STACKER6: [-6.0, 0, 5.7] as V3,
-  // paddock
-  GUN7: [0, 0, 0] as V3,
-  GUNNER7: [0.55, 0, 0.75] as V3,
-  RISE_Z: -78,                        // the rise the emus trot over
-  TRUCK9: [0, 0, 6] as V3,            // parked, hammering
-  GUN12: [0, 0, 0] as V3,
-  GUNNER14: [0, 0, -14] as V3,       // the starburst centre, well away from the track
-  // dam: water centred on the origin, bank ring, the soldiers hidden behind the south bank
-  DAM_R: 7.2,                         // nominal water radius (the shoreline wobbles: damNoise)
-  BANK_R: 10.4,                       // crest radius
-  BANK_H: 1.4,
-  GUN8: [0.2, 1.22, 10.55] as V3,
-  GUNNER8: [0.75, 0.3, 11.55] as V3,  // lying low behind the crest, hats over the berm
-  SARGE8: [-0.7, 0.2, 11.8] as V3,
-  // camp
-  TENT: [0, 0, 0] as V3,
-  DESK: [0.75, 0, 3.35] as V3,
-  MAJOR10: [0.75, 0, 2.8] as V3,
-  TALLY: [-0.6, 0, 4.35] as V3,
-  BRASS: [0.5, 0, -15] as V3,         // the mountain of casings
-  // dump
-  WALL_Z: -1.2,
-  SOLDIER11: [0.9, 0, 0.0] as V3,
-  // parade
-  GUN13: [0, 0, 0] as V3,
-  MAJOR15: [0, 0, -26] as V3,
+  // desert (shot 1): the camera hangs in the night sky, the desert floor 30 m below
+  CAM1: [0, 30, 8] as V3,
+  BOMB1: [0.25, 32.5, -1.0] as V3,          // where the casing pops
+  // base: hangar (doors on +z), control tower, water tower, barracks, the big fuel tank on legs, the General's car
+  HANGAR: [-18, 0, -24] as V3, HANGAR_W: 20, HANGAR_D: 20, HANGAR_H: 7.2,
+  TOWER: [6, 0, -32] as V3,
+  WTOWER: [22, 0, -40] as V3,
+  FLAG: [-3, 0, -11] as V3,
+  BARRACKS: [[10, 0, -10, 0], [27, 0, -13, 0.12], [13, 0, -24, 0]] as [number, number, number, number][], // centre + yaw; 14 x 5 m, door + steps on +z
+  STEP: [8.0, 0, -7.1] as V3,               // shot 9: the step the bat peeks under
+  TANK: [-3, 0, 4] as V3, TANK_R: 2.3, TANK_L: 10, TANK_Y: 4.7,       // axis along x at TANK_Y; underside at TANK_Y - TANK_R
+  CAR: [-12, 0, -5] as V3,                   // the General's car, nose toward +x
+  CRATES9: [1.5, 0, -5.0] as V3,             // the crate stack the bat looks behind
+  SOLDIER2: [14.7, 0, 13.8] as V3,
+  // cave: overlook platform at y 0, the bowl falls to the cave floor at y -8, the mouth on z = -30 (x -7..7, up to y 3)
+  ADAMS3: [5.4, 0, -3.4] as V3,
+  RAIL_Z: -4.4,
+  MOUTH: [0, -8, -30] as V3, MOUTH_W: 14, MOUTH_H: 11,
+  FLOOR_Y: -8,
+  LIP15: [1.2, 2.05, -30.4] as V3,           // shot 15: the medal bat hangs from the cave lip (feet at the rock)
+  CAM15: [0.0, -5.2, -40] as V3,
+  // workshop: bench centre, the planning table with the model town
+  BENCH: [0, 0, 0] as V3, BENCH_Y: 0.92,
+  ADAMS4: [0.05, 0, -0.95] as V3,
+  BAT4: [-0.12, 0.92, 0.12] as V3,
+  TABLE: [4.2, 0, 1.2] as V3, TABLE_Y: 0.84,
+  ADAMS4C: [4.15, 0, 0.05] as V3,
+  // attic: the cutaway model house (front open), ridge beam of the attic
+  HOUSE5: [0, 0, 0] as V3, RIDGE5: [0, 1.44, 0] as V3,
+  // oval office: the desk, the President behind it, Adams in front
+  DESK6: [0, 0, -1.4] as V3, DESK_Y: 0.8,
+  PRES6: [0.05, -0.36, -2.15] as V3,
+  ADAMS6: [1.15, 0, -0.35] as V3,
+  PAPER6: [-0.12, 0.805, -1.12] as V3,
+  // lab
+  LABBENCH: [0, 0, 0] as V3, LAB_Y: 0.92,
+  CHEM7: [0.42, 0, -0.85] as V3,
+  BAT7: [-0.34, 0.92, 0.08] as V3,
+  // office
+  ODESK: [0, 0, -1.1] as V3, ODESK_Y: 0.78,
+  OFFICER14: [0.15, 0, -1.8] as V3,
+  BAGS14: [-0.55, 0.78, -1.05] as V3,
+  BASKET14: [0.98, 0, -0.35] as V3,
+  TRAY14: [0.6, 0.78, -0.95] as V3,
 };
 
-// ---------------- terrain heights shared by build.ts (the ground) and cast.ts (feet on it) ----------------
-/** farm: the low hill the herd pours over (z < -126) */
-export const farmHill = (x: number, z: number) => z > -126 ? 0 : 9.5 * Math.exp(-(((z + 150) / 24) ** 2)) * (0.75 + 0.25 * Math.sin(x / 37)) + 2 * Math.exp(-(((z + 220) / 40) ** 2));
-/** paddock: the rise the emus trot over */
-export const paddockRise = (x: number, z: number) => z > 40 ? 0 : 3.4 * Math.exp(-(((z - SPOT.RISE_Z) / 18) ** 2)) * (0.8 + 0.2 * Math.sin(x / 23)) + (z < SPOT.RISE_Z ? 1.2 * (1 - Math.exp((z - SPOT.RISE_Z) / 30)) : 0);
-/** dam: ground height at radius r (inner mud slope up to the crest, outer slope down) */
-export const DAM_PROFILE: [number, number][] = [[SPOT.DAM_R - 2, -1.2], [SPOT.DAM_R - 0.5, -0.4], [SPOT.DAM_R + 0.6, 0.05], [SPOT.DAM_R + 2, 0.55], [SPOT.BANK_R - 0.9, SPOT.BANK_H * 0.92], [SPOT.BANK_R, SPOT.BANK_H],
-  [SPOT.BANK_R + 0.9, SPOT.BANK_H * 0.9], [SPOT.BANK_R + 2.4, SPOT.BANK_H * 0.4], [SPOT.BANK_R + 4.2, 0.05], [SPOT.BANK_R + 5, -0.05]];
-/** irregular dam: radius multiplier by world angle atan2(z, x); kept ~1 on the soldiers' side (+z) */
-export const damNoise = (a: number) => {
-  const d = Math.abs(Math.atan2(Math.sin(a - Math.PI / 2), Math.cos(a - Math.PI / 2))), w = Math.min(1, Math.max(0, (d - 0.35) / 0.6));
-  return 1 + w * (0.14 * Math.sin(3 * a + 0.7) + 0.08 * Math.sin(5 * a + 2.1) + 0.04 * Math.sin(9 * a + 4));
-};
-/** ground height of the dam set at world (x, z) */
-export const damAt = (x: number, z: number) => damY(Math.hypot(x, z) / damNoise(Math.atan2(z, x)));
-export const damY = (r: number) => {
-  const P = DAM_PROFILE;
-  if (r <= P[0][0]) return P[0][1];
-  for (let i = 1; i < P.length; i++) if (r <= P[i][0]) { const k = (r - P[i - 1][0]) / (P[i][0] - P[i - 1][0]); return P[i - 1][1] + (P[i][1] - P[i - 1][1]) * k; }
-  return 0;
+// ---------------- terrain heights shared by build.ts (the ground) and cast.ts ----------------
+/** cave set: overlook ground at 0, the bowl in front of the mouth down to FLOOR_Y */
+export const caveGround = (x: number, z: number) => {
+  const zb = smooth((-z - 7) / 10);                         // 0 at z = -7 .. 1 at z = -17
+  const side = smooth((Math.abs(x) - 16) / 14);             // the bowl's side walls
+  return SPOT.FLOOR_Y * zb * (1 - side) + 4 * side * smooth((-z + 2) / 20);
 };
 
-// ---------------- moving props: truck, guns, loose crates ----------------
-/** truck: pos = ground point under the chassis centre, yaw about y (local +x = forward), pitch nose-up, roll */
-export type TruckPose = { visible: boolean; pos: V3; yaw: number; pitch: number; roll: number; gun: boolean; sag: number; dust: number; speed: number };
-const TRUCK_HIDE: TruckPose = { visible: false, pos: [0, -50, 0], yaw: 0, pitch: 0, roll: 0, gun: false, sag: 0, dust: 0, speed: 0 };
-/** local truck point -> world (yaw about y: +x -> (cos, 0, -sin); pitch about the truck's z axis; roll ignored) */
-export const truckPt = (p: TruckPose, l: V3): V3 => {
-  const cp = Math.cos(p.pitch), sp = Math.sin(p.pitch);
-  const x = l[0] * cp - l[1] * sp, y = l[0] * sp + l[1] * cp, z = l[2] + l[1] * Math.sin(p.roll);
-  const cy = Math.cos(p.yaw), sy = Math.sin(p.yaw);
-  return [p.pos[0] + x * cy + z * sy, p.pos[1] + y, p.pos[2] - x * sy + z * cy];
+// ---------------- moving props ----------------
+/** the hook's bomb casing: pos = centre, pitch = tilt off vertical (rad), open = panel opening 0..1, spin about its axis */
+export type BombPose = { visible: boolean; pos: V3; tilt: number; open: number; spin: number };
+export const bombAt = (id: number, f: number): BombPose => {
+  if (id !== 1) return { visible: false, pos: [0, -99, 0], tilt: 0, open: 0, spin: 0 };
+  const B = SPOT.BOMB1, u = clamp01(f / EV.POP1);
+  // drops in fast from above the frame and settles into a slow fall at the centre (cartoon hang), then sinks away
+  const y = f < EV.POP1 ? B[1] + 17 * (1 - u) ** 2.4 : B[1] - 0.9 * ((f - EV.POP1) / FPS) - 3.2 * ((f - EV.POP1) / FPS) ** 2;
+  const x = B[0] + 0.9 * (1 - u) ** 2;
+  const open = f < EV.POP1 ? 0 : easeOut((f - EV.POP1) / 7);
+  return { visible: true, pos: [x, y, B[2]], tilt: 0.16 * Math.sin(f * 0.07) + 0.12 * (1 - u), open, spin: f * 0.015 };
 };
-/** shot 6: skids in along +x, stops at STOP6 with a forward pitch dip */
-const truck6X = (f: number) => { const s = (EV.STOP6 - f) / FPS; return s <= 0 ? 0 : -(9 * s + 6 * s * s); };
-/** shot 9b: drives along +x across the paddock at ~9 m/s from CUT9 */
-export const truck9X = (f: number) => -6 + 9.2 * (f - EV.CUT9) / FPS;
-/** shot 16: drives away along +x into the sunset */
-const truck16X = (f: number) => { const s = Math.max(0, (f - 1656) / FPS); return 4 + 4 * s + 2.2 * s * s; };
-const bump = (f: number, k: number) => k * (0.6 * Math.sin(f * 1.9) + 0.4 * Math.sin(f * 3.7 + 1));
-export const truckAt = (id: number, f: number): TruckPose => {
-  switch (id) {
-    case 6: {
-      const x = truck6X(f), dip = f >= EV.STOP6 && f < EV.STOP6 + 10 ? -0.05 * Math.sin(Math.PI * (f - EV.STOP6) / 10) : 0;
-      const moving = f < EV.STOP6;
-      return { ...TRUCK_HIDE, visible: true, pos: [x, moving ? Math.abs(bump(f, 0.02)) : 0, 0], yaw: 0, pitch: dip + (moving ? bump(f + 3, 0.01) : 0), roll: 0, dust: moving ? 1 : 0, speed: moving ? 9 : 0 };
-    }
-    case 9: {
-      if (f < EV.CUT9) return { ...TRUCK_HIDE, visible: true, pos: SPOT.TRUCK9, yaw: 0, pitch: 0, roll: 0, gun: true };
-      const x = truck9X(f);
-      return { ...TRUCK_HIDE, visible: true, pos: [x, Math.abs(bump(f, 0.13)), SPOT.TRUCK9[2]], yaw: 0, pitch: bump(f + 2, 0.06), roll: bump(f + 5, 0.05), gun: true, dust: 1, speed: 9.2 };
-    }
-    case 16: return { ...TRUCK_HIDE, visible: true, pos: [truck16X(f), Math.abs(bump(f, 0.04)), 0], yaw: 0, pitch: bump(f + 2, 0.02), roll: 0, gun: true, sag: 1, dust: 1, speed: 6 };
-  }
-  return TRUCK_HIDE;
+/** shot 8: the crate of bats carried in by two soldiers; lid 0..1 (pops open at LID8) */
+export type CratePose = { visible: boolean; pos: V3; yaw: number; lid: number; jolt: number };
+export const crate8X = (f: number) => 12.6 - 3.2 * glide((f - 853) / 80) - 0.6 * glide((f - 925) / 30);
+export const crateAt = (id: number, f: number): CratePose => {
+  if (id !== 8) return { visible: false, pos: [0, -99, 0], yaw: 0, lid: 0, jolt: 0 };
+  const walk = f < 930, bob = walk ? 0.03 * Math.abs(Math.sin(f * 0.42)) : 0;
+  const jolt = f >= EV.LID8 - 4 && f < EV.LID8 ? 0.05 * Math.sin((f - EV.LID8 + 4) * 2.2) : 0;
+  return { visible: true, pos: [crate8X(f), 0.78 + bob + jolt, 12.4], yaw: 0.05, lid: f < EV.LID8 ? 0 : easeOut((f - EV.LID8) / 5) * 1.9, jolt };
 };
-/** Lewis gun: pivot at the receiver; local +x = muzzle. yaw about y (+x -> (cos, 0, -sin)), pitch = elevation,
- *  tip = roll over onto its side (tipped-over gun), tripod drawn below the pivot unless onTruck. fire 0/1 = muzzle flash
- *  this frame. jam = seconds since the jam (spring + smoke), -1 none. onTruck: pos is truck-local (world.ts parents it). */
-export type GunPose = { pos: V3; yaw: number; pitch: number; tip: number; tripod: boolean; onTruck?: boolean; fire: number; jam: number };
-export const TRIPOD_H = 0.62;
-const gp = (p: Partial<GunPose> & { pos: V3 }): GunPose => ({ yaw: Math.PI / 2, pitch: 0.04, tip: 0, tripod: true, fire: 0, jam: -1, ...p });
-/** yaw that points a gun's muzzle (+x local) from a to b */
-const aim = (a: V3, b: V3) => Math.atan2(-(b[2] - a[2]), b[0] - a[0]);
-/** burst pattern: on for 2 frames of every 3 inside [a, b) */
-const burst = (f: number, a: number, b: number) => (f >= a && f < b && f % 3 !== 2 ? 1 : 0);
-export const gunsAt = (id: number, f: number): GunPose[] => {
-  const S = SPOT;
-  switch (id) {
-    case 1: return [gp({ pos: [S.GUN1[0], TRIPOD_H, S.GUN1[2]], yaw: aim(S.GUN1, S.EMU1) + 0.012 * Math.sin(f * 1.7), pitch: 0.05 })];
-    case 2: return [gp({ pos: [S.GUN2[0], 0.17, S.GUN2[2]], yaw: 2.2, tip: 1.35, pitch: 0.1 })];
-    case 6: {
-      const drop = (f0: number) => { const s = (f - f0) / FPS; return s < 0 ? 9 : s < 0.12 ? 0.35 * (1 - s / 0.12) : 0; };
-      return S.TRIPODS6.map((p, i) => gp({ pos: [p[0], TRIPOD_H + drop(EV.GUNS6[i]), p[2]], yaw: Math.PI / 2 + 0.6 - i * 0.25, pitch: 0.18 }));
-    }
-    case 7: return [gp({ pos: [S.GUN7[0], TRIPOD_H, S.GUN7[2]], yaw: Math.PI / 2 + 0.04 + 0.01 * Math.sin(f * 0.9), pitch: 0.07, fire: EV.FIRE7.reduce((a, [x, y]) => a || burst(f, x, y), 0) })];
-    case 8: return [gp({ pos: S.GUN8, yaw: Math.PI / 2 - 0.06, pitch: 0.05, tripod: false, fire: 0, jam: f >= EV.CLACK8 ? (f - EV.CLACK8) / FPS : -1 })];
-    case 9: return [gp({ pos: [-1.0, 1.85, 0], yaw: f < EV.CUT9 ? 0.25 : 0.15 * Math.sin(f * 0.5), pitch: f < EV.CUT9 ? 0 : 0.08 * Math.sin(f * 1.3), tripod: false, onTruck: true, fire: f >= EV.CUT9 ? burst(f, 928, 935) : 0 })];
-    case 12: return [gp({ pos: [S.GUN12[0], TRIPOD_H, S.GUN12[2]], yaw: aim(S.GUN12, emu12At(f + 3)), pitch: 0.06, fire: burst(f, 1203, 1243) })];
-    case 13: { // the barrel sweeps along the marching line
-      const u = (f - 1270) / 112;
-      return [gp({ pos: [S.GUN13[0], 0.82, S.GUN13[2]], yaw: Math.PI / 2 + 0.42 * Math.sin(u * Math.PI * 2.2 - 1.2), pitch: 0.05, tripod: false })];
-    }
-    case 16: return [gp({ pos: [-1.0, 1.85, 0], yaw: 0, pitch: 0.12 - 0.54 * smooth((f - EV.SAG16) / 6), tripod: false, onTruck: true })];
-  }
-  return [];
+
+// ---------------- flight paths ----------------
+/** a smooth path through keyed points (smootherstep between keys) */
+const keyed = (keys: [number, V3][], f: number): V3 => {
+  if (f <= keys[0][0]) return keys[0][1];
+  for (let i = 1; i < keys.length; i++) if (f < keys[i][0]) return lerp3(keys[i - 1][1], keys[i][1], glide((f - keys[i - 1][0]) / (keys[i][0] - keys[i - 1][0])));
+  return keys[keys.length - 1][1];
 };
-/** loose ammo crates: pos = bottom centre, yaw */
-export type CratePose = { pos: V3; yaw: number; roll?: number };
-export const CRATE = { L: 0.78, H: 0.42, D: 0.46 };
-export const STACK_N = 6; // crates high in the shot-6 stack
-export const cratesAt = (id: number, f: number): CratePose[] => {
-  const S = SPOT;
-  switch (id) {
-    case 1: return [{ pos: [S.GUN1[0] + 0.85, 0, S.GUN1[2] + 0.45], yaw: 0.3 }];
-    case 2: return [{ pos: S.CRATE2, yaw: 0.25 }];
-    case 6: { // the last crate: carried overhead from 556, set on the top of the stack at CRATE6
-      const top: V3 = [S.STACK6[0] + 0.1, STACK_N * CRATE.H, S.STACK6[2] + 0.05];
-      const hand: V3 = [S.STACKER6[0] - 0.25, 2.12, S.STACKER6[2] - 0.1];
-      const u = smooth((f - (EV.CRATE6 - 12)) / 12);
-      const p: V3 = [lerp(hand[0], top[0], u), lerp(hand[1], top[1], u) + 0.25 * Math.sin(Math.PI * u), lerp(hand[2], top[2], u)];
-      return [{ pos: p, yaw: lerp(0.5, 0.05, u) }];
-    }
-    case 7: return [{ pos: [S.GUN7[0] + 0.9, 0, S.GUN7[2] + 0.2], yaw: -0.4 }];
-    case 12: return [{ pos: [S.GUN12[0] - 0.95, 0, S.GUN12[2] + 0.35], yaw: 0.5 }];
-  }
-  return [];
+/** shot 9: one bat cruising the base: under the barracks step, behind the crate stack, on toward the fuel tank */
+export const BAT9_KEYS: [number, V3][] = [
+  [968, [11.2, 2.6, 2.4]], [996, [8.6, 0.85, -5.4]], [1004, [8.25, 0.42, -6.25]], [1030, [8.2, 0.42, -6.3]],
+  [1046, [3.6, 1.6, -3.4]], [1056, [2.05, 0.75, -4.2]], [1078, [2.0, 0.75, -4.25]], [1110, [-0.4, 2.2, 1.6]],
+];
+export const bat9At = (f: number): V3 => {
+  const p = keyed(BAT9_KEYS, f);
+  return [p[0], p[1] + 0.05 * Math.sin(f * 0.5), p[2]];
 };
-/** nose / muzzle direction for yaw / pitch */
-export const noseDir = (yaw: number, pitch: number): V3 => [Math.cos(pitch) * Math.cos(yaw), Math.sin(pitch), -Math.cos(pitch) * Math.sin(yaw)];
+/** the cave's bat column / ribbon: point on the centre line at s (0 deep in the cave .. 1 high in the sky) */
+const bez = (a: V3, b: V3, c: V3, d: V3, t: number): V3 => {
+  const s = 1 - t, A = s * s * s, B = 3 * s * s * t, C = 3 * s * t * t, D = t * t * t;
+  return [A * a[0] + B * b[0] + C * c[0] + D * d[0], A * a[1] + B * b[1] + C * c[1] + D * d[1], A * a[2] + B * b[2] + C * c[2] + D * d[2]];
+};
+export const ribbonAt = (id: number, s: number): V3 => id === 15
+  ? bez([0, -5.6, -46], [0, -4.6, -28], [1.5, 6, -16], [8, 36, 4], s)
+  : bez([0, -6.5, -38], [0, -5, -26], [-1, 12, -30], [-10, 46, -36], s);
 
 // ---------------- camera ----------------
 // Grammar (look_reports/motion.md + composition.md): every key pushes in 0.2-0.35 %/f; every shot of >= 2 s carries one
@@ -299,7 +238,6 @@ const zoom = (pos: V3, look: V3, fov: number, k: number, rest: Partial<Cam> = {}
 /** push a shot in from frame f0 at `rate` (punch as in pushK, starting at punchAt) */
 const P = (s: Shot, f: number, f0: number, rate = 0.0025, punch = 0, n = 35, punchAt = f0): Shot =>
   dolly(s.pos, s.look, pushK(f, f0, rate) * (punch ? pushK(f, punchAt, 0, punch, n) : 1), { fov: s.fov, roll: s.roll });
-const lerp3 = (a: V3, b: V3, k: number): V3 => [lerp(a[0], b[0], k), lerp(a[1], b[1], k), lerp(a[2], b[2], k)];
 const gl = (f: number, f0: number, dur: number) => glide((f - f0) / dur);
 /** shot between two camera setups, blended by u (pos / look / fov / roll) */
 const between = (a: Cam, b: Cam, u: number): Shot => mix(a, b, u);
@@ -309,117 +247,125 @@ const C = (pos: V3, look: V3, fov: number, roll = 0): Cam => ({ pos, look, fov, 
 export const HEAD_TOP = 1.75, HEAD_H = 0.48;
 /** eye point of a card (DOF focus) */
 export const eyes = (p: V3, s = 1): V3 => [p[0], p[1] + 1.52 * s, p[2]];
-/** emu eye point (standing emu head ~1.62 m) */
-export const emuEye = (p: V3, s = 1): V3 => [p[0], p[1] + 1.6 * s, p[2]];
 
 // ---- per-shot cameras ----
-// 1 (0-120): low over the crouched gunner's right shoulder toward the wheat edge; the emu steps out and stops 10 m
-// ahead; slow push, a punch on "emus"
+// 1 (0-113): in the night sky, the bomb drops into the frame centre, pops; the hero bat flies into the lens
 const S1 = (f: number): Shot => {
-  const a = C([0.5, 1.9, 6.5], [-1.0, 1.2, -8.0], 22, 0.025), b = C([0.5, 1.88, 6.2], [-1.0, 1.22, -8.0], 21, -0.01);
-  const c = between(a, b, gl(f, 0, 110));
-  return zoom(c.pos, c.look, c.fov!, pushK(f, 0, 0.0012) * pushK(f, 92, 0, 0.005, 22), { roll: c.roll });
+  const a = C([0.2, 30.4, 8.4], [0.1, 33.2, -10], 52, 0.03), b = C([0.0, 30.0, 7.9], [0.15, 32.4, -10], 50, -0.02);
+  const c = between(a, b, gl(f, 0, 100));
+  return zoom(c.pos, c.look, c.fov!, pushK(f, 0, 0.001) * pushK(f, EV.POP1, 0, 0.006, 14), { roll: c.roll });
 };
-// 2 (121-156): the punchline two-shot: emu up on the crate (left of centre), the dazed gunner on the right, the gun
-// tipped in the stubble between them
-const S2 = (f: number): Shot => P({ pos: [0.15, 1.5, 5.0], look: [-0.1, 1.12, -1.9], fov: 38, roll: -0.03 }, f, 121, 0.0025, 0.008, 12, 124);
-// 3 (157-304): crane down from the windmill head and glide to the farmer by "farms"; holds with a push
-const MILL_HEAD: V3 = [SPOT.MILL[0], 10.4, SPOT.MILL[2]];
+// 2 (114-170): the base at dusk past the soldier's shoulder (right third); the swarm dives in from the top left
+const S2 = (f: number): Shot => P({ pos: [16.2, 1.72, 17.2], look: [-4, 5.2, -16], fov: 48, roll: -0.025 }, f, 114, 0.0022, 0.007, 14, 137);
+// 3 (171-327): establishing wide over the overlook toward the cave mouth, glide down to Adams at the rail by "Adams";
+// tilt up with the column at 290, punch in on Adams' turn at 308
 const S3 = (f: number): Shot => {
-  const a = C([4.5, 11.6, 3.5], add(MILL_HEAD, [0.6, -0.8, 0]), 44, -0.03);
-  const b = C([4.6, 1.6, 4.2], [-0.5, 2.0, -10.0], 50, 0.02);
-  const u = gl(f, 162, 64), k = u * u * (1.6 - 0.6 * u); // crane drops first, the truck catches up
-  const sh = mix(a, b, u); sh.pos = [lerp(a.pos[0], b.pos[0], u), lerp(a.pos[1], b.pos[1], k), lerp(a.pos[2], b.pos[2], u)];
-  return zoom(sh.pos, sh.look, sh.fov, pushK(f, 226, 0.0014), { roll: sh.roll });
+  const a = C([10.5, 6.8, 8.5], [-0.5, -2.5, -30], 50, 0.03), b = C([7.0, 1.95, 0.4], [-0.4, -1.8, -30], 46, -0.02);
+  const c2 = C([7.0, 1.9, 0.4], [-0.6, 4.5, -30], 50, 0.02);
+  const u = gl(f, 176, 52), v = gl(f, 284, 26);
+  const s = mix(mix(a, b, u), c2, v);
+  return P(s, f, 228, 0.0018, 0.007, 16, 305);
 };
-// 4 (305-388): high wide over the fence toward the hill, the herd pouring down into the wheat; cut on "and" (358) to
-// the farmer's MCU, jaw drop, hat lifting
-const S4a = (f: number): Shot => zoom([7.4, 1.55, 1.3], [5.0, 1.15, -30], 40, pushK(f, 305, 0.0022), { roll: 0.02 });
-const S4b = (f: number): Shot => P({ pos: [SPOT.FARMER3[0] + 0.55, 1.62, SPOT.FARMER3[2] + 2.55], look: [SPOT.FARMER3[0] - 0.15, 1.55, SPOT.FARMER3[2]], fov: 40, roll: -0.03 }, f, 358, 0.003, 0.008, 18, 368);
-// 5 (389-449): on the verandah: the farmer at the wall telephone (right), the yard and pecking emus through the posts
-const S5 = (f: number): Shot => P({ pos: [-10.0, 1.8, -14.65], look: [0.0, 1.6, -13.5], fov: 40, roll: 0.025 }, f, 389, 0.002, 0.006, 24, 418);
-// 6 (450-601): low front 3/4 as the truck skids in; glide past Meredith to the saluting soldiers; cut to the tripods;
-// cut to the crate stack
-const S6a = (f: number): Shot => {
-  const a = C([7.6, 1.3, 10.8], [-0.6, 1.2, 0.0], 46, 0.02), b = C([6.9, 1.6, 7.4], [-0.6, 1.4, 0.5], 44, -0.02);
-  return P(between(a, b, gl(f, 470, 40)), f, 450, 0.0022);
+// 4a (328-366): Adams behind his bench, the bulb pops; 4b (367-429): bench close-up; 4c (430-546): the planning model
+const S4a = (f: number): Shot => P({ pos: [0.75, 1.56, 2.35], look: [0.02, 1.5, -0.9], fov: 42, roll: 0.02 }, f, 328, 0.0028, 0.008, 12, 330);
+const S4b = (f: number): Shot => {
+  const B = SPOT.BAT4, a = C([0.32, 1.22, 1.02], [B[0] - 0.02, 1.08, B[2] - 0.12], 40, -0.02), b = C([0.2, 1.16, 0.78], [B[0], 1.06, B[2] - 0.08], 38, 0.015);
+  return P(between(a, b, gl(f, 395, 26)), f, 367, 0.0022, 0.006, 14, 411);
 };
-const S6b = (f: number): Shot => P({ pos: [2.8, 1.1, 8.7], look: [5.7, 0.6, 4.3], fov: 42, roll: 0.03 }, f, 527, 0.003, 0.007, 14, 531);
-const S6c = (f: number): Shot => P({ pos: [-5.6, 1.3, 11.4], look: [-6.9, 1.8, 4.6], fov: 50, roll: -0.025 }, f, 556, 0.0025, 0.006, 14, 578);
-// 7 (602-694): long lens, low over the gunner's shoulder: the emus trot over the rise and away
-const S7 = (f: number): Shot => zoom([0.1, 1.45, 5.4], [1.0, 1.0, -50], 28, pushK(f, 602, 0.0018));
-// 8 (695-824): behind the hidden soldiers on the outer bank; crane up over the crest to reveal the crowded dam by
-// "emus"; cut on "gun" (797) to the CU of the gun and gunner
-const S8a = (f: number): Shot => {
-  const a = C([0.35, 1.75, 17.4], [0.0, 1.2, 8.0], 40, 0.02), b = C([0.45, 2.4, 17.0], [0.0, 0.3, -3.0], 44, -0.02);
-  return P(between(a, b, gl(f, 700, 38)), f, 738, 0.002);
+const S4c = (f: number): Shot => {
+  const Tb = SPOT.TABLE, a = C([Tb[0] + 1.6, 2.55, Tb[2] + 2.6], [Tb[0] - 0.1, 0.95, Tb[2] - 0.3], 46, 0.03), b = C([Tb[0] + 0.8, 2.35, Tb[2] + 2.3], [Tb[0] - 0.05, 1.0, Tb[2] - 0.35], 44, -0.02);
+  return P(between(a, b, gl(f, 436, 60)), f, 430, 0.0018, 0.006, 16, 512);
 };
-const S8b = (f: number): Shot => P({ pos: [-2.0, 1.75, 7.9], look: [0.5, 1.25, 11.4], fov: 38, roll: -0.03 }, f, 797, 0.003, 0.01, 12, 800);
-// 9 (825-936): MS of Meredith on the tray hammering; cut (875) to a side-on track along the bouncing truck
-const S9a = (f: number): Shot => P({ pos: [2.2, 2.3, 11.6], look: [-0.9, 1.95, 6.0], fov: 42, roll: 0.025 }, f, 825, 0.0025);
-const S9b = (f: number): Shot => {
-  const x = truck9X(f), u = gl(f, 880, 40);
-  return { pos: [x - lerp(8.5, 9.5, u), 2.6, SPOT.TRUCK9[2] + lerp(6.0, 5.0, u)], look: [x + 8, 1.2, SPOT.TRUCK9[2] - 1.0], fov: 54, roll: -0.02 };
+// 5 (547-652): the cutaway model house; push into the attic, then onto the timer; POOF
+const S5 = (f: number): Shot => {
+  const R = SPOT.RIDGE5;
+  const a = C([0.25, 1.15, 2.6], [0.0, 0.95, 0.0], 40, 0.02), b = C([0.12, 1.28, 1.05], [R[0], R[1] - 0.18, 0.0], 38, -0.02);
+  const c = C([0.06, 1.2, 0.5], [R[0], R[1] - 0.27, 0.0], 36, 0.01);
+  const s = mix(mix(a, b, gl(f, 553, 40)), c, gl(f, 600, 28));
+  return P(s, f, 547, 0.0016, 0.009, 12, 626);
 };
-// 10 (937-1134): Meredith at the field desk outside the lit tent, the tally board on the left; flourish; pull back and
-// crane up (1040-1087) to reveal the mountain of brass behind the tent
-const S10 = (f: number): Shot => {
-  const a = C([0.05, 1.5, 8.2], [0.05, 1.2, 2.6], 44, -0.02), b = C([4.0, 6.8, 17.5], [0.2, 3.6, -9.0], 52, 0.02);
-  const u = gl(f, 1040, 47);
-  return P(between(a, b, u), f, 937, u > 0 ? 0.001 : 0.0022);
+// 6 (653-732): the President's desk from the front-left, Adams on the right; push on the stamp
+const S6 = (f: number): Shot => {
+  const a = C([-1.45, 1.5, 2.3], [0.25, 1.05, -1.4], 44, 0.025), b = C([-1.1, 1.42, 1.75], [0.18, 1.0, -1.45], 42, -0.02);
+  return P(between(a, b, gl(f, 662, 40)), f, 653, 0.002, 0.008, 14, 709);
 };
-// 11 (1135-1200): low, looking up at the house-tall wall of crates, the soldier patting it; push
-const S11 = (f: number): Shot => P({ pos: [-1.9, 0.95, 5.6], look: [0.6, 2.6, -1.0], fov: 52, roll: 0.03 }, f, 1135, 0.003, 0.007, 20, 1170);
-// 12 (1201-1269): behind the gun, the emu strolls left -> right, puffs popping at its feet
-const S12 = (f: number): Shot => P({ pos: [1.3, 2.0, 3.6], look: [-0.45, 0.85, -5.0], fov: 52, roll: -0.02 }, f, 1201, 0.0025, 0.006, 16, 1244);
-// 13 (1270-1381): high 3/4 behind the sandbagged gun, the grey line marching in step toward it
-const S13 = (f: number): Shot => {
-  const a = C([0.55, 2.55, 3.9], [0.1, 0.7, -8.0], 46, 0.02), b = C([0.45, 2.45, 3.6], [0.0, 0.7, -8.0], 44, -0.01);
-  const c = between(a, b, gl(f, 1276, 90));
-  return zoom(c.pos, c.look, c.fov ?? 44, pushK(f, 1300, 0.0012) * pushK(f, 1365, 0, 0.005, 16), { roll: c.roll });
+// 7 (733-852): the lab two-shot; glide toward the bat on the bench for the flex
+const S7 = (f: number): Shot => {
+  const B = SPOT.BAT7, a = C([0.1, 1.48, 2.3], [0.0, 1.25, -0.4], 42, -0.02), b = C([-0.2, 1.22, 1.05], [B[0] + 0.08, 1.12, B[2] - 0.2], 40, 0.02);
+  return P(between(a, b, gl(f, 812, 28)), f, 733, 0.0018, 0.006, 14, 843);
 };
-// 14a (1382-1449): top-down aerial over the starburst; 14b (1450-1503): low angle on the spinning gunner
-// high 3/4 drone (~60 deg down) over the starburst, the gunner in the middle; rises and arcs a little as they scatter
-const S14a = (f: number): Shot => {
-  // ~35 deg down, close: the gunner at ~1/5 frame height in the lower centre, a strip of horizon at the top
-  const C0 = SPOT.GUNNER14, u = gl(f, 1382, 66), a = lerp(-0.1, 0.1, u), d = lerp(6.2, 6.8, u), hgt = lerp(4.1, 4.5, u);
-  return { pos: [C0[0] + Math.sin(a) * d, hgt, C0[2] + Math.cos(a) * d], look: [C0[0] - Math.sin(a) * 5, 0.0, C0[2] - Math.cos(a) * 5], fov: 50, roll: lerp(0.02, -0.03, u) };
+// 8 (853-967): the test base on a bright day; glide in to the soldiers carrying the crate; the lid pops
+const S8 = (f: number): Shot => {
+  const a = C([20, 4.4, 26], [-2, 3.2, -8], 52, 0.02), b = C([13.6, 1.9, 19.0], [8.6, 1.35, 10.0], 46, -0.02);
+  return P(between(a, b, gl(f, 858, 46)), f, 853, 0.0016, 0.006, 14, 938);
 };
-const S14b = (f: number): Shot => P({ pos: add(SPOT.GUNNER14, [0.6, 0.55, 3.6]), look: add(SPOT.GUNNER14, [0.05, 1.55, -0.2]), fov: 48, roll: 0.04 }, f, EV.CUT14, 0.003, 0.008, 18, 1474);
-// 15 (1504-1655): Meredith at the salute, the helmeted emu ranks behind; slow crane up over the ranks to the horizon
+// 9 (968-1109): follow the bat: the lens trails it low, beside and behind
+const S9 = (f: number): Shot => {
+  const p = bat9At(f), q = bat9At(f + 10), d: V3 = [q[0] - p[0], 0, q[2] - p[2]], l = Math.hypot(d[0], d[2]) || 1;
+  const back: V3 = [-d[0] / l, 0, -d[2] / l], side: V3 = [-back[2], 0, back[0]];
+  const off = (k: number, s: number, h: number): V3 => [back[0] * k + side[0] * s, h, back[2] * k + side[2] * s];
+  const o = lerp3(off(1.4, 0.9, 0.35), off(1.6, 1.2, 0.55), smooth((f - 1080) / 30));
+  return { pos: add(p, o), look: [p[0], p[1] - 0.05, p[2]], fov: 46, roll: 0.02 * Math.sin(f * 0.05) };
+};
+// smoothed follow (the raw path turns at the keys; low-pass the camera by averaging a few frames)
+const S9s = (f: number): Shot => {
+  let pos: V3 = [0, 0, 0], look: V3 = [0, 0, 0];
+  for (let k = -6; k <= 6; k += 2) { const s = S9(f + k); pos = add(pos, s.pos); look = add(look, s.look); }
+  return { pos: pos.map((v) => v / 7) as V3, look: look.map((v) => v / 7) as V3, fov: 46, roll: 0.02 * Math.sin(f * 0.05) };
+};
+// 10 (1110-1149): low under the fuel tank, looking up along the pipe at the row of hanging bats
+const S10 = (f: number): Shot => P({ pos: [1.55, 0.95, 6.15], look: [-2.2, 2.0, 5.05], fov: 46, roll: -0.04 }, f, 1110, 0.003, 0.007, 14, 1124);
+// 11 (1150-1214): wide on the tank; WHOOMP
+const S11 = (f: number): Shot => P({ pos: [15, 4.2, 25], look: [-2, 4.6, 3], fov: 50, roll: 0.02 }, f, 1150, 0.0018, 0.006, 10, 1186);
+// 12 (1215-1301): the bucket line in the foreground, crane up to the whole base burning by 1274
+const S12 = (f: number): Shot => {
+  const a = C([13.5, 1.75, 19.5], [4, 2.2, 6], 48, -0.02), b = C([22, 19, 36], [-2, 1.5, -10], 52, 0.02);
+  return P(between(a, b, gl(f, 1232, 42)), f, 1215, 0.0012);
+};
+// 13a (1302-1364): smoky glide past the burnt hangar frame; 13b (1365-1417): the General polishes his car
+const S13a = (f: number): Shot => {
+  const a = C([0.5, 3.0, 2.0], [-15, 4.6, -24], 48, 0.02), b = C([-9.0, 2.4, 0.5], [-19, 4.2, -22], 46, -0.02);
+  return between(a, b, gl(f, 1302, 62));
+};
+const S13b = (f: number): Shot => {
+  const Cr = SPOT.CAR;
+  return P({ pos: [Cr[0] + 1.35, 1.52, Cr[2] + 4.3], look: [Cr[0] + 0.1, 1.2, Cr[2] + 0.6], fov: 44, roll: -0.025 }, f, EV.CUT13, 0.0022, 0.008, 12, 1392);
+};
+// 14 (1418-1514): the grey office, the officer, the money bags, the wastebasket; push on the drop
+const S14 = (f: number): Shot => {
+  const a = C([-0.75, 1.48, 2.1], [0.2, 1.05, -1.0], 46, 0.02), b = C([-0.45, 1.4, 1.7], [0.3, 1.0, -0.9], 44, -0.02);
+  return P(between(a, b, gl(f, 1458, 36)), f, 1418, 0.0018, 0.006, 14, 1487);
+};
+// 15 (1515-1649): from inside the cave, out through the mouth at the moon; dolly along the line onto the medal bat on
+// the lip (it stays in front of the moon), then creep to the end
 const S15 = (f: number): Shot => {
-  const M = SPOT.MAJOR15, a = C(add(M, [0.55, 1.45, 4.4]), add(M, [0.0, 1.45, 0.0]), 44, 0.02), b = C(add(M, [0.0, 9.5, 1.5]), add(M, [0.0, 2.0, -45]), 50, -0.01);
-  const u = gl(f, 1560, 75);
-  return P(between(a, b, u), f, 1504, 0.0018);
+  const L = SPOT.LIP15, B: V3 = [L[0], L[1] - 0.22, L[2]], c0 = SPOT.CAM15, dir: V3 = [B[0] - c0[0], B[1] - c0[1], B[2] - c0[2]];
+  const len = Math.hypot(...dir), u = gl(f, 1528, 66), d = lerp(len, 1.25, u) * pushK(f, 1594, 0.0024);
+  const n: V3 = [dir[0] / len, dir[1] / len, dir[2] / len];
+  return { pos: [B[0] - n[0] * d, B[1] - n[1] * d, B[2] - n[2] * d], look: [B[0] + n[0] * 3, B[1] + n[1] * 3 - 0.15 * (1 - u), B[2] + n[2] * 3], fov: lerp(50, 42, u), roll: lerp(0.02, -0.03, u) };
 };
-// 16 (1656-1693): low on the red road behind the truck, driving off into the sunset
-const S16 = (f: number): Shot => P({ pos: [-9.5, 1.15, 1.2], look: [20, 1.6, -0.8], fov: 44, roll: -0.02 }, f, 1656, 0.002);
-// 17 (1694-1769): low in the wheat, the foreground emu turns its head to the lens and blinks; creeping push to the end
-const S17 = (f: number): Shot => P({ pos: SPOT.CAM17, look: [SPOT.EMU17[0] - 0.3, 1.25, SPOT.EMU17[2]], fov: 40, roll: 0.02 }, f, 1694, 0.0022);
 
 const CAMS: Record<number, Key[]> = {
   1: [{ f: 0, s: S1 }],
-  2: [{ f: 121, s: S2 }],
-  3: [{ f: 157, s: S3 }],
-  4: [{ f: 305, s: S4a }, { f: 358, cut: true, s: S4b }],
-  5: [{ f: 389, s: S5 }],
-  6: [{ f: 450, s: S6a }, { f: 527, cut: true, s: S6b }, { f: 556, cut: true, s: S6c }],
-  7: [{ f: 602, s: S7 }],
-  8: [{ f: 695, s: S8a }, { f: 797, cut: true, s: S8b }],
-  9: [{ f: 825, s: S9a }, { f: EV.CUT9, cut: true, s: S9b }],
-  10: [{ f: 937, s: S10 }],
-  11: [{ f: 1135, s: S11 }],
-  12: [{ f: 1201, s: S12 }],
-  13: [{ f: 1270, s: S13 }],
-  14: [{ f: 1382, s: S14a }, { f: EV.CUT14, cut: true, s: S14b }],
-  15: [{ f: 1504, s: S15 }],
-  16: [{ f: 1656, s: S16 }],
-  17: [{ f: 1694, s: S17 }],
+  2: [{ f: 114, s: S2 }],
+  3: [{ f: 171, s: S3 }],
+  4: [{ f: 328, s: S4a }, { f: EV.CU4, cut: true, s: S4b }, { f: EV.CUT4, cut: true, s: S4c }],
+  5: [{ f: 547, s: S5 }],
+  6: [{ f: 653, s: S6 }],
+  7: [{ f: 733, s: S7 }],
+  8: [{ f: 853, s: S8 }],
+  9: [{ f: 968, s: S9s }],
+  10: [{ f: 1110, s: S10 }],
+  11: [{ f: 1150, s: S11 }],
+  12: [{ f: 1215, s: S12 }],
+  13: [{ f: 1302, s: S13a }, { f: EV.CUT13, cut: true, s: S13b }],
+  14: [{ f: 1418, s: S14 }],
+  15: [{ f: 1515, s: S15 }],
 };
 
 // impact kicks: the image offset flips sign every frame (~3 px at 720p per unit), decays to 0 in 7 f, roll +-0.23 deg
-// per unit; they start on the first frame at/after the event. No hand-held float. Truck bounce in 9b is its own shake.
-export const KICKS: [number, number][] = [[EV.KICK2 / FPS, 1.0], [EV.STOP6 / FPS, 0.45], [EV.JAM8 / FPS, 1.2]];
+// per unit; they start on the first frame at/after the event. No hand-held float.
+export const KICKS: [number, number][] = [[EV.KICK2 / FPS, 1.0], [EV.POOF5 / FPS, 0.8], [EV.YES6 / FPS, 0.9], [EV.TANK11 / FPS, 1.5], [EV.KICK13 / FPS, 1.0], [EV.DROP14 / FPS, 0.4]];
 export const kickAt = (t: number) => {
   let a = 0;
   for (const [t0, g] of KICKS) {
@@ -428,11 +374,8 @@ export const kickAt = (t: number) => {
   }
   return a;
 };
-/** 9b: the camera rides with the bouncing truck (vertical shake, not a kick) */
-const shake = (id: number, f: number) => (id === 9 && f >= EV.CUT9 ? 0.05 * Math.sin(f * 2.3) + 0.03 * Math.sin(f * 4.1) : 0);
 export const camAt = (id: number, f: number): Cam => {
-  const c = run(CAMS[id], f), a = kickAt(T(f)), sh = shake(id, f);
-  if (sh) { c.pos = [c.pos[0], c.pos[1] + sh, c.pos[2]]; c.look = [c.look[0], c.look[1] + sh * 0.6, c.look[2]]; }
+  const c = run(CAMS[id], f), a = kickAt(T(f));
   if (!a) return c;
   const d: V3 = [c.look[0] - c.pos[0], c.look[1] - c.pos[1], c.look[2] - c.pos[2]];
   const L = Math.hypot(...d), h = Math.hypot(d[0], d[2]) || 1;
@@ -449,12 +392,12 @@ export const keyEnd = (id: number, f: number) => {
 // ---------------- foreground layer (composition.md 3.3, depth.md 3.5.4) ----------------
 /** Near framing props, cut by a frame edge and blurred by the shot's DOF. space "cam": pos is in camera space (x right,
  *  y up, z forward, metres) so the prop stays framed through the push-ins; "world": a world position. Drawn by build.ts
- *  fgUpdate from these kit names. Kits: wheat (a clump of stalks), fence_post, sandbags, crate. */
+ *  fgUpdate from these kit names. Kits: yucca, jars, flask, sandbags, crate. */
 export type Fg = { a: number; b: number; kit: string; pos: V3; s?: number; yaw?: number; space?: "world" | "cam"; tilt?: number };
 export const FOREGROUND: Fg[] = [
-  { a: 0, b: 121, kit: "wheat", pos: [-0.55, -0.85, 2.0], yaw: 0.3, space: "cam", s: 0.8 },          // hook: stubble tuft bottom-left
-  { a: 1694, b: TOTAL, kit: "wheat", pos: [0.6, -1.15, 1.7], yaw: -0.4, space: "cam", s: 1.0 }, // ending: wheat across the bottom corners
-  { a: 1694, b: TOTAL, kit: "wheat", pos: [-0.75, -1.15, 2.0], yaw: 0.9, space: "cam" },
+  { a: 171, b: 328, kit: "yucca", pos: [8.6, 0, -1.6], yaw: 0.4, s: 1.0 },             // cave overlook: a yucca on the left
+  { a: 853, b: 968, kit: "sandbags", pos: [15.2, 0, 16.2], yaw: -0.6, s: 1.0 },         // test base: sandbags bottom right
+  { a: 1215, b: 1302, kit: "crate", pos: [12.2, 0, 16.6], yaw: 0.5, s: 1.0 },
 ];
 
 // ---------------- lens: depth of field ----------------
@@ -462,38 +405,41 @@ export const FOREGROUND: Fg[] = [
  *  CU 12-16, MS 10-12, wides / aerials 0. Entries switch on cuts (no dur) or ramp with the camera move they share
  *  f / dur with. focus = world point (else the camera look point). */
 export type Dof = { f: number; dur?: number; cInf: number; focus?: (f: number) => V3 };
+/** hero bat of the hook (cast.ts flies it; the lens focuses on it) */
+export const hero1At = (f: number): V3 => {
+  const B = SPOT.BOMB1, c = camAt(1, Math.min(f, 112));
+  const d: V3 = [c.look[0] - c.pos[0], c.look[1] - c.pos[1], c.look[2] - c.pos[2]], l = Math.hypot(...d);
+  const end: V3 = [c.pos[0] + (d[0] / l) * 1.45, c.pos[1] + (d[1] / l) * 1.45 - 0.12, c.pos[2] + (d[2] / l) * 1.45];
+  const u = easeOut((f - EV.POP1) / 15);
+  const p = lerp3([B[0], B[1], B[2]], end, u);
+  return [p[0] + 0.25 * Math.sin(u * Math.PI) , p[1] + 0.03 * Math.sin(f * 0.6), p[2]];
+};
 export const DOF: Dof[] = [
-  { f: 0, cInf: 9, focus: (f) => lerp3(eyes(SPOT.GUNNER1, 0.62), emuEye(SPOT.EMU1), smooth((f - 70) / 22)) }, // rack gunner -> emu
-  { f: 121, cInf: 10, focus: () => emuEye([SPOT.CRATE2[0], 0.42, SPOT.CRATE2[2]]) },
-  { f: 157, cInf: 0 },                                                       // farm establishing
-  { f: 230, dur: 40, cInf: 9, focus: () => eyes(SPOT.FARMER3) },
-  { f: 305, cInf: 9, focus: () => [5.4, 1.5, -5.2] },                       // herd: front emus sharp, the stream soft
-  { f: 358, cInf: 13, focus: () => eyes(SPOT.FARMER3) },                     // farmer MCU
-  { f: 389, cInf: 10, focus: () => eyes(SPOT.FARMER5) },                     // verandah
-  { f: 450, cInf: 4, focus: () => [1.2, 1.4, 0.8] },                         // truck arrives
-  { f: 490, dur: 30, cInf: 7, focus: () => eyes(SPOT.SOLDIERS6[0]) },
-  { f: 527, cInf: 10, focus: () => [SPOT.TRIPODS6[1][0], 0.7, SPOT.TRIPODS6[1][2]] }, // tripods insert
-  { f: 556, cInf: 8, focus: () => [SPOT.STACKER6[0], 1.9, SPOT.STACKER6[2]] }, // crate stack
-  { f: 602, cInf: 7, focus: () => [-1.5, 1.2, -45] },                        // long lens: the gun soft, the emus sharp
-  { f: 695, cInf: 6, focus: () => eyes(SPOT.SARGE8, 0.6) },                  // behind the bank
-  { f: 700, dur: 38, cInf: 6, focus: () => [0, 1.4, 7.6] },                 // the dam reveal: near drinkers sharp
-  { f: 797, cInf: 13, focus: () => [SPOT.GUN8[0] + 0.2, SPOT.GUN8[1] + 0.1, SPOT.GUN8[2]] }, // gun CU
-  { f: 825, cInf: 10, focus: () => [-0.9, 2.2, 6.0] },                       // hammering MS
-  { f: EV.CUT9, cInf: 0 },                                                   // tracking
-  { f: 937, cInf: 11, focus: () => eyes(SPOT.MAJOR10, 0.8) },                // desk MS
-  { f: 1040, dur: 47, cInf: 0 },                                             // pull back to the brass mountain
-  { f: 1135, cInf: 8, focus: () => eyes(SPOT.SOLDIER11) },
-  { f: 1201, cInf: 7, focus: (f) => emuEye(emu12At(f)) },
-  { f: 1270, cInf: 4, focus: (f) => [0, 1.4, -7.4 + 2.6 * (f - 1270) / 112] }, // explainer: the line sharp, the gun pit a little soft
-  { f: 1382, cInf: 0 },                                                      // aerial
-  { f: EV.CUT14, cInf: 10, focus: () => eyes(SPOT.GUNNER14) },
-  { f: 1504, cInf: 10, focus: () => eyes(SPOT.MAJOR15) },
-  { f: 1560, dur: 75, cInf: 0, focus: () => eyes(SPOT.MAJOR15) },
-  { f: 1656, cInf: 0 },                                                      // the truck into the sunset
-  { f: 1694, cInf: 7, focus: () => emuEye(SPOT.EMU17, 1.12) },
+  { f: 0, cInf: 6, focus: (f) => lerp3(bombAt(1, f).pos, hero1At(f), smooth((f - 82) / 12)) }, // bomb, then rack to the hero bat
+  { f: 114, cInf: 9, focus: () => eyes(SPOT.SOLDIER2) },
+  { f: 171, cInf: 0 },                                                       // cave establishing
+  { f: 200, dur: 40, cInf: 8, focus: () => eyes(SPOT.ADAMS3) },
+  { f: 328, cInf: 10, focus: () => eyes(SPOT.ADAMS4) },
+  { f: EV.CU4, cInf: 13, focus: () => [SPOT.BAT4[0], SPOT.BAT4[1] + 0.12, SPOT.BAT4[2]] },
+  { f: EV.CUT4, cInf: 6, focus: () => [SPOT.TABLE[0], SPOT.TABLE_Y + 0.3, SPOT.TABLE[2] - 0.2] },
+  { f: 547, cInf: 9, focus: () => [0, 1.2, 0] },
+  { f: 600, dur: 28, cInf: 13, focus: () => [SPOT.RIDGE5[0], SPOT.RIDGE5[1] - 0.25, 0] },
+  { f: 653, cInf: 9, focus: () => [0.6, 1.3, -1.0] },
+  { f: 733, cInf: 9, focus: () => eyes(SPOT.CHEM7) },
+  { f: 812, dur: 28, cInf: 12, focus: () => [SPOT.BAT7[0], SPOT.BAT7[1] + 0.14, SPOT.BAT7[2]] },
+  { f: 853, cInf: 0 },
+  { f: 858, dur: 46, cInf: 7, focus: () => [9.6, 1.4, 12.4] },
+  { f: 968, cInf: 10, focus: (f) => bat9At(f) },
+  { f: 1110, cInf: 11, focus: () => [-0.5, 1.95, 5.05] },
+  { f: 1150, cInf: 0 },
+  { f: 1215, cInf: 7, focus: () => [9, 1.4, 13] },
+  { f: 1232, dur: 42, cInf: 0 },
+  { f: 1302, cInf: 3, focus: () => [-16, 4, -14] },
+  { f: EV.CUT13, cInf: 11, focus: () => eyes([SPOT.CAR[0] + 0.2, 0, SPOT.CAR[2] + 1.7]) },
+  { f: 1418, cInf: 9, focus: () => eyes(SPOT.OFFICER14) },
+  { f: 1515, cInf: 5, focus: () => SPOT.LIP15 },
+  { f: 1530, dur: 60, cInf: 12, focus: () => [SPOT.LIP15[0], SPOT.LIP15[1] - 0.22, SPOT.LIP15[2]] },
 ];
-/** shot 12's strolling emu (feet), shared with cast.ts */
-export const emu12At = (f: number): V3 => [-2.3 + 3.3 * clamp01((f - 1199) / 74), 0, -5.2];
 export const dofAt = (f: number) => {
   let i = 0; while (i + 1 < DOF.length && f >= DOF[i + 1].f) i++;
   const d = DOF[i], p = DOF[Math.max(0, i - 1)];

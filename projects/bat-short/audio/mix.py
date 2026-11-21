@@ -1,9 +1,9 @@
-# Final mix of "The Great Emu War": voice (gain only) + original score (ducked under speech, per-section level
+# Final mix of "The Bat Bomb": voice (gain only) + original score (ducked under speech, per-section level
 # automation relative to the voice) + synthesized SFX stem (lightly ducked under speech). Keying = words.json spans,
 # widened by the voice's own measured activity (analysis only: the voice itself is never processed beyond gain).
 # Master gain to -14 LUFS integrated; own 4x-oversampled look-ahead limiter for <= -1 dBTP;
-# exactly 59.000 s = 2,832,000 samples / 48 kHz / stereo / 24-bit.
-# Writes public/emu/mix.wav + voice/mix_final.wav (same file), audio/out/stem_*.wav, audio/cues.md.
+# exactly 55.000 s = 2,640,000 samples / 48 kHz / stereo / 24-bit.
+# Writes public/bat/mix.wav + voice/mix_final.wav (same file), audio/out/stem_*.wav, audio/cues.md.
 # One command:  python3 audio/mix.py      (music cached in audio/out/_cache/; --fresh re-renders everything)
 import os
 import sys
@@ -20,19 +20,22 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 OUT = os.path.join(HERE, "out")
 CACHE = os.path.join(OUT, "_cache")
-N = ns(T.DUR)                    # 2,832,000 samples = 59.000 s
+N = ns(T.DUR)                    # 2,640,000 samples = 55.000 s
 TARGET_LUFS = -14.0
 CEIL_DBTP = -1.3                 # limiter ceiling (spec: true peak <= -1.0 dBTP)
 DUCK_DB = -3.0                   # gentle music dip while the voice speaks (slow attack / release, no pumping)
 SFX_DUCK_DB = -3.0               # SFX dip while the voice speaks
-MUSIC_UNDER = -18.5              # music vs voice, LU, over the spoken parts of each section (after the duck)
-GAP_BLOOM_DB = 4.0               # extra lift in narration gaps >= GAP_MIN s (with the duck release: ~ -11 LU under the voice)
+MUSIC_UNDER = -17.6              # music vs voice, LU, over the spoken parts of each section (after the duck)
+GAP_BLOOM_DB = 6.5               # extra lift in narration gaps >= GAP_MIN s (with the duck release: ~ -11 LU under the voice)
 GAP_MIN = 0.55
 
 # per-section offsets (dB) on top of MUSIC_UNDER
-SEC_OFFSET = {"unlucky": -1.0, "ending": -4.0, "lost": -1.5}
+SEC_OFFSET = {"tank": -1.0, "ending": -1.0}
 # rides on the music only (start, end, dB)
-RIDES = [(40.15, 40.70, -2.0)]   # 'Unluckily,'
+RIDES = [(3.76, 4.03, -20.0),    # a beat of near-silence after the FLASH for the very short 'Then' (3.83-3.93)
+         (40.32, 41.12, -4.0)]   # 'Unluckily,' (Kokoro's weakest word here) right after the WHOOMP: a clean onset
+# rides on the SFX only (start, end, dB)
+SFX_RIDES = [(3.76, 4.03, -20.0), (40.32, 41.12, -9.0)]
 
 
 def log(*a):
@@ -145,7 +148,7 @@ def section_curve(m_d, v, mask):
         else:
             Lm, Lv = integrated(m_d[:, seg]), integrated(v[:, seg]) if np.any(v[:, seg]) else -99
         g = (Lv + MUSIC_UNDER + SEC_OFFSET.get(name, 0.0) - Lm) if (np.isfinite(Lm) and Lv > -90) else prev
-        if name == "jam":                       # music is silent here (only the room tail): keep the dam level
+        if name == "oops":                      # music stops for the WHOOMP (only the 'oops' figure): keep the previous level
             g = prev
         gains[name] = float(np.clip(g, -30, 30))
         prev = gains[name]
@@ -155,7 +158,7 @@ def section_curve(m_d, v, mask):
         curve[t >= a] = gains[name]
     sm = ndimage.uniform_filter1d(curve, ns(0.12), mode="nearest")      # 120 ms crossfade between section levels
     hard = np.zeros(N, bool)
-    for tb in (T.fr(T.FLASH),):                              # silent / hit boundaries switch instantly
+    for tb in (T.fr(T.FLASH), T.fr(T.WHOOMP)):                              # silent / hit boundaries switch instantly
         hard[ns(tb - 0.1): ns(tb + 0.1)] = True
     curve = np.where(hard, curve, sm)
     for a, b, db in RIDES:
@@ -299,7 +302,12 @@ def main():
         return out
     s_raw = cached("sfx", _s, True)             # always re-rendered (~30 s): the cue sheet needs the measured event list
     C = holder["C"]
-    s_st = s_raw * dbg(duck_curve(spans, SFX_DUCK_DB, att=0.03, rel=0.25))[None, :]
+    s_ride = np.zeros(N)
+    for a_, b_, db_ in SFX_RIDES:
+        d_ = np.zeros(N)
+        d_[ns(a_): ns(b_)] = db_
+        s_ride += ndimage.uniform_filter1d(d_, ns(0.06), mode="nearest")
+    s_st = s_raw * dbg(duck_curve(spans, SFX_DUCK_DB, att=0.03, rel=0.25) + s_ride)[None, :]
     log("sfx", f"{lufs(s_st):.2f} LUFS")
 
     # ---------------- master: one gain on every stem, then the limiter
@@ -317,7 +325,7 @@ def main():
     # stems carry the master gain AND the limiter's gain curve (+ the end fade), so voice + music + sfx = mix exactly
     endf = fades(np.ones((1, N)), 0.002, 0.03)[0]
     gv, gm, gs = (x_ * dbg(G) * (g3 * endf)[None, :] for x_ in (v, m, s_st))
-    mix_path = os.path.join(ROOT, "public", "emu", "mix.wav")
+    mix_path = os.path.join(ROOT, "public", "bat", "mix.wav")
     os.makedirs(os.path.dirname(mix_path), exist_ok=True)
     write_wav(mix_path, y)
     shutil.copyfile(mix_path, os.path.join(ROOT, "voice", "mix_final.wav"))
@@ -345,13 +353,13 @@ def main():
     lg |= tc_ >= spans[-1][1] + 0.2
     gap_under = float(lufs(gv) - np.median(Mm_[lg]))
     sp_ = np.array([r[7] for r in rows if np.isfinite(r[7])])
-    music_cuts = [T.fr(T.FLASH), T.fr(T.JAM), T.fr(1382), T.fr(1201)]
+    music_cuts = [T.fr(T.FLASH), T.fr(T.STAMP) - 0.28, T.fr(T.STAMP), T.fr(T.WHOOMP) - 0.06, 40.40, 41.12, T.fr(T.WINK)]
     n_chk, bad = click_check(y, gs, gm, [(e[0], e[1], e[2], e[3] * dbg(G)) for e in events], music_cuts)
     clip = int((np.abs(y) >= 0.9999).sum())
     eb = ffmpeg_ebur(mix_path)
     stats = dict(I=I, TP=TP, LRA=LRA, Mmax=Mmax, Smax=Smax, G=G, gr=gr_stats, v_ref=v_ref, voice_I=lufs(gv), music_I=lufs(gm),
                  sfx_I=lufs(gs), sec_gains=sec_gains, gap_under=gap_under, speech_under_med=float(np.median(sp_)), n_chk=n_chk, bad=bad, clip=clip, samples=y.shape[1],
-                 voice_peak=float(20 * np.log10(np.abs(gv).max())))
+                 voice_peak=float(20 * np.log10(np.abs(gv).max())), voice_Mmax=float(np.max(momentary(gv))))
     log(json.dumps({k: (round(v_, 2) if isinstance(v_, float) else v_) for k, v_ in stats.items() if k not in ("sec_gains",)}, default=str))
     for r in rows:
         log(f"{r[0]:<9} voice {r[3]:6.1f} music {r[4]:6.1f} sfx {r[5]:6.1f} | speech: v-music {r[7]:5.1f} v-bed med {r[8]:5.1f} p10 {r[9]:5.1f} | bloom {r[10]:4.1f}")
@@ -366,32 +374,36 @@ def write_cues(C, b, st_, rows, eb, spans, v):
     vI = st_["voice_I"]
     L = []
     w = L.append
-    w("# The Great Emu War - soundtrack cue sheet")
+    w("# The Bat Bomb - soundtrack cue sheet")
     w("")
-    w("All sound is original and synthesized in numpy/scipy: instruments in `instruments.py` (brass, snare, glock, timpani from the "
-      "shared kit + banjo, Rhodes, soft kick, shaker and more added here), SFX in `sfx_emu.py` / `sfx_gen.py`; "
-      "placed by `music.py` / `sfx.py` from `timeline.py` (frames from SHOTS.md), mixed by `mix.py`.")
-    w("Voice = `voice/voice.wav`, gain only (no EQ, no compression, no pitch, no time change). Rebuild everything + verify: `bash audio/build.sh` (about 1.5 min; mix only: `python3 audio/mix.py --fresh`).")
+    w("All sound is original and synthesized in numpy/scipy: instruments in `instruments.py` (guitar pluck, Rhodes, upright bass, "
+      "brushes, shaker, soft kick, vibes from the shared kit + celesta and pizzicato added here), SFX in `sfx_bat.py` (bats, fire, "
+      "timers, stamp, whoomp...) with helpers from `sfx_gen.py` / `sfx_emu.py`; placed by `music.py` / `sfx.py` from `timeline.py` "
+      "(frames from SHOTS.md), mixed by `mix.py`.")
+    w("Voice = `voice/voice.wav`, gain only (no EQ, no compression, no pitch, no time change). Rebuild everything + verify: "
+      "`bash audio/build.sh` (about 1.5 min; mix only: `python3 audio/mix.py --fresh`).")
     w("")
     w("## Files")
     w("| file | content |")
     w("|---|---|")
-    w(f"| `public/emu/mix.wav` = `voice/mix_final.wav` | final mix, 48 kHz, stereo, 24-bit, {st_['samples']:,} samples = {st_['samples'] / SR:.3f} s |")
+    w(f"| `public/bat/mix.wav` = `voice/mix_final.wav` | final mix, 48 kHz, stereo, 24-bit, {st_['samples']:,} samples = {st_['samples'] / SR:.3f} s |")
     w("| `audio/out/stem_voice.wav` / `stem_music.wav` / `stem_sfx.wav` | stems at mix gain, after the master limiter's gain curve: voice + music + sfx = mix.wav |")
-    w("| `audio/check.py` | verification: transcription of voice.wav vs the mix (faster-whisper small.en), clicks, duration, loudness |")
+    w("| `audio/check.py` | verification: whisper transcription of voice.wav vs the mix (faster-whisper small.en), sample count |")
     w("")
     w("## Master loudness (own BS.1770-4 meter)")
     w(f"- Integrated **{st_['I']:.2f} LUFS**, true peak **{st_['TP']:.2f} dBTP**, LRA {st_['LRA']:.1f} LU, max momentary {st_['Mmax']:.1f} LUFS, "
       f"max short-term {st_['Smax']:.1f} LUFS; {st_['clip']} samples at full scale")
-    w(f"- Stems at mix gain: voice {st_['voice_I']:.1f} LUFS (peak {st_['voice_peak']:.1f} dBFS), music {st_['music_I']:.1f} LUFS, sfx {st_['sfx_I']:.1f} LUFS "
+    w(f"- Stems at mix gain: voice {st_['voice_I']:.1f} LUFS (peak {st_['voice_peak']:.1f} dBFS, max momentary {st_['voice_Mmax']:.1f} LUFS), "
+      f"music {st_['music_I']:.1f} LUFS, sfx {st_['sfx_I']:.1f} LUFS "
       f"(master gain {st_['G']:+.2f} dB and the limiter gain curve, the same on every stem)")
     gr = st_["gr"]
     w(f"- Master limiter (4x oversampled look-ahead, ceiling {CEIL_DBTP} dBTP): max gain reduction {gr['max']:.2f} dB, active (>0.1 dB) on "
-      f"{gr['pct_over_0_1']:.2f} % of samples; inside speech: max {gr['speech_max']:.2f} dB, 90th / 99th percentile {gr['speech_p90']:.2f} / {gr['speech_p99']:.2f} dB, active on {gr['speech_pct_over_0_1']:.1f} % of speech samples. "
-      "This peak limiting is the only processing besides gain that reaches the narration: the TTS voice has an 18.3 dB true-peak-to-loudness ratio, "
-      "so -14 LUFS at <= -1 dBTP cannot be reached with gain alone.")
-    w(f"- Discontinuity check: {st_['n_chk']} boundaries (start + end of every placed SFX event, every music cut-off) checked in the final mix, "
-      f"{len(st_['bad'])} suspicious" + (": " + ", ".join(f"{t} s {n} {k} (+{d} dB)" for t, n, k, d in st_['bad']) if st_['bad'] else "."))
+      f"{gr['pct_over_0_1']:.2f} % of samples; inside speech: max {gr['speech_max']:.2f} dB, 90th / 99th percentile {gr['speech_p90']:.2f} / {gr['speech_p99']:.2f} dB, "
+      f"active on {gr['speech_pct_over_0_1']:.1f} % of speech samples. "
+      "This peak limiting is the only processing besides gain that reaches the narration (same approach as the emu mix): the TTS voice's "
+      "true-peak-to-loudness ratio is too high to reach -14 LUFS at <= -1 dBTP with gain alone.")
+    w(f"- Discontinuity check: {st_['n_chk']} boundaries (start + end of every placed SFX event, every music cut / re-entry) checked on the "
+      f"SFX and music stems, {len(st_['bad'])} suspicious" + (": " + ", ".join(f"{t} s {n} {k} (+{d} dB)" for t, n, k, d in st_['bad']) if st_['bad'] else "."))
     w("")
     w("ffmpeg ebur128 cross-check:")
     w("```")
@@ -399,9 +411,10 @@ def write_cues(C, b, st_, rows, eb, spans, v):
     w("```")
     w("")
     w("## Voice on top: per-section loudness")
-    w(f"Key: words.json spans, widened by the voice's own measured activity (TTS word times drift by up to 0.25 s). "
-      f"Music: {DUCK_DB:+.0f} dB gentle duck under speech (attack 250 ms, release 600 ms) + {GAP_BLOOM_DB:+.0f} dB bloom in gaps >= {GAP_MIN} s; section gain set so the music sits {MUSIC_UNDER:+.1f} LU "
-      f"(+ per-section offset) under the voice over the spoken parts. SFX: {SFX_DUCK_DB:+.0f} dB duck under speech.")
+    w(f"Key: words.json spans, widened by the voice's own measured activity. "
+      f"Music: {DUCK_DB:+.0f} dB gentle duck under speech (attack 250 ms, release 600 ms) + {GAP_BLOOM_DB:+.0f} dB bloom in gaps >= {GAP_MIN} s; "
+      f"section gain set so the music sits {MUSIC_UNDER:+.1f} LU (+ per-section offset) under the voice over the spoken parts. "
+      f"SFX: {SFX_DUCK_DB:+.0f} dB duck under speech (attack 30 ms, release 250 ms).")
     w("Columns: integrated LUFS per stem at mix gain; then over 400 ms windows centred on speech: median voice-music, median and 10th "
       "percentile voice-bed (bed = music + sfx); bloom = median music level in the gaps minus in speech (LU).")
     w("")
@@ -411,19 +424,21 @@ def write_cues(C, b, st_, rows, eb, spans, v):
     for r in rows:
         w(f"| {r[0]} | {r[1]:.2f}-{r[2]:.2f} | {f(r[3])} | {f(r[4])} | {f(r[5])} | {f(r[7])} | {f(r[8])} | {f(r[9])} | {f(r[10])} |")
     w("")
-    w(f"Music under the voice: median over the sections' speech windows {st_['speech_under_med']:.1f} LU; in the longer gaps "
-      f"(>= {GAP_MIN} s) the music's median momentary level is {st_['gap_under']:.1f} LU under the voice's integrated loudness.")
+    w(f"Music under the voice: median over the sections' speech windows **{st_['speech_under_med']:.1f} LU**; in the longer gaps "
+      f"(>= {GAP_MIN} s) the music's median momentary level is **{st_['gap_under']:.1f} LU** under the voice's integrated loudness.")
     w("")
-    w("Applied section gains (dB): " + ", ".join(f"{k} {v_:+.1f}" for k, v_ in st_["sec_gains"].items()) + ". Music rides: " +
-      ", ".join(f"{a:.2f}-{b_:.2f} s {db:+.1f} dB" for a, b_, db in RIDES if db) + ".")
+    w("Applied section gains (dB): " + ", ".join(f"{k} {v_:+.1f}" for k, v_ in st_["sec_gains"].items()) + "." +
+      ((" Music rides: " + ", ".join(f"{a:.2f}-{b_:.2f} s {db:+.1f} dB" for a, b_, db in RIDES)) if RIDES else "") +
+      ((" SFX rides: " + ", ".join(f"{a:.2f}-{b_:.2f} s {db:+.1f} dB" for a, b_, db in SFX_RIDES) + " (60 ms ramps), to keep the short 'Then' and 'Unluckily' clear.") if SFX_RIDES else ""))
     w("")
-    w("Narration gaps (measured on voice.wav), where the loud hits and the music blooms go: " +
+    w("Narration gaps (measured on voice.wav), where the louder hits and the music blooms go: " +
       ", ".join(f"{spans[i][1]:.2f}-{spans[i + 1][0]:.2f}" for i in range(len(spans) - 1)) + ".")
     w("")
-    w("## Music map (chill re-score: laid-back acoustic / lo-fi bed, F major, 88 bpm, swung eighths)")
+    w(f"## Music map (chill score: laid-back acoustic / lo-fi bed, {music.BPM:.0f} bpm, swung eighths; D-dorian night colour, F-major day)")
     w("Fingerpicked nylon guitar, warm Rhodes, round upright bass, brushes + shaker + soft kick (no snare, no crashes, no rolls), "
-      "vibes sparkles, and a small playful EMU figure (A-D-C-A..G-A, muted banjo), all composed here; progressions Fmaj7-Dm7-Gm7-C9 "
-      "and Dm7-Bbmaj7-Gm7-C9. The first brass-march score is kept for reference in `music_march.py` (not used).")
+      "vibes sparkles; for the bats a light pizzicato BAT figure (D5 F5 E5 D5 A4 . B4 C5, swung) and a soft celesta. "
+      "Loops: night Dm9 Bbmaj7 Gm9 A7b9, day Fmaj7 Am7 Bbmaj7 C9, lab Gm9 C9 Fmaj7 Dm9; resolve on Fmaj9 at the wink. All composed here. "
+      "The emu short's brass march stays in `music_march.py` for reference (not used).")
     w("")
     w("| time s | frame | music |")
     w("|---|---|---|")
@@ -431,9 +446,10 @@ def write_cues(C, b, st_, rows, eb, spans, v):
         w(f"| {t:.2f} | {t * T.FPS:.0f} | {d} |")
     w("")
     w("## SFX events")
-    w("naive = the event's level vs the voice stem (max momentary, LU); applied = naive - 6 dB + offsets; beds are integrated loudness. "
-      "'mix LUFS' = max momentary in the final mix (before the speech duck). Frames marked * are chosen here (not pinned in SHOTS.md): "
-      f"emu steps {T.EMU_STEPS_1}, crank {T.CRANK}, pats {T.PATS}, toy march {T.MARCH13[0]}+15k, head turn {T.TURN}, blink {T.BLINK}.")
+    w("naive = the event's level vs the voice stem (max momentary, LU); applied = naive - 8 dB + offsets; beds are integrated loudness. "
+      "'mix LUFS' = the event's max momentary at mix gain, before the -3 dB speech duck (compare: voice max momentary "
+      f"{st_['voice_Mmax']:.1f} LUFS, integrated {vI:.1f} LUFS). Frames not pinned in SHOTS.md, chosen here: sniffs {T.SNIFFS}, head shake {T.SHAKE}, "
+      f"buckets {T.BUCKETS}, polish squeaks ~{T.POLISH}, and the small squeaks placed in narration gaps (frames listed).")
     w("")
     w("| # | time s | frame | cue | what | naive | applied | mix LUFS | pan |")
     w("|---|---|---|---|---|---|---|---|---|")

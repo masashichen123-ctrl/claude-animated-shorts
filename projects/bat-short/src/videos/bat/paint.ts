@@ -1,7 +1,8 @@
 // Hand-painted look textures drawn on canvases (cached), owner: sets (with build.ts). Shared painters from the bridge /
 // missile template (value octaves, tinted seams, blotches, sign lettering, clouds, corrugated iron, weatherboards,
-// planks) plus the emu short's own set (bottom of the file): wheat canopy + stalk cards, stubble, red dirt, dry
-// paddock grass, mud, dam water, gum bark + leaves, canvas, .303 ammo crates, brass casings, the tally board.
+// planks) plus the bat short's own set (bottom of the file): desert sand, sandstone strata, cave rock, concrete apron,
+// the US flag, the white star insignia, the bat crate, wallpaper, wall tiles, the oval rug, shoji paper screens, model
+// roof tiles, the bat-bomb drawing, the dusk window, hessian, canvas.
 import * as THREE from "three";
 
 export const rng = (seed: number) => {
@@ -297,158 +298,131 @@ export const sidingHD = (col: string) => ctex("sidingHD2" + col, 512, 512, (g, r
 // EMU SHORT painters (Western Australian wheat belt, 1932). Same conventions: painted seams are dark TINTS, never pure
 // black (the world ink pass draws silhouettes), three value octaves on every big surface, sizes in px per metre.
 // =================================================================================================================
-/** wheat canopy seen from above / at a grazing angle (1024 px = 3 m): golden field of ear dabs, lighter crests, darker
- *  troughs between rows, a few green-gold stalks. The surface sits ~0.9 m up on a slab (build.ts wheatField). */
-export const wheatTopHD = () => ctex("wheatTopHD", 1024, 1024, (g, r) => {
-  const S = 1024;
-  g.fillStyle = "#d9b04a"; g.fillRect(0, 0, S, S);
-  octaves(g, r, S, S, 340, "255,236,160", "140,105,40", 1.3);
-  for (let i = 0; i < 4200; i++) { // ears: short tilted ellipses, light top, dark under
-    const x = U(r, 0, S), y = U(r, 0, S), a = U(r, -0.5, 0.5) - Math.PI / 2, l = U(r, 9, 16);
-    const c = pick(r, ["#f0cf6c", "#e2bb52", "#c49a3a", "#f6dc90", "#b48c34"]);
-    wrap2(S, S, x, y, l, (xx, yy) => {
-      g.save(); g.translate(xx, yy); g.rotate(a);
-      g.fillStyle = "rgba(110,80,25,0.35)"; g.beginPath(); g.ellipse(1.5, 2, l * 0.55, l * 0.22, 0, 0, TAU); g.fill();
-      g.fillStyle = c; g.beginPath(); g.ellipse(0, 0, l * 0.5, l * 0.2, 0, 0, TAU); g.fill();
-      g.restore();
-    });
-  }
-  for (let i = 0; i < 700; i++) { // awns: fine light hairs
-    const x = U(r, 0, S), y = U(r, 0, S);
-    g.strokeStyle = "rgba(255,236,170,0.5)"; g.lineWidth = 1.2; g.beginPath(); g.moveTo(x, y); g.lineTo(x + U(r, -6, 6), y - U(r, 8, 16)); g.stroke();
-  }
-});
-/** vertical wheat wall (1024 x 512 = 3 m along x 1.5 m up, ground at the bottom): dense stalks, ears on top, dark base */
-export const wheatSideHD = () => ctex("wheatSideHD", 1024, 512, (g, r) => {
-  const W = 1024, H = 512;
-  const bg = g.createLinearGradient(0, 0, 0, H);
-  bg.addColorStop(0, "#e2bb52"); bg.addColorStop(0.35, "#c9a03c"); bg.addColorStop(1, "#7a6228");
-  g.fillStyle = bg; g.fillRect(0, 0, W, H);
-  for (let i = 0; i < 520; i++) {
-    const x = U(r, 0, W), lean = U(r, -14, 14), top = U(r, 10, 120), c = pick(r, ["#e8c45e", "#d2a844", "#f1d27a", "#b99238"]);
-    wrapX(W, x - 20, 40, (xx) => {
-      g.strokeStyle = `rgba(90,55,20,0.45)`; g.lineWidth = 3.4; g.beginPath(); g.moveTo(xx, H); g.quadraticCurveTo(xx + lean * 0.3, (H + top) / 2, xx + lean, top + 30); g.stroke();
-      g.strokeStyle = c; g.lineWidth = 2; g.beginPath(); g.moveTo(xx, H); g.quadraticCurveTo(xx + lean * 0.3, (H + top) / 2, xx + lean, top + 30); g.stroke();
-      g.fillStyle = c; g.strokeStyle = "rgba(110,60,15,0.6)"; g.lineWidth = 1.4;
-      g.beginPath(); g.ellipse(xx + lean, top + 14, 5, 17, lean * 0.02, 0, TAU); g.fill(); g.stroke();
-    });
-  }
-  const sh = g.createLinearGradient(0, H * 0.55, 0, H); sh.addColorStop(0, "rgba(70,40,20,0)"); sh.addColorStop(1, "rgba(70,40,20,0.5)");
-  g.fillStyle = sh; g.fillRect(0, H * 0.55, W, H * 0.45);
-});
-/** wheat clump card with alpha (256 x 512 = 0.55 m wide x 1.2 m up): 9-12 stalks with bearded ears, soft brown edge
- *  tint on every ear (cards carry their own dark line: they live on the NOINK layer) */
-export const wheatCardTex = (k: number) => ctex("wheatCard" + k, 256, 512, (g, r0) => {
-  const r = rng(k * 97 + 13), W = 256, H = 512; void r0;
-  const n = 9 + Math.floor(r() * 4);
-  for (let i = 0; i < n; i++) {
-    const x0 = U(r, 60, 196), lean = U(r, -46, 46), top = U(r, 40, 170), c = pick(r, ["#efcc66", "#e2b84e", "#f6da84", "#d2a840"]);
-    const tx = x0 + lean, ty = top;
-    g.lineCap = "round";
-    g.strokeStyle = "rgba(96,58,22,0.85)"; g.lineWidth = 6; g.beginPath(); g.moveTo(x0, H); g.quadraticCurveTo(x0 + lean * 0.2, (H + ty) / 2, tx, ty + 40); g.stroke();
-    g.strokeStyle = pick(r, ["#d8b24c", "#c9a648", "#b7a858"]); g.lineWidth = 3; g.beginPath(); g.moveTo(x0, H); g.quadraticCurveTo(x0 + lean * 0.2, (H + ty) / 2, tx, ty + 40); g.stroke();
-    const ang = Math.atan2(lean, H - ty) * 0.8;
-    g.save(); g.translate(tx, ty + 30); g.rotate(ang);
-    for (let a = 0; a < 7; a++) { g.strokeStyle = "rgba(250,225,160,0.85)"; g.lineWidth = 1.2; g.beginPath(); g.moveTo((a % 2 ? 6 : -6), -a * 7); g.lineTo((a % 2 ? 16 : -16), -a * 7 - 26); g.stroke(); }
-    for (let s = 0; s < 6; s++) { // grains stacked up the ear, alternating sides
-      const y = -s * 8, x = s % 2 ? 4 : -4;
-      g.fillStyle = "rgba(100,55,18,0.9)"; g.beginPath(); g.ellipse(x, y, 8, 11, s % 2 ? 0.35 : -0.35, 0, TAU); g.fill();
-      g.fillStyle = c; g.beginPath(); g.ellipse(x, y - 0.5, 6.4, 9.4, s % 2 ? 0.35 : -0.35, 0, TAU); g.fill();
-    }
-    g.restore();
-  }
-});
-/** harvested stubble paddock (1024 px = 4 m): straw ground, rows of short cut stems with shadows, red soil between */
-export const stubbleHD = () => ctex("stubbleHD", 1024, 1024, (g, r) => {
-  const S = 1024;
-  g.fillStyle = "#c6b48e"; g.fillRect(0, 0, S, S);
-  octaves(g, r, S, S, 256, "245,232,195", "135,100,70", 1.2);
-  for (let row = 0; row < 16; row++) { // drill rows every 0.25 m
-    const y0 = row * 64 + 32;
-    g.fillStyle = "rgba(140,90,60,0.16)"; g.fillRect(0, y0 + 8, S, 12);
-    for (let i = 0; i < 150; i++) {
-      const x = U(r, 0, S), y = y0 + U(r, -10, 10), h = U(r, 6, 14);
-      g.fillStyle = "rgba(110,60,25,0.35)"; g.fillRect(x + 1, y + 1, 4, 5);
-      g.fillStyle = pick(r, ["#e6d6a8", "#efe2b8", "#d4c08e", "#c2aa7c"]); g.fillRect(x, y - h, 3, h);
-    }
-  }
-  speckle(g, r, S, S, 500, ["rgba(170,90,45,0.4)", "rgba(250,240,200,0.5)"], 1.5, 3.5);
-});
-/** red-orange outback dirt (1024 px = 4 m): pebbles, cracks, wheel-rut streaks along canvas x */
-export const dirtHD = (key = "dirtHD", base = "#bf6332") => ctex(key, 1024, 1024, (g, r) => {
+// =================================================================================================================
+// BAT SHORT painters
+// =================================================================================================================
+/** pale desert sand (1024 px = 4 m): warm ochre, wind ripples, pebbles, dry tufts of shadow */
+export const sandHD = (key = "sandHD", base = "#d9a96a") => ctex(key, 1024, 1024, (g, r) => {
   const S = 1024;
   g.fillStyle = base; g.fillRect(0, 0, S, S);
-  octaves(g, r, S, S, 256, "250,180,120", "110,40,20", 1.4);
-  for (let i = 0; i < 40; i++) { const y = U(r, 0, S), x = U(r, 0, S), l = U(r, 120, 420); detailLine(g, [[x, y], [x + l * 0.5, y + U(r, -5, 5)], [x + l, y + U(r, -4, 4)]], base, U(r, 2, 5), r, 0.35, 0.65); }
-  for (let i = 0; i < 26; i++) { // dry cracks
-    let x = U(r, 0, S), y = U(r, 0, S); const pts: [number, number][] = [[x, y]];
-    for (let k = 0; k < 5; k++) { x += U(r, -30, 30); y += U(r, -30, 30); pts.push([x, y]); }
-    detailLine(g, pts, base, 1.6, r, 0.5, 0.45);
-  }
-  speckle(g, r, S, S, 900, ["rgba(240,190,140,0.7)", "rgba(90,35,20,0.5)", "rgba(220,210,190,0.6)"], 1.5, 5);
+  octaves(g, r, S, S, 256, "255,230,180", "150,90,45", 1.1);
+  for (let i = 0; i < 26; i++) wrap2(S, S, U(r, 0, S), U(r, 0, S), 110, (x, y) => blotch(g, x, y, U(r, 50, 110), 1.8, "190,110,60", 0.22));
+  for (let i = 0; i < 70; i++) { const y = U(r, 0, S), x = U(r, 0, S), l = U(r, 80, 260); detailLine(g, [[x, y], [x + l * 0.5, y + U(r, -8, 8)], [x + l, y + U(r, -5, 5)]], base, U(r, 1.5, 3), r, 0.28, 0.7); }
+  speckle(g, r, S, S, 1400, ["rgba(255,240,205,0.7)", "rgba(120,70,40,0.5)", "rgba(200,170,140,0.6)"], 1.4, 4.5);
 });
-/** dry paddock grass (1024 px = 4 m): tan / olive tufts over red soil patches */
-export const paddockHD = () => ctex("paddockHD", 1024, 1024, (g, r) => {
+/** sandstone strata (1024 px = 8 m): horizontal bands of buff / rust / cream with cracks and ledges */
+export const rockHD = (key = "rockHD", base = "#c98a58") => ctex(key, 1024, 1024, (g, r) => {
   const S = 1024;
-  g.fillStyle = "#bba882"; g.fillRect(0, 0, S, S);
-  octaves(g, r, S, S, 256, "240,228,190", "115,90,60", 1.2);
-  for (let i = 0; i < 26; i++) wrap2(S, S, U(r, 0, S), U(r, 0, S), 90, (x, y) => blotch(g, x, y, U(r, 40, 90), 1.6, "185,95,50", 0.35));
-  g.lineCap = "round";
-  for (let i = 0; i < 3200; i++) {
-    const x = U(r, 0, S), y = U(r, 0, S), l = U(r, 6, 14);
-    g.strokeStyle = pick(r, ["#a69a6c", "#d2c494", "#8f8c62", "#ddd0a2", "#988060"]); g.lineWidth = 2;
-    g.beginPath(); g.moveTo(x, y); g.lineTo(x + U(r, -4, 4), y - l); g.stroke();
+  g.fillStyle = base; g.fillRect(0, 0, S, S);
+  let y = 0;
+  while (y < S) {
+    const h = U(r, 30, 110), c = pick(r, ["#d49a64", "#b9764a", "#e0b07c", "#c4824e", "#a96a44"]);
+    g.fillStyle = jit(r, c, 0.05, 3, 0.1); g.fillRect(0, y, S, h);
+    detailLine(g, [[0, y + h], [S * 0.5, y + h + U(r, -3, 3)], [S, y + h]], c, U(r, 2, 4), r, 0.55, 0.45);
+    y += h;
   }
+  octaves(g, r, S, S, 128, "255,225,185", "90,45,25", 1.2);
+  for (let i = 0; i < 50; i++) { let x = U(r, 0, S), yy = U(r, 0, S); const pts: [number, number][] = [[x, yy]]; for (let k = 0; k < 4; k++) { x += U(r, -14, 14); yy += U(r, 10, 40); pts.push([x, yy]); } detailLine(g, pts, base, 2.2, r, 0.5, 0.4); }
+  speckle(g, r, S, S, 600, ["rgba(255,235,200,0.5)", "rgba(80,40,25,0.4)"], 1.5, 4);
 });
-/** wet mud bank with emu footprints (1024 px = 4 m) */
-export const mudHD = () => ctex("mudHD", 1024, 1024, (g, r) => {
+/** pale concrete apron (1024 px = 6 m): expansion joints every 3 m, stains, tyre streaks */
+export const concreteHD = () => ctex("concreteHD", 1024, 1024, (g, r) => {
   const S = 1024;
-  g.fillStyle = "#8a5c3a"; g.fillRect(0, 0, S, S);
-  octaves(g, r, S, S, 256, "200,150,105", "60,35,20", 1.5);
-  for (let i = 0; i < 70; i++) { // three-toed prints
-    const x = U(r, 30, S - 30), y = U(r, 30, S - 30), a = U(r, 0, TAU);
-    g.save(); g.translate(x, y); g.rotate(a); g.strokeStyle = "rgba(55,30,18,0.55)"; g.lineWidth = 4; g.lineCap = "round";
-    for (const d of [-0.5, 0, 0.5]) { g.beginPath(); g.moveTo(0, 0); g.lineTo(Math.sin(d) * 22, -Math.cos(d) * 22); g.stroke(); }
-    g.restore();
+  g.fillStyle = "#cfc6b4"; g.fillRect(0, 0, S, S);
+  octaves(g, r, S, S, 170, "250,245,232", "110,100,85", 0.9);
+  for (let i = 0; i < 14; i++) wrap2(S, S, U(r, 0, S), U(r, 0, S), 90, (x, y) => blotch(g, x, y, U(r, 40, 90), 1.4, "120,105,85", 0.18));
+  for (const k of [0, 512]) { detailLine(g, [[k + 2, 0], [k + 2, S]], "#cfc6b4", 3, r, 0.7, 0.45); detailLine(g, [[0, k + 2], [S, k + 2]], "#cfc6b4", 3, r, 0.7, 0.45); }
+  speckle(g, r, S, S, 700, ["rgba(255,255,250,0.5)", "rgba(90,80,70,0.35)"], 1, 3);
+});
+/** the US flag (1024 x 540): 13 stripes, a blue canton with rows of white dots (no lettering) */
+export const flagHD = () => ctex("flagHD", 1024, 540, (g) => {
+  const W = 1024, H = 540, sh = H / 13;
+  for (let i = 0; i < 13; i++) { g.fillStyle = i % 2 ? "#f6f2ea" : "#c8323a"; g.fillRect(0, i * sh, W, sh + 1); }
+  g.fillStyle = "#2a3f7a"; g.fillRect(0, 0, W * 0.42, sh * 7);
+  g.fillStyle = "#f6f2ea";
+  for (let row = 0; row < 6; row++) for (let k = 0; k < 8; k++) { const x = 30 + k * 50 + (row % 2) * 25, y = 24 + row * 44; if (x < W * 0.42 - 16) { g.beginPath(); g.arc(x, y, 9, 0, TAU); g.fill(); } }
+});
+/** white star in a blue roundel (512 px), the aircraft insignia on the hangar */
+export const starHD = () => ctex("starHD", 512, 512, (g) => {
+  g.clearRect(0, 0, 512, 512);
+  g.fillStyle = "#2a3f7a"; g.beginPath(); g.arc(256, 256, 240, 0, TAU); g.fill();
+  g.fillStyle = "#f8f5ee"; g.beginPath();
+  for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 5, rr2 = i % 2 ? 92 : 232; g.lineTo(256 + Math.cos(a) * rr2, 256 + Math.sin(a) * rr2); }
+  g.closePath(); g.fill();
+});
+/** the bat crate's face (512 x 384 = 0.8 x 0.6 m): pine boards, rows of air holes, a stencilled arrow (no words) */
+export const batCrateHD = () => ctex("batCrateHD", 512, 384, (g, r) => {
+  const W = 512, H = 384;
+  for (let i = 0; i < 4; i++) {
+    const y = i * 96; g.fillStyle = jit(r, pick(r, ["#c79a5c", "#bd9054", "#cfa366"]), 0.05, 3, 0.08); g.fillRect(0, y, W, 96);
+    for (let k = 0; k < 6; k++) grain(g, r, W, U(r, 0, W), y + U(r, 10, 86), U(r, 150, 400), U(r, 1, 4), 2, "rgba(110,60,25,0.3)");
+    g.fillStyle = "rgba(70,35,12,0.55)"; g.fillRect(0, y + 93, W, 4);
   }
-  speckle(g, r, S, S, 300, ["rgba(220,180,140,0.5)", "rgba(50,30,20,0.4)"], 1.5, 4);
+  for (const x of [0, W - 56]) { g.fillStyle = "#a87842"; g.fillRect(x, 0, 56, H); for (const y of [30, H - 30]) nail(g, x + 28, y, 6); }
+  for (let row = 0; row < 2; row++) for (let k = 0; k < 7; k++) { g.fillStyle = "#2a1a12"; g.beginPath(); g.arc(110 + k * 49, 120 + row * 70, 11, 0, TAU); g.fill(); }
+  g.fillStyle = "rgba(28,24,22,0.85)"; // stencilled "this side up" arrow
+  g.beginPath(); g.moveTo(W / 2, 250); g.lineTo(W / 2 - 34, 300); g.lineTo(W / 2 - 12, 300); g.lineTo(W / 2 - 12, 350); g.lineTo(W / 2 + 12, 350); g.lineTo(W / 2 + 12, 300); g.lineTo(W / 2 + 34, 300); g.fill();
+  octaves(g, r, W, H, 640, "255,240,210", "90,50,20", 0.7);
 });
-/** brown farm-dam water (1024 px = 8 m): olive-brown, lighter sky streaks, ripple rings, a few floating feathers */
-export const damWaterHD = () => ctex("damWaterHD", 1024, 1024, (g, r) => {
-  const S = 1024;
-  g.fillStyle = "#62684e"; g.fillRect(0, 0, S, S);
-  g.fillStyle = "rgba(150,190,215,0.22)"; g.fillRect(0, 0, S, S); // sky reflection tint (uniform: the tile repeats seamlessly)
-  octaves(g, r, S, S, 128, "170,160,130", "50,40,25", 1.0);
-  for (let i = 0; i < 140; i++) { const x = U(r, 0, S), y = U(r, 0, S), l = U(r, 60, 220); g.strokeStyle = `rgba(${r() < 0.5 ? '190,215,235' : '235,220,180'},${U(r, 0.35, 0.65)})`; g.lineWidth = U(r, 3, 6); g.beginPath(); g.moveTo(x, y); g.lineTo(x + l, y + U(r, -3, 3)); g.stroke(); }
-  for (let i = 0; i < 22; i++) { const x = U(r, 0, S), y = U(r, 0, S); g.strokeStyle = "rgba(230,220,190,0.35)"; g.lineWidth = 2.5; for (const k of [1, 1.8]) { g.beginPath(); g.ellipse(x, y, 16 * k, 7 * k, 0, 0, TAU); g.stroke(); } }
-});
-/** ghost-gum bark (256 x 512 = around x 3 m up): cream-white with salmon / grey peeling patches and long streaks */
-export const gumBarkHD = () => ctex("gumBarkHD", 256, 512, (g, r) => {
-  const W = 256, H = 512;
-  g.fillStyle = "#e6dfcf"; g.fillRect(0, 0, W, H);
-  for (let i = 0; i < 26; i++) wrap2(W, H, U(r, 0, W), U(r, 0, H), 40, (x, y) => blotch(g, x, y, U(r, 14, 40), 0.5, pick(r, ["200,150,120", "150,150,140", "230,200,170"]), 0.45));
-  for (let i = 0; i < 40; i++) { const x = U(r, 0, W), y = U(r, 0, H); detailLine(g, [[x, y], [x + U(r, -4, 4), y + U(r, 40, 120)]], "#e6dfcf", 1.6, r, 0.45, 0.6); }
-});
-/** eucalyptus foliage (256 x 128 on a unit sphere): grey-green, sage dabs on the crown, olive clumps below */
-export const gumLeafHD = (k: number) => ctex("gumLeafHD" + k, 256, 128, (g, r0) => {
-  const r = rng(k * 31 + 7); void r0;
-  const base = ["#7a9a6a", "#82a070", "#6f9062"][k % 3];
-  const gr = g.createLinearGradient(0, 0, 0, 128);
-  gr.addColorStop(0, "#a2bc88"); gr.addColorStop(0.4, base); gr.addColorStop(1, "#4a6640");
-  g.fillStyle = gr; g.fillRect(0, 0, 256, 128);
-  for (let i = 0; i < 70; i++) {
-    const x = U(r, 0, 256), y = U(r, 6, 120), rad = U(r, 4, 10), light = y < 60 ? r() < 0.7 : r() < 0.2;
-    for (const ox of [-256, 0, 256]) { g.strokeStyle = light ? "rgba(220,235,200,0.35)" : "rgba(40,60,40,0.3)"; g.lineWidth = 2.4; g.lineCap = "round"; g.beginPath(); g.arc(x + ox, y + rad * 0.6, rad, Math.PI * 1.1, Math.PI * 1.9); g.stroke(); }
-  }
-});
-/** tent canvas (512 px = 2 m): cream duck, vertical seams, weave, a dusty hem */
-export const canvasHD = (base = "#e6d8b8") => ctex("canvasHD" + base, 512, 512, (g, r) => {
+/** striped wallpaper (512 px = 1 m): soft vertical stripes with a small motif, a darker dado band at the bottom */
+export const wallpaperHD = (key: string, base: string, stripe: string) => ctex("wallpaper" + key, 512, 512, (g, r) => {
   const S = 512;
   g.fillStyle = base; g.fillRect(0, 0, S, S);
-  for (let y = 0; y < S; y += 3) { g.fillStyle = `rgba(120,100,70,${0.04 + 0.05 * r()})`; g.fillRect(0, y, S, 1); }
-  octaves(g, r, S, S, 256, "255,250,230", "120,95,60", 0.9);
-  for (const x of [0, 256]) { detailLine(g, [[x + 2, 0], [x + 2, S]], base, 3, r, 0.7, 0.55); for (let y = 6; y < S; y += 12) detailLine(g, [[x - 4, y], [x + 6, y + 4]], base, 1.2, r, 0.5, 0.55); }
-  const bg = g.createLinearGradient(0, S, 0, S * 0.75); bg.addColorStop(0, "rgba(150,80,40,0.4)"); bg.addColorStop(1, "rgba(150,80,40,0)"); g.fillStyle = bg; g.fillRect(0, S * 0.75, S, S * 0.25);
+  for (let x = 0; x < S; x += 64) { g.fillStyle = stripe; g.fillRect(x + 20, 0, 22, S); }
+  for (let x = 0; x < S; x += 64) for (let y = 16; y < S; y += 64) { g.fillStyle = "rgba(255,250,235,0.35)"; g.beginPath(); g.arc(x + 52, y, 5, 0, TAU); g.fill(); }
+  octaves(g, r, S, S, 512, "255,250,235", "90,60,40", 0.6);
+});
+/** white glazed wall tiles (512 px = 1.2 m) with grey grout and soft glints */
+export const tileHD = (base = "#e6efe9") => ctex("tile" + base, 512, 512, (g, r) => {
+  const S = 512, n = 8, t = S / n;
+  g.fillStyle = "#9aa6a2"; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < n; i++) for (let k = 0; k < n; k++) { g.fillStyle = jit(r, base, 0.03, 4, 0.1); g.fillRect(i * t + 3, k * t + 3, t - 6, t - 6); g.fillStyle = "rgba(255,255,255,0.4)"; g.fillRect(i * t + 8, k * t + 8, t * 0.3, 4); }
+  octaves(g, r, S, S, 400, "255,255,255", "80,90,90", 0.5);
+});
+/** oval rug (1024 x 640): deep blue field, gold border, a central medallion (no seal, no words) */
+export const rugHD = () => ctex("rugHD", 1024, 640, (g, r) => {
+  g.clearRect(0, 0, 1024, 640);
+  const ell = (rx: number, ry: number, c: string) => { g.fillStyle = c; g.beginPath(); g.ellipse(512, 320, rx, ry, 0, 0, TAU); g.fill(); };
+  ell(508, 316, "#c9a24a"); ell(478, 288, "#24376a"); ell(440, 254, "#2c4280"); ell(130, 90, "#c9a24a"); ell(110, 72, "#24376a");
+  for (let i = 0; i < 24; i++) { const a = (i / 24) * TAU; g.fillStyle = "#e6c870"; g.beginPath(); g.arc(512 + Math.cos(a) * 460, 320 + Math.sin(a) * 270, 7, 0, TAU); g.fill(); }
+  for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + (i * TAU) / 5; g.fillStyle = "#f2ead0"; g.beginPath(); g.arc(512 + Math.cos(a) * 52, 320 + Math.sin(a) * 34, 9, 0, TAU); g.fill(); }
+  octaves(g, r, 1024, 640, 400, "255,240,210", "10,10,30", 0.5);
+});
+/** shoji paper screen (256 px): cream paper, dark wood lattice */
+export const shojiHD = () => ctex("shojiHD", 256, 256, (g, r) => {
+  g.fillStyle = "#f4ecd6"; g.fillRect(0, 0, 256, 256);
+  octaves(g, r, 256, 256, 256, "255,252,240", "190,170,130", 0.5);
+  g.fillStyle = "#5a3a24";
+  for (let k = 0; k <= 4; k++) { g.fillRect(k * 62, 0, 8, 256); g.fillRect(0, k * 62, 256, 8); }
+});
+/** dark wavy roof tiles for the model houses (256 px) */
+export const roofTileHD = () => ctex("roofTileHD", 256, 256, (g, r) => {
+  g.fillStyle = "#4a4e5a"; g.fillRect(0, 0, 256, 256);
+  for (let y = 0; y < 256; y += 32) for (let x = 0; x < 256; x += 32) { g.fillStyle = jit(r, "#5a606e", 0.08, 3, 0.1); g.beginPath(); g.ellipse(x + 16, y + 18, 15, 16, 0, Math.PI, TAU); g.fill(); g.fillStyle = "rgba(20,20,30,0.45)"; g.fillRect(x, y + 28, 32, 4); }
+});
+/** the inventor's drawing (512 x 384): a cream sheet with a pencil bat carrying a bomb, arrows and blobs (no words) */
+export const drawingHD = () => ctex("drawingHD", 512, 384, (g, r) => {
+  g.fillStyle = "#f6efdc"; g.fillRect(0, 0, 512, 384);
+  octaves(g, r, 512, 384, 512, "255,252,240", "160,140,110", 0.5);
+  g.strokeStyle = "#3a3448"; g.lineWidth = 5; g.lineCap = "round"; g.lineJoin = "round";
+  const W = (pts: [number, number][]) => { g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke(); };
+  g.beginPath(); g.ellipse(256, 170, 34, 40, 0, 0, TAU); g.stroke();                                // body
+  W([[236, 136], [226, 92], [248, 126]]); W([[276, 136], [286, 92], [264, 126]]);                     // ears
+  W([[224, 160], [150, 110], [120, 150], [140, 160], [130, 190], [170, 180], [226, 186]]);          // wings
+  W([[288, 160], [362, 110], [392, 150], [372, 160], [382, 190], [342, 180], [286, 186]]);
+  g.fillStyle = "#5a6a34"; g.fillRect(236, 206, 40, 20); g.strokeRect(236, 206, 40, 20);           // capsule
+  W([[256, 226], [256, 300]]); W([[240, 284], [256, 304], [272, 284]]);                               // arrow down
+  for (let k = 0; k < 4; k++) { g.strokeRect(150 + k * 56, 318, 40, 34); W([[146 + k * 56, 318], [170 + k * 56, 300], [194 + k * 56, 318]]); } // little houses
+  g.lineWidth = 2; g.strokeStyle = "rgba(58,52,72,0.6)"; for (let k = 0; k < 6; k++) W([[30, 40 + k * 14], [100 - 8 * (k % 3), 40 + k * 14]]); // scribble lines (not letters)
+});
+/** office window at dusk (512 x 640): orange sky to lilac-blue, a grey city silhouette, venetian blind slats */
+export const duskWindowHD = () => ctex("duskWindowHD", 512, 640, (g, r) => {
+  const gr = g.createLinearGradient(0, 0, 0, 640); gr.addColorStop(0, "#5a6ea8"); gr.addColorStop(0.45, "#e9a06a"); gr.addColorStop(0.8, "#ffc47a"); gr.addColorStop(1, "#ffd9a0");
+  g.fillStyle = gr; g.fillRect(0, 0, 512, 640);
+  g.fillStyle = "#4a4e66";
+  for (let x = 0; x < 512;) { const w = U(r, 40, 90), h = U(r, 80, 220); g.fillRect(x, 640 - h, w - 6, h); x += w; }
+  g.beginPath(); g.ellipse(300, 470, 60, 40, 0, Math.PI, TAU); g.fill(); g.fillRect(292, 380, 16, 60); // a dome
+  for (let y = 0; y < 640; y += 40) { g.fillStyle = "rgba(240,232,214,0.85)"; g.fillRect(0, y, 512, 16); g.fillStyle = "rgba(90,70,60,0.35)"; g.fillRect(0, y + 16, 512, 3); }
 });
 /** hessian sandbag cloth (512 px = 1 m) */
 export const hessianHD = () => ctex("hessianHD", 512, 512, (g, r) => {
@@ -458,71 +432,10 @@ export const hessianHD = () => ctex("hessianHD", 512, 512, (g, r) => {
   for (let x = 0; x < S; x += 5) { g.fillStyle = `rgba(245,230,195,${0.05 + 0.06 * r()})`; g.fillRect(x, 0, 2, S); }
   octaves(g, r, S, S, 400, "240,225,185", "100,75,45", 1);
 });
-/** wooden .303 ammunition box face (512 x 320 = 0.8 m x 0.5 m): pine boards, darker end battens, rope handle shadow,
- *  a black ".303" stencil (allowed: no words) and a broad-arrow mark */
-export const crateHD = () => ctex("crateHD", 512, 320, (g, r) => {
-  const W = 512, H = 320;
-  const fills = ["#c79a5c", "#bd9054", "#cfa366"];
-  for (let i = 0; i < 4; i++) {
-    const y = i * 80; g.fillStyle = jit(r, pick(r, fills), 0.05, 3, 0.08); g.fillRect(0, y, W, 80);
-    for (let k = 0; k < 6; k++) grain(g, r, W, U(r, 0, W), y + U(r, 10, 70), U(r, 150, 400), U(r, 1, 4), 2, "rgba(110,60,25,0.3)");
-    g.fillStyle = "rgba(70,35,12,0.55)"; g.fillRect(0, y + 77, W, 4);
-  }
-  for (const x of [0, W - 56]) { g.fillStyle = "#a87842"; g.fillRect(x, 0, 56, H); g.fillStyle = "rgba(60,30,10,0.5)"; g.fillRect(x === 0 ? 54 : x, 0, 3, H); for (const y of [30, H - 30]) nail(g, x + 28, y, 6); }
-  drawText(g, ".303", W / 2, H * 0.47, W * 0.5, H * 0.34, { fg: "rgba(28,24,22,0.92)", style: "stencil" });
-  g.fillStyle = "rgba(28,24,22,0.85)"; // broad arrow
-  g.beginPath(); g.moveTo(W / 2, H * 0.72); g.lineTo(W / 2 - 22, H * 0.86); g.lineTo(W / 2 - 14, H * 0.86); g.lineTo(W / 2, H * 0.78); g.lineTo(W / 2 + 14, H * 0.86); g.lineTo(W / 2 + 22, H * 0.86); g.fill();
-  g.fillRect(W / 2 - 3, H * 0.75, 6, H * 0.15);
-  octaves(g, r, W, H, 640, "255,240,210", "90,50,20", 0.7);
-});
-/** heap of spent .303 brass (1024 px = 2 m): casing ends + sides, bright glints, dark primers */
-export const brassHD = () => ctex("brassHD", 1024, 1024, (g, r) => {
-  const S = 1024;
-  g.fillStyle = "#8a5f1e"; g.fillRect(0, 0, S, S);
-  for (let i = 0; i < 2600; i++) {
-    const x = U(r, 0, S), y = U(r, 0, S), a = U(r, 0, TAU), l = U(r, 22, 32);
-    wrap2(S, S, x, y, l, (xx, yy) => {
-      g.save(); g.translate(xx, yy); g.rotate(a);
-      if (r() < 0.3) { // end-on: rim + primer
-        g.fillStyle = "#d9a840"; g.beginPath(); g.arc(0, 0, 7, 0, TAU); g.fill();
-        g.fillStyle = "#6a4a1a"; g.beginPath(); g.arc(0, 0, 2.6, 0, TAU); g.fill();
-      } else {
-        g.fillStyle = "rgba(70,40,10,0.6)"; g.fillRect(-l / 2 + 2, -3, l, 9);
-        g.fillStyle = pick(r, ["#e0b048", "#c9962e", "#f0c860", "#b9862a"]); g.fillRect(-l / 2, -5, l, 9);
-        g.fillStyle = "rgba(255,245,200,0.75)"; g.fillRect(-l / 2 + 2, -4, l - 6, 2.2);
-      }
-      g.restore();
-    });
-  }
-});
-/** tally board (1024 x 640 = 1.6 m x 1 m): dark painted board, chalk 5-bar gates in rows; no numbers, no words */
-export const tallyHD = () => ctex("tallyHD", 1024, 640, (g, r) => {
-  const W = 1024, H = 640;
-  g.fillStyle = "#2f3a34"; g.fillRect(0, 0, W, H);
-  octaves(g, r, W, H, 640, "120,140,130", "10,20,15", 0.9);
-  g.lineCap = "round";
-  for (let row = 0; row < 7; row++) for (let k = 0; k < 9; k++) {
-    if (row === 6 && k > 5) continue;
-    const x0 = 60 + k * 104, y0 = 52 + row * 82;
-    g.strokeStyle = "rgba(244,240,226,0.92)"; g.lineWidth = 6;
-    for (let s = 0; s < 4; s++) { const x = x0 + s * 16 + U(r, -2, 2); g.beginPath(); g.moveTo(x, y0 + U(r, -3, 3)); g.lineTo(x + U(r, -3, 3), y0 + 56); g.stroke(); }
-    g.beginPath(); g.moveTo(x0 - 10, y0 + 48); g.lineTo(x0 + 62, y0 + 6); g.stroke();
-  }
-  g.strokeStyle = "rgba(160,110,60,1)"; g.lineWidth = 22; g.strokeRect(11, 11, W - 22, H - 22);
-});
-/** parade ground: packed pale red earth with faint rake / drill lines (1024 px = 4 m) */
-export const paradeHD = () => ctex("paradeHD", 1024, 1024, (g, r) => {
-  const S = 1024;
-  g.fillStyle = "#d29a6c"; g.fillRect(0, 0, S, S);
-  octaves(g, r, S, S, 256, "250,215,180", "130,70,40", 1.0);
-  for (let y = 0; y < S; y += 32) detailLine(g, [[0, y + U(r, -2, 2)], [S, y + U(r, -2, 2)]], "#d29a6c", 1.4, r, 0.25, 0.7);
-  speckle(g, r, S, S, 500, ["rgba(250,230,200,0.6)", "rgba(120,60,30,0.4)"], 1.5, 3.5);
-});
-/** army truck khaki paint (512 px = 2 m): olive-khaki, soft dust bottom, chips */
-export const khakiHD = () => ctex("khakiHD", 512, 512, (g, r) => {
+/** olive drab paint (512 px = 2 m): the bomb casing / army kit: olive, chips, a little dust */
+export const oliveHD = (key = "oliveHD", base = "#66713a") => ctex(key, 512, 512, (g, r) => {
   const S = 512;
-  g.fillStyle = "#7f7a48"; g.fillRect(0, 0, S, S);
-  octaves(g, r, S, S, 256, "220,215,160", "50,48,25", 1.0);
-  const dg = g.createLinearGradient(0, S, 0, S * 0.6); dg.addColorStop(0, "rgba(190,110,60,0.45)"); dg.addColorStop(1, "rgba(190,110,60,0)"); g.fillStyle = dg; g.fillRect(0, S * 0.6, S, S * 0.4);
-  speckle(g, r, S, S, 120, ["rgba(60,55,35,0.5)", "rgba(230,220,180,0.4)"], 1, 3);
+  g.fillStyle = base; g.fillRect(0, 0, S, S);
+  octaves(g, r, S, S, 256, "220,225,170", "40,45,20", 0.9);
+  speckle(g, r, S, S, 140, ["rgba(40,40,25,0.5)", "rgba(230,225,190,0.4)"], 1, 3);
 });
