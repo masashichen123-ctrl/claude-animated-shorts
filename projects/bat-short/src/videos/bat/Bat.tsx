@@ -1,5 +1,5 @@
-// "The Great Emu War" (1932): 59 s vertical short in the flat-characters-in-a-3D-toon-world style, on the missile
-// short's look stack (owner: post, with ink.ts / lensblur.ts / grade.ts).
+// "The Bat Bomb" (USA, 1943): 55 s vertical short in the flat-characters-in-a-3D-toon-world style, on the missile /
+// emu shorts' look stack (owner: post, with ink.ts / lensblur.ts / grade.ts).
 // One three.js world (world.ts) posed per frame from the story timeline (story.ts). Post chain:
 //   InkPass (world ink lines, own pass) -> lens blur pre + main (thin-lens DOF per shot from dofAt) ->
 //   [bloom (emissive only) + NEUTRAL tone mapping + colour grade] (one merged EffectPass), MSAA 4.
@@ -36,11 +36,11 @@ const toggles = (): PostToggles => ({ ink: true, lens: true, pre: true, bloom: t
 // Look pass r1 (lighting.md 3.4, "bloom on emissives only"): the bright pass keys on the MAX channel, not luminance,
 // with a threshold above any lit albedo (day lit 1.58 x white .85 = 1.34; golden 1.5 x .95 = 1.43): from 1.45, full
 // at 1.8. (At a luminance threshold of 1.0, sunlit white props bloomed in the missile short's A/B stills);
-// now only emissives do: sun disc (6.0), muzzle flash cards (glow 1.6-2.2), the tent lamp and its glowing door. Max channel
+// now only emissives do: sun / moon disc, flame + fireball cards (glow 2-2.6), the capsules' pilot lights, lamps, flasks. Max channel
 // so saturated sources (an orange lamp: luminance < 1.3) still bloom. Emissives need k >= 1.8 to glow fully.
 const BLOOM_T = 1.45, BLOOM_S = 0.35;
 /** per light preset bloom strength / radius (lighting.md 3.4; e-fold glow ~30 px at 1080 for radius 0.6) */
-const BLOOM_LOOK: Record<string, [number, number]> = { day: [0.6, 0.6], golden: [0.8, 0.7], dusk: [0.8, 0.7], morning: [0.8, 0.7] };
+const BLOOM_LOOK: Record<string, [number, number]> = { day: [0.7, 0.65], dusk: [0.85, 0.7], night: [0.9, 0.7], interior: [0.75, 0.65], lab: [0.85, 0.65], office: [0.8, 0.65] };
 /** per-light bright-pass threshold (max channel, linear); a lights.ts preset may carry its own `bloomT`, which wins */
 const BLOOM_TH: Record<string, number> = {};
 /** per-shot bloom intensity factor */
@@ -61,7 +61,7 @@ const fwd = new THREE.Vector3(), fpt = new THREE.Vector3();
 /** waits for loadKit() (procedural world: resolves at once; kept so async assets can be added without touching the comp) */
 const useKit = () => {
   const [kit, setKit] = useState<boolean | null>(null);
-  const [handle] = useState(() => delayRender("emu kit"));
+  const [handle] = useState(() => delayRender("bat kit"));
   useEffect(() => { loadKit().then((k) => { setKit(k); continueRender(handle); }); }, [handle]);
   return kit;
 };

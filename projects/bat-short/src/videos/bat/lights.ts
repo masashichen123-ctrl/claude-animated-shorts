@@ -60,7 +60,7 @@ export const LIGHTS: Record<LightName, LightPreset> = {
   dusk: {
     // desert sunset: low amber key from the side / behind, peach haze, BLUE shade (no rose), warm rim on the cards
     az: 30, el: 7,
-    lit: [1.66, 1.14, 0.64], shade: [0.15, 0.2, 0.38], lift: [0.03, 0.05, 0.13], lambert: 0.35, sideK: 0.82, term: 0.08,
+    lit: [1.7, 1.18, 0.66], shade: [0.17, 0.24, 0.4], lift: [0.03, 0.06, 0.12], lambert: 0.35, sideK: 0.82, term: 0.08,
     charTint: [1.0, 0.84, 0.66], charShade: 0.86, charGrad: 0.1, bodyGrad: 0.25, sideTint: [0.8, 0.84, 1.0],
     blob: [0.7, 0.74, 0.92], actorShadow: true,
     top: "#3d5ca0", hor: "#ffc46e", skyCurve: [0.05, 0.6, 1.0], fog: "#f2b882", fogNear: 40, fogFar: 380, sunDisc: "#ffd49a",
@@ -68,12 +68,12 @@ export const LIGHTS: Record<LightName, LightPreset> = {
     bias: -0.0006, normalBias: 0.03,
     albFloor: [0.03, 0.03, 0.05], gobo: 0, goboScale: 9, rim: [1.0, 0.62, 0.32], ao: 0.08, aoR: 0.7, prac: 1.8, pracCol: "#ffa040",
     bloomI: 0.85, bloomR: 0.7, softM: 0.26,
-    haze: H("#f0b886", 40, 220, 40, 0.45), glowCol: "#ffd890", glowK: 0.6,
+    haze: H("#f0b886", 40, 220, 40, 0.45), glowCol: "#ffd890", glowK: 0.45,
   },
   night: {
     // moonlight: cool silver-blue key from the moon (usually ahead: a cool rim), deep blue shade, a cool card rim
     az: -12, el: 26,
-    lit: [0.72, 0.86, 1.22], shade: [0.1, 0.13, 0.27], lift: [0.02, 0.03, 0.09], lambert: 0.35, sideK: 0.84, term: 0.12,
+    lit: [0.72, 0.86, 1.22], shade: [0.08, 0.1, 0.22], lift: [0.02, 0.03, 0.09], lambert: 0.35, sideK: 0.84, term: 0.12,
     charTint: [0.74, 0.84, 1.0], charShade: 0.82, charGrad: 0.1, bodyGrad: 0.26, sideTint: [0.8, 0.86, 1.0],
     blob: [0.6, 0.66, 0.86], actorShadow: false,
     top: "#0c1a44", hor: "#3a5890", skyCurve: [0.05, 0.6, 1.0], fog: "#2c4478", fogNear: 40, fogFar: 380, sunDisc: "#f6f0d6",
@@ -82,7 +82,7 @@ export const LIGHTS: Record<LightName, LightPreset> = {
     albFloor: [0.025, 0.03, 0.06], gobo: 0, goboScale: 9, rim: [0.45, 0.62, 1.1], ao: 0.08, aoR: 0.7, prac: 2.0, pracCol: "#ffb060",
     bloomI: 0.9, bloomR: 0.7, softM: 0.3,
     haze: H("#2f4a82", 40, 260, 50, 0.55), glowCol: "#9ab8f0", glowK: 0.4,
-    moon: 4.2, cardGain: 0.86, cardRim: [0.42, 0.62, 1.15], cardRimK: 1,
+    moon: 4.8, cardGain: 0.86, cardRim: [0.42, 0.62, 1.15], cardRimK: 1,
   },
   interior: {
     // warm workshop / office: a sunny window key from screen right, lamps, warm walls, cool-grey shade (not brown)
@@ -131,7 +131,7 @@ export const SHOT_LIGHT: Record<number, LightName> = {};
 /** per-shot sun (camera-relative az / el, degrees). Day heroes face a warm key from behind the lens' shoulder; dusk
  *  and night shots are backlit (rim + sun / moon in frame where the lens faces it). */
 export const SHOT_SUN: Record<number, { az: number; el: number }> = {
-  1: { az: -8, el: 24 }, 2: { az: 22, el: 7 }, 3: { az: -18, el: 6 },
+  1: { az: -8, el: 24 }, 2: { az: 60, el: 8 }, 3: { az: 140, el: 10 },
   4: { az: 120, el: 38 }, 5: { az: 105, el: 42 }, 6: { az: 128, el: 36 }, 7: { az: 115, el: 44 },
   8: { az: 125, el: 48 }, 9: { az: 120, el: 50 }, 10: { az: 125, el: 60 }, 11: { az: 132, el: 46 }, 12: { az: 125, el: 45 }, 13: { az: 128, el: 45 },
   14: { az: 58, el: 16 },
@@ -141,7 +141,7 @@ export const SHOT_SUN_FROM: Record<number, [number, { az: number; el: number }]>
 /** absolute world direction TOWARD the sun / moon for a shot (overrides SHOT_SUN): shot 15's moon sits behind the medal
  *  bat on the dolly line from the cave, a little lower so the bat hangs over its top edge */
 export const SHOT_SUN_DIR: Record<number, [number, number, number]> = (() => {
-  const L = SPOT.LIP15, c = SPOT.CAM15, d = [L[0] - c[0], L[1] - 0.22 - c[1] - 1.1, L[2] - c[2]], n = Math.hypot(d[0], d[1], d[2]);
+  const L = SPOT.LIP15, c = SPOT.CAM15, d = [L[0] - c[0], L[1] - 0.22 - c[1] - 1.0, L[2] - c[2]], n = Math.hypot(d[0], d[1], d[2]);
   return { 15: [d[0] / n, d[1] / n, d[2] / n] };
 })();
 /** per-shot sky stops overriding LOOK[light].sky */
@@ -171,7 +171,7 @@ export const LOOK: Record<LightName, WorldLook> = {
   },
   dusk: {
     // amber horizon, peach band, then straight into clean blue (no rose / lilac stop)
-    sky: { c: ["#ffbe62", "#ffb26c", "#f6be8a", "#8ea6cc", "#3d5ca0"], e: [0, 3, 8, 20, 46] },
+    sky: { c: ["#ffbe62", "#ffb878", "#d8c0a0", "#7f9ccc", "#3a5aa2"], e: [0, 2, 6, 13, 30] },
     cloud: { lit: "#ffd49a", mid: "#e8a874", shade: "#6f7eae" },
     bounce: [0.05, 0.025, 0.0],
     sat: 1.04,

@@ -1,16 +1,19 @@
-// Sets for "The Great Emu War" (owner: sets, with paint.ts): the Western Australian wheat belt, 1932. Every set is one
-// THREE.Group built at the world origin in its own frame (story.ts SPOT anchors); world.ts shows only the active shot's
-// set. Set meshes stay on camera layer 0, so the world ink pass outlines them; the wheat clump cards (alpha cut-outs)
-// live on NOINK. Shapes are chunky and bevelled (rbox, lathes, extrusions) and every material is two-tone (lam ->
-// twoTone). CONTRACTS: buildSets(), SET_META, SetRig, buildRigs() (truck, Lewis guns, loose crates) + pose helpers,
-// fgUpdate(), WHEAT (sway clock) (read by world.ts).
+// Sets for "The Bat Bomb" (owner: sets, with paint.ts): New Mexico, 1943. Every set is one THREE.Group built at the
+// world origin in its own frame (story.ts SPOT anchors); world.ts shows only the active shot's set. Set meshes stay on
+// camera layer 0, so the world ink pass outlines them. Shapes are chunky and bevelled (rbox, lathes, extrusions,
+// displaced rock lumps) and every material is two-tone (lam -> twoTone). Sets: the night desert, the army air base
+// (hangar with the white star, control tower, water tower, barracks, the silver fuel tank on legs, the General's shiny
+// car, the flag; burnt variants swapped in by tick), the cave mouth with the tourist overlook, Adams' workshop with the
+// planning model, the cutaway model house, the President's office, the chemistry lab, the War Department office.
+// CONTRACTS: buildSets(), SET_META, SetRig, buildRigs() (bomb casing, bat crate) + poseBomb / poseCrate, fgUpdate(),
+// CLOCK (read by world.ts).
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import * as P from "./paint";
 import { rng, rep, ctex } from "./paint";
 import { twoTone } from "./shade";
 import { NOINK } from "./ink";
-import { SPOT, SetName, FOREGROUND, TRIPOD_H, CRATE, TruckPose, GunPose, CratePose, farmHill, paddockRise, DAM_PROFILE, damNoise } from "./story";
+import { SPOT, SetName, FOREGROUND, BombPose, CratePose, caveGround, smooth } from "./story";
 
 export const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 
@@ -119,7 +122,7 @@ const VEG: Record<string, VegKind> = {
   tree_oak: "round", tree_default: "round", tree_detailed: "round", tree_fat: "fat", "tree-high-round": "tall", tree: "tall",
   tree_cone: "cone", plant_bushLarge: "bush", plant_bushDetailed: "bush", plant_bush: "bush", hedge: "hedge",
 };
-const LEAF = ["#7f9a6c", "#8aa274", "#738f66", "#93a87a", "#6c8560"]; // grey-green Australian scrub
+const LEAF = ["#8f9a6c", "#9aa274", "#7f8f66", "#a3a87a", "#7c8560"]; // grey-green desert sage / creosote
 /** canopy paint (equal px per metre on a unit sphere: 256 around x 128 pole to pole): light crown, darker belly,
  *  soft leaf-clump dabs (kept low contrast: the two-tone sun term does the main modelling) */
 const leafTex = (i: number) => ctex("leafHD" + i, 256, 128, (g, r) => {
@@ -368,12 +371,10 @@ const hillRing = (b: Batch, cx: number, cz: number, R: number, hBase: number, am
 };
 
 // =================================================================================================================
-// WHEAT BELT KIT
+// DESERT KIT
 // =================================================================================================================
-/** shared sway clock for wheat clumps + canopy ripple (world.ts sets uTime every frame) */
-export const WHEAT = { uTime: { value: 0 } };
-/** warm the two-tone shade of a material: k = 0 keeps the scene's (cool / violet) shade, 1 = olive-ochre of the same
- *  value. Wheat uses 1 (wheat in shade never goes violet), grounds 0.5 (the violet shadow on the ground is capped). */
+/** shared clock for animated set pieces (flag, bubbles); world.ts sets uTime every frame */
+export const CLOCK = { uTime: { value: 0 } };
 const WARM = (k: number) => `mix( uShadeCol, vec3( dot( uShadeCol, vec3( 0.3333 ) ) ) * vec3( 1.32, 1.06, 0.62 ), ${k.toFixed(2)} )`;
 const warmShade = <T extends THREE.Material>(m: T, k: number, key: string): T => {
   if (m.userData.warm) return m;
@@ -387,77 +388,11 @@ const warmShade = <T extends THREE.Material>(m: T, k: number, key: string): T =>
   m.customProgramCacheKey = () => prevKey() + "_warm" + key + k;
   return m;
 };
-/** add a wind-sway vertex patch to a two-tone material (k = metres of sway at the top of a card, by uv.y) */
-const sway = <T extends THREE.Material>(m: T, mode: "card" | "canopy", key: string): T => {
-  if (m.userData.sway) return m;
-  m.userData.sway = true;
-  const prev = m.onBeforeCompile;
-  m.onBeforeCompile = (sh, r) => {
-    prev.call(m, sh, r);
-    sh.uniforms.uWT = WHEAT.uTime;
-    const body = mode === "card"
-      ? "float swk = clamp(uv.y, 0.0, 1.0); swk *= swk; transformed.x += swk * 0.09 * sin(uWT * 2.3 + position.x * 0.45 + position.z * 0.31); transformed.z += swk * 0.06 * sin(uWT * 1.9 + position.z * 0.5 + position.x * 0.2);"
-      : "transformed.y += 0.035 * sin(uWT * 2.0 + position.x * 0.35 + position.z * 0.22) + 0.02 * sin(uWT * 3.1 - position.z * 0.6);";
-    sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nuniform float uWT;").replace("#include <begin_vertex>", "#include <begin_vertex>\n" + body);
-  };
-  m.customProgramCacheKey = () => "sway_" + key;
-  return m;
-};
-const wheatTopM = () => warmShade(sway(texM("wheatTop", () => P.wheatTopHD()), "canopy", "top"), 1, "wt");
-const wheatSideM = () => warmShade(texM("wheatSide", () => P.wheatSideHD()), 1, "ws");
-const wheatCardM = (k: number) => warmShade(sway(lam("wheatCard" + k, () => ({ map: P.wheatCardTex(k), alphaTest: 0.5, side: THREE.DoubleSide })), "card", "card" + k), 1, "wc");
-const WHEAT_H = 0.95;
 /** cheap value noise for terrain bumps */
 const vn2 = (x: number, z: number, s: number) => {
   const h = (a: number, b: number) => { const v = Math.sin(a * 127.1 + b * 311.7 + s * 17.3) * 43758.5453; return v - Math.floor(v); };
   const ix = Math.floor(x), iz = Math.floor(z), fx = x - ix, fz = z - iz, u = fx * fx * (3 - 2 * fx), w = fz * fz * (3 - 2 * fz);
   return (h(ix, iz) * (1 - u) + h(ix + 1, iz) * u) * (1 - w) + (h(ix, iz + 1) * (1 - u) + h(ix + 1, iz + 1) * u) * w;
-};
-/** a wheat block: undulating canopy top at ~0.95 m (tile 3 m), stalk walls on its four sides */
-const wheatBlock = (b: Batch, x0: number, x1: number, z0: number, z1: number, h = WHEAT_H, seed = 1) => {
-  const w = x1 - x0, d = z1 - z0, nx = Math.max(2, Math.min(160, Math.round(w / 2.2))), nz = Math.max(2, Math.min(160, Math.round(d / 2.2)));
-  const g = new THREE.PlaneGeometry(w, d, nx, nz).rotateX(-Math.PI / 2).translate((x0 + x1) / 2, 0, (z0 + z1) / 2);
-  const p = g.attributes.position as THREE.BufferAttribute, uv = g.attributes.uv as THREE.BufferAttribute;
-  for (let i = 0; i < p.count; i++) {
-    const x = p.getX(i), z = p.getZ(i), edge = Math.min(x - x0, x1 - x, z - z0, z1 - z);
-    const y = h * (0.88 + 0.12 * Math.min(1, edge / 1.5)) + 0.16 * (vn2(x / 7, z / 7, seed) - 0.5) + 0.06 * (vn2(x / 2.2, z / 2.2, seed + 3) - 0.5);
-    p.setY(i, y); uv.setXY(i, x / 3, z / 3);
-  }
-  g.computeVertexNormals();
-  b.add(g, wheatTopM());
-  const side = (ax: number, az: number, bx: number, bz: number) => {
-    const L = Math.hypot(bx - ax, bz - az);
-    b.add(quad(V(ax, 0, az), V(bx, 0, bz), V(bx, h * 0.92, bz), V(ax, h * 0.92, az), L / 3, (h * 0.92) / 1.5), wheatSideM());
-  };
-  side(x0, z1, x1, z1); side(x1, z0, x0, z0); side(x0, z0, x0, z1); side(x1, z1, x1, z0);
-};
-/** one clump: 3 crossed alpha cards (0.55 m wide, height h), normals up so they shade like the canopy */
-const clumpGeo = () => cached("clump", () => {
-  const parts: THREE.BufferGeometry[] = [];
-  for (let i = 0; i < 3; i++) {
-    const a = (i * Math.PI) / 3, c = Math.cos(a) * 0.3, s2 = Math.sin(a) * 0.3;
-    const q = quad(V(-c, 0, -s2), V(c, 0, s2), V(c, 1, s2), V(-c, 1, -s2));
-    const n = q.attributes.normal as THREE.BufferAttribute;
-    for (let k = 0; k < n.count; k++) n.setXYZ(k, 0, 1, 0);
-    parts.push(q);
-  }
-  return mergeGeometries(parts, false);
-});
-/** scatter clumps over a rect (base on the ground; ears poke 0.15-0.45 m above the canopy) */
-const clumps = (b: Batch, x0: number, x1: number, z0: number, z1: number, n: number, seed: number, hk = 1) => {
-  const r = rng(seed);
-  for (let i = 0; i < n; i++) {
-    const x = x0 + (x1 - x0) * r(), z = z0 + (z1 - z0) * r(), h = (WHEAT_H + 0.18 + 0.32 * r()) * hk;
-    b.add(clumpGeo(), wheatCardM(i % 3), M4(x, 0, z, r() * 6.28, 0, 0, [0.9 + 0.4 * r(), h, 0.9 + 0.4 * r()]));
-  }
-};
-/** clumps along a field edge (from a to b), a ragged fringe that breaks the straight canopy line */
-const fringe = (b: Batch, ax: number, az: number, bx: number, bz: number, seed: number, depth = 1.2, per = 2.2) => {
-  const r = rng(seed), L = Math.hypot(bx - ax, bz - az), n = Math.round(L * per), tx = (bx - ax) / L, tz = (bz - az) / L;
-  for (let i = 0; i < n; i++) {
-    const s = r() * L, o = (r() - 0.35) * depth, x = ax + tx * s - tz * o, z = az + tz * s + tx * o, h = WHEAT_H + 0.1 + 0.35 * r();
-    b.add(clumpGeo(), wheatCardM(i % 3), M4(x, 0, z, r() * 6.28, 0, 0, [1 + 0.4 * r(), h, 1 + 0.4 * r()]));
-  }
 };
 /** build a batch of alpha cards onto the NOINK layer (never outlined by the world ink, still rendered) */
 const buildNoInk = (b: Batch, parent: THREE.Object3D) => {
@@ -472,10 +407,6 @@ const groundM = (key: string, make: () => THREE.Texture) => {
   const m = texM(key, make); m.userData.inkId = 1100; // one ink id for every ground patch: no lines where they meet
   return warmShade(m, 0.5, "g");
 };
-const stubbleM = () => groundM("stubble", () => P.stubbleHD());
-const dirtM = () => groundM("dirt", () => P.dirtHD());
-const paddockM = () => groundM("paddock", () => P.paddockHD());
-const paradeM = () => groundM("parade", () => P.paradeHD());
 /** ground patch with uv in metres / tile and optional height function (soft rises) */
 const terrain = (b: Batch, mat: Mat, x0: number, x1: number, z0: number, z1: number, tile: number, hf?: (x: number, z: number) => number, cell = 4, y0 = 0) => {
   const nx = Math.max(1, Math.min(200, Math.round((x1 - x0) / cell))), nz = Math.max(1, Math.min(200, Math.round((z1 - z0) / cell)));
@@ -485,55 +416,6 @@ const terrain = (b: Batch, mat: Mat, x0: number, x1: number, z0: number, z1: num
   if (hf) g.computeVertexNormals();
   b.add(g, mat);
 };
-/** red dirt track along x (z0..z1) with two darker wheel ruts and a grassy crown */
-const track = (b: Batch, x0: number, x1: number, z0: number, z1: number, y = 0.02) => {
-  terrain(b, groundM("track", () => P.dirtHD("trackHD", "#c4602e")), x0, x1, z0, z1, 4, undefined, 4, y);
-  const w = z1 - z0;
-  for (const k of [0.27, 0.73]) terrain(b, groundM("rut", () => P.dirtHD("rutHD", "#9a4424")), x0, x1, z0 + w * k - 0.22, z0 + w * k + 0.22, 3, undefined, 4, y + 0.008);
-};
-
-// ---- eucalyptus (gum trees) ----
-const barkM = () => texM("gumBark", () => P.gumBarkHD());
-const gumLeafM = (k: number) => warmShade(lam("gumLeaf" + k, () => ({ map: P.gumLeafHD(k) })), 0.55, "gum");
-/** gum tree: pale crooked trunk forking into 2-4 limbs, each ending in a clumpy grey-green crown with sky gaps */
-const gum = (b: Batch, x: number, z: number, h: number, seed: number, q = 0) => {
-  const r = rng(seed * 7 + 3), lean = (r() - 0.5) * 0.25, la = r() * 6.28;
-  const base = V(x, -0.2, z), fork = V(x + Math.cos(la) * lean * h * 0.4, h * (0.32 + 0.12 * r()), z + Math.sin(la) * lean * h * 0.4);
-  const R0 = 0.035 * h;
-  b.add(rod(base, fork, R0 * 1.25, R0 * 0.8, q ? 7 : 10), barkM());
-  b.add(cached("gumFoot", () => new THREE.SphereGeometry(1, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2)), barkM(), M4(x, -0.05, z, 0, 0, 0, [R0 * 2.1, R0 * 2.2, R0 * 2.1]));
-  const n = 2 + Math.floor(r() * 3), lobe = lobeGeo(q);
-  for (let i = 0; i < n; i++) {
-    const a = la + (i / n) * 6.28 + (r() - 0.5) * 0.8, out = h * (0.16 + 0.14 * r()), up = h * (0.32 + 0.22 * r());
-    const tip = V(fork.x + Math.cos(a) * out, fork.y + up, fork.z + Math.sin(a) * out);
-    const mid = V((fork.x + tip.x) / 2 + Math.cos(a) * 0.15 * out, (fork.y + tip.y) / 2, (fork.z + tip.z) / 2 + Math.sin(a) * 0.15 * out);
-    b.add(rod(fork, mid, R0 * 0.75, R0 * 0.55, 7), barkM()); b.add(rod(mid, tip, R0 * 0.55, R0 * 0.3, 6), barkM());
-    const leaf = gumLeafM(Math.floor(r() * 3)), cr = h * (0.12 + 0.06 * r());
-    for (let k = 0; k < 4; k++) { // a clump = a few flattened lobes
-      const ox = (r() - 0.5) * cr * 1.6, oz = (r() - 0.5) * cr * 1.6, oy = (r() - 0.3) * cr * 0.6, rr2 = cr * (0.55 + 0.45 * r());
-      b.add(lobe, leaf, new THREE.Matrix4().compose(V(tip.x + ox, tip.y + oy, tip.z + oz), yawQ(r() * 6.28), V(rr2 * 1.15, rr2 * 0.62, rr2 * 1.15)));
-    }
-  }
-};
-/** a scatter of gums in a ring band (far dressing) */
-const gumBand = (b: Batch, cx: number, cz: number, r0: number, r1: number, a0: number, a1: number, n: number, seed: number, avoid?: (x: number, z: number) => boolean) => {
-  const r = rng(seed);
-  for (let i = 0; i < n; i++) {
-    const a = a0 + (a1 - a0) * r(), d = r0 + (r1 - r0) * r(), x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d;
-    if (avoid?.(x, z)) continue;
-    gum(b, x, z, 9 + 9 * r(), seed * 31 + i, d > 120 ? 2 : 1);
-  }
-};
-/** grey saltbush / scrub clumps */
-const scrub = (b: Batch, cx: number, cz: number, r0: number, r1: number, n: number, seed: number, avoid?: (x: number, z: number) => boolean) => {
-  const r = rng(seed);
-  for (let i = 0; i < n; i++) {
-    const a = r() * 6.28, d = r0 + (r1 - r0) * Math.sqrt(r()), x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d;
-    if (avoid?.(x, z)) continue;
-    addVeg(b, "bush", x, 0, z, 0.6 + 0.7 * r(), seed * 13 + i, d > 60 ? 2 : 1);
-  }
-};
-
 // ---- fence: weathered posts + four sagging wires ----
 const postM = () => col("#8a6c4c");
 const wireM = () => col("#5a5650");
@@ -551,216 +433,6 @@ const fence = (b: Batch, ax: number, az: number, bx: number, bz: number, seed: n
   }
 };
 
-// ---- far backdrop: soft hills + a gum line on the horizon ----
-const horizon = (b: Batch, seed: number, avoid?: (x: number, z: number) => boolean) => {
-  hillRing(b, 0, 0, 900, 10, 34, seed, "#b9a98c");
-  hillRing(b, 0, 0, 1300, 22, 60, seed + 1, "#a9a8a4");
-  gumBand(b, 0, 0, 170, 320, 0, Math.PI * 2, 46, seed + 2, avoid);
-};
-
-// ---- farmhouse: weatherboard walls on stumps, corrugated-iron hip roof, bullnose verandah, water tank ----
-const ironM = () => texM("ironRoof", () => P.corrugatedHD("#a8acaa"));
-const ironRedM = () => texM("ironRed", () => P.corrugatedHD("#b0503a"));
-const trimM = () => col("#3f6a4a");
-const farmhouse = (b: Batch) => {
-  const [hx, , hz] = SPOT.HOUSE, W = 11, D = 8, F = SPOT.FLOOR, WH = 2.85, fz = SPOT.HOUSE_Z, vd = SPOT.VERANDA_D;
-  const x0 = hx - W / 2, x1 = hx + W / 2, z0 = hz - D / 2;
-  // stumps + floor + verandah boards
-  for (let x = x0 + 0.3; x <= x1; x += 1.6) for (const z of [z0 + 0.3, fz - 0.3, fz + vd - 0.25]) b.add(rbox(0.18, F, 0.18, 0.03), col("#6a5440"), M4(x, F / 2, z));
-  b.add(rbox(W + 0.2, 0.12, vd + 0.1, 0.03), texM("veranda", () => rep(P.planksHD(), 3, 1)), M4(hx, F - 0.06, fz + vd / 2));
-  b.add(rbox(W, 0.14, D, 0.02), col("#7a6450"), M4(hx, F - 0.07, hz));
-  // walls (weatherboards)
-  const wall = texM("weatherboard", () => P.sidingHD("#efe2c4"));
-  rb(b, wall, x0, x1, F, F + WH, z0, fz, 0.04, 2);
-  // corner boards + window / door trim on the front wall
-  for (const x of [x0, x1]) rb(b, col("#f6efe0"), x - 0.06, x + 0.06, F, F + WH, fz - 0.06, fz + 0.06, 0.02);
-  const fw = fz + 0.02;
-  const door = (x: number) => { rb(b, col("#f6efe0"), x - 0.55, x + 0.55, F, F + 2.2, fw, fw + 0.06, 0.02); rb(b, col("#4f7a5a"), x - 0.45, x + 0.45, F, F + 2.1, fw + 0.04, fw + 0.09, 0.02); b.add(cached("knob", () => new THREE.SphereGeometry(0.05, 8, 6)), col("#e2c45a"), M4(x + 0.32, F + 1.05, fw + 0.12)); };
-  const win = (x: number) => {
-    rb(b, col("#f6efe0"), x - 0.62, x + 0.62, F + 0.8, F + 2.3, fw, fw + 0.07, 0.02);
-    rb(b, col("#2f3c4a"), x - 0.5, x + 0.5, F + 0.9, F + 2.2, fw + 0.05, fw + 0.09, 0.01);
-    rb(b, col("#f6efe0"), x - 0.52, x + 0.52, F + 1.52, F + 1.6, fw + 0.06, fw + 0.12, 0.01);
-    rb(b, col("#f6efe0"), x - 0.04, x + 0.04, F + 0.9, F + 2.2, fw + 0.06, fw + 0.12, 0.01);
-    rb(b, col("#3f6a4a"), x - 0.95, x - 0.66, F + 0.8, F + 2.3, fw, fw + 0.06, 0.02); rb(b, col("#3f6a4a"), x + 0.66, x + 0.95, F + 0.8, F + 2.3, fw, fw + 0.06, 0.02);
-  };
-  door(hx - 1.4); win(hx - 3.9); win(hx + 1.6);
-  // hip roof: 4 corrugated faces (ribs run down the slope) + ridge cap
-  const rx0 = x0 - 0.45, rx1 = x1 + 0.45, rz0 = z0 - 0.45, rz1 = fz + 0.35, ry0 = F + WH, ry1 = ry0 + 2.6, rmid = (rz0 + rz1) / 2, inset = (rz1 - rz0) / 2;
-  const r0 = V(rx0 + inset, ry1, rmid), r1 = V(rx1 - inset, ry1, rmid);
-  const face = (a: THREE.Vector3, c: THREE.Vector3, top0: THREE.Vector3, top1: THREE.Vector3) => {
-    const g = mergeGeometries([tri(a, c, top1), tri(a, top1, top0)].map((x) => x), false);
-    uvFrom(g, (x, y, z) => [(x + z) / 2, y / 2]);
-    b.add(g, ironM());
-  };
-  face(V(rx0, ry0, rz1), V(rx1, ry0, rz1), r0, r1);         // front
-  face(V(rx1, ry0, rz0), V(rx0, ry0, rz0), r1, r0);         // back
-  b.add(tri(V(rx1, ry0, rz1), V(rx1, ry0, rz0), r1), ironM()); // hips
-  b.add(tri(V(rx0, ry0, rz0), V(rx0, ry0, rz1), r0), ironM());
-  b.add(rod(r0, r1, 0.09), col("#8d918f"));
-  // fascia + gutter
-  rb(b, col("#f6efe0"), rx0, rx1, ry0 - 0.22, ry0, rz1 - 0.06, rz1 + 0.02, 0.02);
-  // brick chimney
-  rb(b, col("#a5503a"), hx + 3.2, hx + 4.0, ry0 - 0.4, ry1 + 0.9, hz - 0.6, hz + 0.2, 0.04);
-  rb(b, col("#8a3f2e"), hx + 3.1, hx + 4.1, ry1 + 0.9, ry1 + 1.05, hz - 0.7, hz + 0.3, 0.03);
-  // bullnose verandah roof: a quarter-round sweep of red-painted iron from the wall to the front beam
-  const prof: [number, number][] = [];
-  for (let i = 0; i <= 10; i++) { const a = (i / 10) * (Math.PI / 2); prof.push([fz + 0.1 + (vd - 0.1) * Math.sin(a) * 1.0 + 0.02, F + 2.62 + 0.55 * Math.cos(a)]); }
-  const verts: number[] = [], uvs: number[] = [], idx: number[] = [];
-  prof.forEach(([z, y], i) => { for (const [k, x] of [[0, x0 - 0.2], [1, x1 + 0.2]] as const) { verts.push(x, y, z); uvs.push((x - x0) / 2, i / 3); } if (i) { const a = (i - 1) * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); } });
-  const vg = new THREE.BufferGeometry(); vg.setAttribute("position", new THREE.Float32BufferAttribute(verts, 3)); vg.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2)); vg.setIndex(idx); vg.computeVertexNormals();
-  b.add(vg, lam("bullnose", () => ({ map: P.corrugatedHD("#b0503a"), side: THREE.DoubleSide })));
-  rb(b, col("#f6efe0"), x0 - 0.2, x1 + 0.2, F + 2.45, F + 2.62, fz + vd - 0.1, fz + vd + 0.04, 0.02);
-  for (let x = x0; x <= x1 + 0.01; x += W / 4) {
-    rb(b, col("#f6efe0"), x - 0.06, x + 0.06, F, F + 2.5, fz + vd - 0.09, fz + vd + 0.03, 0.02);
-    for (const s of [-1, 1]) if ((s < 0 && x > x0) || (s > 0 && x < x1)) b.add(tri(V(x, F + 2.45, fz + vd - 0.03), V(x + s * 0.4, F + 2.45, fz + vd - 0.03), V(x, F + 2.05, fz + vd - 0.03)), col("#f6efe0", THREE.DoubleSide));
-  }
-  // steps
-  for (let k = 0; k < 2; k++) rb(b, col("#9a7a58"), hx - 2.1, hx - 0.7, 0, F - 0.22 * (k + 1) + 0.22, fz + vd + 0.3 * k, fz + vd + 0.3 * (k + 1), 0.03);
-  // corrugated rainwater tank on a stand at the side, a trough
-  const tx = x1 + 1.8, tz = hz + 1.5;
-  for (const [dx, dz] of [[-0.9, -0.9], [0.9, -0.9], [-0.9, 0.9], [0.9, 0.9]]) b.add(rbox(0.16, 1.4, 0.16, 0.03), col("#6a5440"), M4(tx + dx, 0.7, tz + dz));
-  b.add(rbox(2.3, 0.14, 2.3, 0.03), col("#6a5440"), M4(tx, 1.42, tz));
-  const tank = cached("tank", () => uvFrom(new THREE.CylinderGeometry(1.2, 1.2, 2.0, 24, 1, false), (x, y, z) => [y / 2 + 0.5, (Math.atan2(x, z) / Math.PI) * 2]));
-  b.add(tank, texM("tankIron", () => P.corrugatedHD("#b4b8b6")), M4(tx, 2.5, tz));
-  b.add(cached("tankLid", () => new THREE.ConeGeometry(1.24, 0.35, 24)), ironM(), M4(tx, 3.67, tz));
-  b.add(rod(V(tx - 1.1, 3.0, tz - 0.4), V(x1 + 0.1, 3.3, tz - 0.4), 0.05), col("#8d918f"));
-  // wall telephone: wooden box, two bells, crank, mouthpiece horn, earpiece hook (the earpiece itself is in the farmer's hand)
-  const [px, py, pz] = SPOT.PHONE, wood = col("#7a4a28");
-  rb(b, wood, px - 0.17, px + 0.17, py - 0.36, py + 0.36, pz, pz + 0.16, 0.025);
-  rb(b, col("#6a3e20"), px - 0.2, px + 0.2, py - 0.52, py - 0.36, pz, pz + 0.22, 0.03); // writing shelf
-  for (const s of [-1, 1]) b.add(cached("bell", () => new THREE.SphereGeometry(0.075, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2).rotateX(Math.PI / 2)), col("#d8b04a"), M4(px + s * 0.08, py + 0.2, pz + 0.17));
-  b.add(lathe("horn", [[0.02, 0], [0.025, 0.08], [0.07, 0.16], [0.075, 0.17], [0, 0.17]], 14), col("#2a2224"), M4(px, py - 0.02, pz + 0.16, 0, 0, Math.PI / 2));
-  b.add(rod(V(px + 0.17, py - 0.05, pz + 0.08), V(px + 0.27, py - 0.05, pz + 0.08), 0.015), col("#2a2224"));
-  b.add(rod(V(px + 0.27, py - 0.05, pz + 0.08), V(px + 0.27, py - 0.15, pz + 0.12), 0.015), col("#2a2224"));
-  b.add(rod(V(px - 0.17, py + 0.05, pz + 0.08), V(px - 0.25, py + 0.05, pz + 0.08), 0.012), col("#2a2224"));
-};
-
-// ---- water-pump windmill (lattice tower, galvanised wheel, tail vane, trough) ----
-const galvM = () => col("#b9bfc4");
-const millWheel = (): THREE.Group => {
-  const b = new Batch(), g = new THREE.Group();
-  b.add(cached("hubM", () => new THREE.CylinderGeometry(0.22, 0.22, 0.3, 14).rotateX(Math.PI / 2)), col("#8d9297"));
-  for (let i = 0; i < 18; i++) {
-    const a = (i / 18) * Math.PI * 2;
-    b.add(rbox(0.36, 1.7, 0.03, 0.01), galvM(), new THREE.Matrix4().compose(V(Math.cos(a) * 1.25, Math.sin(a) * 1.25, 0.05), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0.45, a - Math.PI / 2, "ZYX")), V(1, 1, 1)));
-  }
-  for (const r of [0.45, 2.1]) b.add(new THREE.TorusGeometry(r, 0.03, 5, 36), col("#8d9297"));
-  b.build(g, true);
-  return g;
-};
-const windmill = (b: Batch) => {
-  const [mx, , mz] = SPOT.MILL, H = 9.6, Bw = 1.4, Tw = 0.28;
-  const legs = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
-  for (const [sx, sz] of legs) b.add(rod(V(mx + sx * Bw, 0, mz + sz * Bw), V(mx + sx * Tw, H, mz + sz * Tw), 0.06), galvM());
-  for (const yk of [0.18, 0.42, 0.66, 0.86]) {
-    const y = H * yk, w = Bw + (Tw - Bw) * yk, y2 = H * Math.min(1, yk + 0.2), w2 = Bw + (Tw - Bw) * Math.min(1, yk + 0.2);
-    for (let i = 0; i < 4; i++) {
-      const [ax, az] = legs[i], [bx, bz] = legs[(i + 1) % 4];
-      b.add(rod(V(mx + ax * w, y, mz + az * w), V(mx + bx * w, y, mz + bz * w), 0.035), galvM());
-      if (yk < 0.86) b.add(rod(V(mx + ax * w, y, mz + az * w), V(mx + bx * w2, y2, mz + bz * w2), 0.025), galvM());
-    }
-  }
-  b.add(rbox(0.7, 0.5, 0.6, 0.08), col("#8d9297"), M4(mx, H + 0.25, mz));
-  b.add(rod(V(mx, H + 0.4, mz - 0.1), V(mx, H + 0.4, mz - 2.8), 0.05), galvM());
-  b.add(plate([[0, 0], [1.6, 0.4], [1.6, 1.4], [0, 1.0]], 0.04, 0.01), galvM(), M4(mx, H - 0.1, mz - 2.0, Math.PI / 2));
-  b.add(rod(V(mx, 0, mz), V(mx, H, mz), 0.03), col("#6a6e72"));
-  // trough + little header tank at the base
-  b.add(lathe("trough", [[0, 0], [1.1, 0], [1.15, 0.55], [1.05, 0.55], [1.0, 0.1], [0, 0.1]], 24), texM("troughIron", () => P.corrugatedHD("#9fa4a6")), M4(mx + 2.3, 0, mz + 1.4, 0, 0, 0, [1.3, 1, 0.6]));
-  b.add(cached("troughWater", () => new THREE.CircleGeometry(1.0, 24).rotateX(-Math.PI / 2)), col("#6d7c74"), M4(mx + 2.3, 0.45, mz + 1.4, 0, 0, 0, [1.3, 1, 0.6]));
-};
-
-/** brown dam water: unlit (it reads as water, not as shaded ground), never in the bloom (max channel < 1) */
-const damWaterM = () => { let m = mats.get("damWaterB"); if (!m) { m = new THREE.MeshBasicMaterial({ map: P.damWaterHD(), color: new THREE.Color(0.92, 0.9, 0.86) }); m.userData.bloom = false; mats.set("damWaterB", m); } return m; };
-// ---- dam: brown water disc in an earthen bank ring (mud inside, dry outside) ----
-const dam = (b: Batch) => {
-  const R = SPOT.DAM_R, C = SPOT.BANK_R, Hb = SPOT.BANK_H;
-  // the shoreline wobbles (damNoise): water and both bank lathes are pushed out / in by the same angle function
-  const wob = (g: THREE.BufferGeometry) => { const p = g.attributes.position as THREE.BufferAttribute; for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i), k = damNoise(Math.atan2(z, x)); p.setX(i, x * k); p.setZ(i, z * k); } g.computeVertexNormals(); return g; };
-  b.add(cached("damWater", () => uvFrom(wob(new THREE.CircleGeometry(R + 0.4, 96, 0, Math.PI * 2).rotateX(-Math.PI / 2)), (x, _y, z) => [x / 8, z / 8])), damWaterM(), M4(0, -0.25, 0));
-  const inner = DAM_PROFILE.slice(0, 6), outer = DAM_PROFILE.slice(5); void C; void Hb;
-  const ring = (key: string, prof: [number, number][], mat: Mat) => {
-    const g = cached(key, () => { const l = wob(new THREE.LatheGeometry(prof.map(([r, y]) => new THREE.Vector2(r, y)), 128)); return uvFrom(l, (x, _y, z) => [x / 4, z / 4]); });
-    b.add(g, mat);
-  };
-  ring("damIn", inner, warmShade(texM("mud", () => P.mudHD()), 0.85, "mud"));
-  ring("damOut", outer, paddockM());
-};
-
-// ---- army camp: bell tents with a lamp-lit door, field desk, tally board on an easel, the mountain of brass ----
-const canvasM = () => texM("tentCanvas", () => P.canvasHD());
-const bellTent = (b: Batch, x: number, z: number, ry: number, lit: boolean, s = 1) => {
-  const m = M4(x, 0, z, ry, 0, 0, [s, s, s]);
-  b.add(lathe("bellTent", [[2.1, 0], [2.1, 1.05], [1.6, 1.5], [0.9, 2.25], [0.25, 3.0], [0.04, 3.12], [0, 3.13]], 32), canvasM(), m);
-  b.add(rod(V(0, 3.0, 0), V(0, 3.45, 0), 0.04), col("#6a4a2c"), m);
-  // door: a glowing (or dark) opening on the +z side, flaps tied back
-  const glowM = lit ? glow("#ffbf62", 1.7) : col("#4a3a2e");
-  const door: [number, number][] = [[-0.55, 0], [0.55, 0], [0.32, 1.25], [0, 1.75], [-0.32, 1.25]];
-  b.add(plate(door, 0.02, 0.005), glowM, m.clone().multiply(M4(0, 0, 2.11)));
-  for (const sd of [-1, 1]) b.add(plate([[0, 0], [0.38 * sd, 0], [0.12 * sd, 1.7]], 0.04, 0.01), canvasM(), m.clone().multiply(M4(sd * 0.55, 0, 2.08, -0.25 * sd)));
-  for (let i = 0; i < 8; i++) { // guy ropes to pegs
-    const a = (i / 8) * Math.PI * 2 + 0.2, top = V(Math.sin(a) * 1.75, 1.42, Math.cos(a) * 1.75).applyMatrix4(m), peg = V(Math.sin(a) * 3.6, 0, Math.cos(a) * 3.6).applyMatrix4(m);
-    if (Math.abs(Math.sin(a)) < 0.35 && Math.cos(a) > 0) continue; // keep the door clear
-    b.add(rod(top, peg, 0.012), col("#d8c8a0"));
-    b.add(rbox(0.05, 0.25, 0.05, 0.01), col("#6a4a2c"), M4(peg.x, 0.08, peg.z));
-  }
-};
-const fieldDesk = (b: Batch) => {
-  const [dx, , dz] = SPOT.DESK, wood = col("#8a5a32");
-  rb(b, wood, dx - 0.65, dx + 0.65, 0.72, 0.78, dz - 0.36, dz + 0.36, 0.02);
-  for (const s of [-1, 1]) { b.add(rod(V(dx + s * 0.55, 0, dz - 0.3), V(dx + s * 0.55, 0.72, dz + 0.3), 0.025), wood); b.add(rod(V(dx + s * 0.55, 0, dz + 0.3), V(dx + s * 0.55, 0.72, dz - 0.3), 0.025), wood); }
-  rb(b, col("#f6f0e0"), dx - 0.32, dx + 0.12, 0.78, 0.79, dz - 0.05, dz + 0.24, 0.002); // report
-  rb(b, col("#ece2c8"), dx - 0.52, dx - 0.18, 0.78, 0.8, dz - 0.25, dz + 0.0, 0.002);
-  b.add(lathe("inkpot", [[0, 0], [0.05, 0], [0.05, 0.06], [0.02, 0.08], [0, 0.08]], 12), col("#1f2a44"), M4(dx + 0.3, 0.78, dz + 0.1));
-  // oil lamp on the desk: brass base, glass chimney (glowing)
-  b.add(lathe("lampBase", [[0, 0], [0.09, 0], [0.1, 0.05], [0.06, 0.12], [0.03, 0.14], [0, 0.14]], 14), col("#c99a3a"), M4(dx + 0.45, 0.78, dz - 0.18));
-  b.add(lathe("lampGlass", [[0.03, 0], [0.07, 0.07], [0.04, 0.2], [0.035, 0.26], [0, 0.26]], 14), glow("#ffd27a", 2.4), M4(dx + 0.45, 0.92, dz - 0.18));
-};
-const tallyBoard = (b: Batch) => {
-  const [tx, , tz] = SPOT.TALLY, ry = 0.35;
-  const m = M4(tx, 0, tz, ry);
-  b.add(rbox(1.3, 0.85, 0.05, 0.02), lam("tallyFace", () => ({ map: P.tallyHD() })), m.clone().multiply(M4(0, 1.45, 0)));
-  for (const [x0, z0, x1, z1] of [[-0.45, 0.05, -0.55, 0.35], [0.45, 0.05, 0.55, 0.35], [0, -0.05, 0, -0.65]]) {
-    const a = V(x0 * 0.6, 1.9, z0 * 0.2).applyMatrix4(m), c = V(x1, 0, z1).applyMatrix4(m);
-    b.add(rod(a, c, 0.03), col("#7a5a3a"));
-  }
-  rb(b, col("#7a5a3a"), -0.68, 0.68, 0.98, 1.04, -0.05, 0.08, 0.01, 0, 0);
-};
-const brassMound = (b: Batch) => {
-  const [bx, , bz] = SPOT.BRASS;
-  const g = cached("brassHeap", () => {
-    const l = new THREE.LatheGeometry([[11, -0.2], [9.5, 0.6], [7.2, 2.4], [5.0, 4.6], [3.0, 6.2], [1.4, 7.3], [0.4, 7.7], [0, 7.75]].map(([r, y]) => new THREE.Vector2(r, y)), 56, 0, Math.PI * 2);
-    const p = l.attributes.position as THREE.BufferAttribute;
-    for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), n = 1 + 0.07 * (vn2(x / 2.5, z / 2.5 + y, 5) - 0.5) * 2; p.setXYZ(i, x * n, y * (1 + 0.04 * (vn2(x / 3, z / 3, 9) - 0.5)), z * n); }
-    l.computeVertexNormals();
-    return uvFrom(l, (x, y, z) => [(x + z * 0.3) / 2, (y + z) / 2]);
-  });
-  // brass keeps a warm self-glow (lamp + dusk sky bounce) so it reads golden even on the shaded side, and a hot specular
-  const brass = mats.get("brassPhong") ?? (() => { const m = twoTone(new THREE.MeshPhongMaterial({ map: P.brassHD(), shininess: 22, specular: new THREE.Color("#fff0b0"), emissive: new THREE.Color("#c08a28"), emissiveMap: P.brassHD() })); mats.set("brassPhong", m); return m; })();
-  b.add(g, brass, M4(bx, 0, bz));
-  const r = rng(77);
-  for (let i = 0; i < 140; i++) { // spilled casings around the foot
-    const a = r() * 6.28, d = 10.8 + r() * 3.5;
-    b.add(cached("casing", () => new THREE.CylinderGeometry(0.03, 0.035, 0.18, 8)), brass, M4(bx + Math.cos(a) * d, 0.035, bz + Math.sin(a) * d, r() * 6.28, Math.PI / 2, 0));
-  }
-};
-
-// ---- ammunition crates, sandbags ----
-const crateM = () => lam("crate303", () => ({ map: P.crateHD() }));
-/** one .303 box: bottom centre at (x, y, z), yaw ry */
-export const crateGeo = () => rbox(CRATE.L, CRATE.H, CRATE.D, 0.03);
-const crate = (b: Batch, x: number, y: number, z: number, ry: number) => {
-  b.add(crateGeo(), crateM(), M4(x, y + CRATE.H / 2, z, ry));
-  for (const s of [-1, 1]) b.add(cached("crHandle", () => new THREE.TorusGeometry(0.06, 0.012, 4, 10, Math.PI).rotateY(Math.PI / 2)), col("#c9b07a"), M4(x, y + CRATE.H * 0.62, z, ry).multiply(M4(s * (CRATE.L / 2 + 0.005), 0, 0)));
-};
-/** a wall / stack of crates: nx wide x ny high x nz deep, slightly jittered, starting at (x, z) */
-const crateStack = (b: Batch, x: number, z: number, nx: number, ny: number, nz: number, ry: number, seed: number, missing = 0) => {
-  const r = rng(seed), c = Math.cos(ry), s = Math.sin(ry);
-  for (let k = 0; k < ny; k++) for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
-    if (k === ny - 1 && r() < missing) continue;
-    const lx = (i - (nx - 1) / 2) * (CRATE.L + 0.03) + (r() - 0.5) * 0.06 + (k % 2) * 0.1, lz = (j - (nz - 1) / 2) * (CRATE.D + 0.03) + (r() - 0.5) * 0.05;
-    crate(b, x + lx * c + lz * s, k * CRATE.H, z - lx * s + lz * c, ry + (r() - 0.5) * 0.06);
-  }
-};
 const sandbagGeo = () => cached("sandbag", () => {
   const g = rbox(0.62, 0.2, 0.34, 0.09);
   const p = g.attributes.position as THREE.BufferAttribute, out = g.clone(), q = out.attributes.position as THREE.BufferAttribute;
@@ -783,120 +455,91 @@ const sandbagRing = (b: Batch, cx: number, cz: number, R: number, a0: number, a1
 // =================================================================================================================
 // RIGS: the 1930s army truck, Lewis guns (tripod or truck pintle), loose ammo crates. Built once, posed per frame.
 // =================================================================================================================
-const gunMetal = () => col("#3d4246"), gunDark = () => col("#2a2e31"), stockWood = () => col("#8a5a34");
-export const MUZZLE_X = 1.0;
-export type GunRig = { root: THREE.Group; tripod: THREE.Group; body: THREE.Group };
-const buildGun = (): GunRig => {
-  const root = new THREE.Group(), tripod = new THREE.Group(), body = new THREE.Group(), b = new Batch(), t = new Batch();
-  // fat finned cooling shroud along +x, the receiver, the flat pan drum on top, wooden butt + grip
-  b.add(lathe("shroud", [[0.05, 0], [0.082, 0.03], [0.082, 0.64], [0.07, 0.68], [0.04, 0.76], [0.03, 0.78], [0, 0.78]], 18), gunMetal(), M4(0.08, 0, 0, 0, -Math.PI / 2));
-  for (let k = 0; k < 6; k++) b.add(cached("fin", () => new THREE.TorusGeometry(0.083, 0.009, 4, 18).rotateY(Math.PI / 2)), gunDark(), M4(0.18 + k * 0.1, 0, 0));
-  b.add(rod(V(0.86, 0, 0), V(MUZZLE_X, 0, 0), 0.017), gunDark());
-  b.add(rbox(0.08, 0.05, 0.03, 0.01), gunDark(), M4(0.8, 0.07, 0)); // fore sight
-  b.add(rbox(0.38, 0.13, 0.1, 0.03), gunMetal(), M4(-0.07, 0, 0));
-  b.add(cached("drum", () => new THREE.CylinderGeometry(0.17, 0.17, 0.06, 28)), col("#4a5056"), M4(-0.02, 0.1, 0));
-  b.add(cached("drumHub", () => new THREE.CylinderGeometry(0.045, 0.045, 0.09, 12)), gunDark(), M4(-0.02, 0.11, 0));
-  for (let k = 0; k < 10; k++) { const a = (k / 10) * Math.PI * 2; b.add(rbox(0.11, 0.012, 0.018, 0.004), gunDark(), M4(-0.02 + Math.cos(a) * 0.1, 0.135, Math.sin(a) * 0.1, -a)); }
-  b.add(plate([[0, 0.035], [-0.46, -0.03], [-0.48, -0.16], [-0.42, -0.17], [-0.05, -0.07]], 0.05, 0.012), stockWood(), M4(-0.24, 0, 0));
-  b.add(rbox(0.05, 0.14, 0.04, 0.012), stockWood(), M4(-0.17, -0.1, 0, 0, 0.3));
-  b.add(rbox(0.12, 0.025, 0.04, 0.008), gunDark(), M4(-0.04, -0.07, 0));
-  b.build(body, true);
-  // tripod: head block + three splayed legs to the ground (TRIPOD_H below the pivot)
-  t.add(rbox(0.12, 0.1, 0.12, 0.02), gunDark(), M4(0, -0.08, 0));
-  for (const a of [0, 2.2, -2.2]) t.add(rod(V(0, -0.1, 0), V(-Math.cos(a) * 0.62, -TRIPOD_H, Math.sin(a) * 0.62), 0.024), col("#4a4f54"));
-  for (const a of [0, 2.2, -2.2]) t.add(rbox(0.1, 0.03, 0.06, 0.01), col("#4a4f54"), M4(-Math.cos(a) * 0.62, -TRIPOD_H + 0.015, Math.sin(a) * 0.62, a));
-  t.build(tripod, true);
-  root.add(tripod, body);
-  return { root, tripod, body };
-};
-const buildTruck = (): THREE.Group => {
-  const g = new THREE.Group(), b = new Batch(), kh = texM("khaki", () => P.khakiHD()), dk = col("#2e3028"), glass = col("#3a4652");
-  for (const [x, s] of [[1.55, 1], [1.55, -1], [-1.5, 1], [-1.5, -1]] as const) wheel(b, M4(x, 0.42, s * 0.8), 0.42, 0.22, "#8a8456");
-  for (const s of [-1, 1]) rb(b, dk, -2.65, 2.35, 0.55, 0.72, s * 0.4 - 0.06, s * 0.4 + 0.06, 0.02);
-  // round front mudguards + running boards; rear guards
-  for (const s of [-1, 1]) {
-    b.add(cached("fenderF", () => new THREE.CylinderGeometry(0.58, 0.58, 0.36, 22, 1, true, -Math.PI / 2, Math.PI).rotateX(Math.PI / 2)), lam("khakiD", () => ({ map: P.khakiHD(), side: THREE.DoubleSide })), M4(1.55, 0.48, s * 0.83));
-    rb(b, kh, 0.7, 1.08, 0.5, 0.58, s * 0.66, s * 1.0, 0.02);
-    rb(b, dk, -0.55, 0.95, 0.46, 0.52, s * 0.66, s * 1.0, 0.01);
-    b.add(cached("fenderR", () => new THREE.CylinderGeometry(0.56, 0.56, 0.3, 18, 1, true, -Math.PI / 2, Math.PI).rotateX(Math.PI / 2)), lam("khakiD", () => ({ map: P.khakiHD(), side: THREE.DoubleSide })), M4(-1.5, 0.5, s * 0.85));
+
+// ---- desert dressing ----
+const sandM = () => groundM("sand", () => P.sandHD());
+const sandDarkM = () => groundM("sandDark", () => P.sandHD("sandDarkHD", "#c49058"));
+const apronM = () => groundM("apron", () => P.concreteHD());
+const rockM = (k = 0) => texM("rock" + k, () => P.rockHD("rockHD" + k, ["#c98a58", "#b97a50", "#d39a66"][k % 3]));
+const lumpGeo = (seed: number) => cached("lump" + seed, () => {
+  const g = new THREE.IcosahedronGeometry(1, 4), p = g.attributes.position as THREE.BufferAttribute, v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i);
+    const n = vn2(v.x * 1.6 + seed, v.z * 1.6 - seed, seed) * 0.55 + vn2(v.x * 3.4 - v.y * 2.1, v.z * 3.4 + seed, seed + 1) * 0.3;
+    const strata = 0.04 * Math.sin(v.y * 9 + seed);                                   // ledges
+    v.multiplyScalar(0.84 + 0.3 * n + strata);
+    p.setXYZ(i, v.x, v.y, v.z);
   }
-  // bonnet with louvres, radiator + grille, round headlamps on the guards
-  rb(b, kh, 0.95, 2.28, 0.72, 1.42, -0.55, 0.55, 0.13);
-  for (const s of [-1, 1]) for (let k = 0; k < 5; k++) rb(b, dk, 1.25 + k * 0.17, 1.33 + k * 0.17, 1.0, 1.22, s * 0.555 - 0.01, s * 0.555 + 0.01, 0.005);
-  rb(b, kh, 2.24, 2.4, 0.62, 1.52, -0.52, 0.52, 0.06);
-  for (let k = 0; k < 7; k++) rb(b, dk, 2.38, 2.42, 0.72 + k * 0.11, 0.76 + k * 0.11, -0.42, 0.42, 0.01);
-  b.add(cached("radCap", () => new THREE.CylinderGeometry(0.05, 0.05, 0.06, 10)), col("#b9a464"), M4(2.3, 1.56, 0));
-  for (const s of [-1, 1]) {
-    b.add(lathe("headlamp", [[0, 0], [0.13, 0.0], [0.15, 0.1], [0.12, 0.16], [0, 0.16]], 16), kh, M4(2.2, 1.05, s * 0.78, 0, -Math.PI / 2));
-    b.add(cached("hlLens", () => new THREE.CircleGeometry(0.115, 16).rotateY(Math.PI / 2)), col("#f2e6b0"), M4(2.37, 1.05, s * 0.78));
+  g.computeVertexNormals();
+  return uvFrom(g, (x, y, z) => [(x + z) * 0.6, y * 0.6]);
+});
+/** a lumpy sandstone rock: centre, radii, seed; uv tiles ~8 m (the strata texture) */
+const lump = (b: Batch, x: number, y: number, z: number, sx: number, sy: number, sz: number, seed: number, ry = 0, k = 0) => {
+  const g = lumpGeo(seed % 7), m = M4(x, y, z, ry, 0, 0, [sx, sy, sz]);
+  const gg = g.clone(); uvFrom(gg, (px, py, pz) => [(px * sx + pz * sz) / 8, (py * sy) / 8]);
+  b.add(gg, rockM(k), m);
+};
+/** flat-topped mesa (far backdrop): an extruded irregular plan with strata */
+const mesa = (b: Batch, cx: number, cz: number, w: number, d: number, h: number, seed: number) => {
+  const r = rng(seed), pts: [number, number][] = [];
+  for (let i = 0; i < 14; i++) { const a = (i / 14) * Math.PI * 2, k = 0.8 + 0.3 * r(); pts.push([cx + Math.cos(a) * w * k, cz + Math.sin(a) * d * k]); }
+  const g = slab(pts, -2, h + 2, 0.6);
+  uvFrom(g, (x, y, z) => [(x + z) / 14, y / 14]);
+  b.add(g, rockM(seed % 3));
+  // talus skirt
+  for (let i = 0; i < 6; i++) { const a = r() * 6.28; lump(b, cx + Math.cos(a) * w * 0.95, 0, cz + Math.sin(a) * d * 0.95, w * 0.3, h * 0.35, d * 0.3, seed + i, a, (seed + 1) % 3); }
+};
+/** yucca: a short trunk with a spiky ball of blades, often a flower stalk */
+const yuccaBladeGeo = () => cached("yuccaBlades", () => {
+  const parts: THREE.BufferGeometry[] = [];
+  for (let i = 0; i < 26; i++) {
+    const a = (i * 2.4) % 6.28, e = 0.25 + 1.15 * ((i * 37) % 26) / 26, l = 0.75, w = 0.045;
+    const d = V(Math.cos(a) * Math.cos(e), Math.sin(e), Math.sin(a) * Math.cos(e)), side = V(-Math.sin(a), 0, Math.cos(a)).multiplyScalar(w);
+    parts.push(tri(side.clone(), side.clone().negate(), d.clone().multiplyScalar(l)));
+    parts.push(tri(side.clone().negate(), side.clone(), d.clone().multiplyScalar(l)));
   }
-  rb(b, dk, 2.4, 2.55, 0.55, 0.68, -0.95, 0.95, 0.04); // bumper
-  // cab: rounded roof, windscreen, side windows, door seam
-  rb(b, kh, -0.5, 0.95, 0.72, 1.55, -0.78, 0.78, 0.08);
-  rb(b, kh, -0.5, 0.75, 1.55, 2.2, -0.78, 0.78, 0.06);
-  rb(b, kh, -0.58, 0.82, 2.18, 2.3, -0.84, 0.84, 0.08);
-  rb(b, glass, 0.72, 0.78, 1.62, 2.12, -0.66, 0.66, 0.02);
-  b.add(rod(V(0.79, 1.6, 0), V(0.79, 2.15, 0), 0.025), kh);
-  for (const s of [-1, 1]) { rb(b, glass, -0.3, 0.55, 1.65, 2.08, s * 0.775 - 0.02, s * 0.775 + 0.02, 0.02); rb(b, dk, 0.62, 0.66, 0.8, 1.6, s * 0.78 - 0.015, s * 0.78 + 0.015, 0.005); rb(b, col("#c9b07a"), 0.35, 0.47, 1.35, 1.39, s * 0.79 - 0.02, s * 0.79 + 0.02, 0.01); }
-  // tray: floor + wooden drop sides + tailboard, a few boxes and a rolled tarp
-  const plank = texM("trayWood", () => rep(P.planksHD(), 2, 1));
-  rb(b, dk, -2.7, -0.55, 0.9, 1.02, -0.92, 0.92, 0.02);
-  for (const s of [-1, 1]) rb(b, plank, -2.7, -0.55, 1.02, 1.42, s * 0.92 - 0.04, s * 0.92 + 0.04, 0.02);
-  rb(b, plank, -2.74, -2.66, 1.02, 1.42, -0.92, 0.92, 0.02);
-  rb(b, plank, -0.6, -0.52, 1.02, 1.5, -0.92, 0.92, 0.02);
-  crate(b, -2.2, 1.02, -0.45, 0.1); crate(b, -2.2, 1.02 + CRATE.H, -0.42, -0.05); crate(b, -1.75, 1.02, 0.5, 1.4);
-  b.add(cached("tarpRoll", () => new THREE.CylinderGeometry(0.16, 0.16, 1.5, 12).rotateX(Math.PI / 2)), canvasM(), M4(-0.8, 1.18, 0));
-  // pintle post for the bolted-on gun (story.ts gunsAt: pivot at (-1.0, 1.85, 0))
-  b.add(rod(V(-1.0, 1.02, 0), V(-1.0, 1.78, 0), 0.04), dk);
-  b.build(g, true);
-  return g;
+  return mergeGeometries(parts, false);
+});
+const yucca = (b: Batch, x: number, z: number, h: number, seed: number, y = 0) => {
+  const r = rng(seed);
+  b.add(rod(V(x, y - 0.1, z), V(x + (r() - 0.5) * 0.2, y + h * 0.55, z), 0.07 * h, 0.05 * h, 7), col("#7a6248"));
+  b.add(yuccaBladeGeo(), col("#7f9a5a", THREE.DoubleSide), M4(x, y + h * 0.55, z, r() * 6.28, 0, 0, [h * 0.7, h * 0.7, h * 0.7]));
+  if (r() < 0.6) { b.add(rod(V(x, y + h * 0.8, z), V(x, y + h * 1.6, z), 0.02 * h, 0.012 * h, 5), col("#8a7a52")); b.add(lobeGeo(1), col("#efe6c6"), M4(x, y + h * 1.5, z, 0, 0, 0, [0.09 * h, 0.2 * h, 0.09 * h])); }
 };
-export type Rigs = { truck: THREE.Group; guns: GunRig[]; crates: THREE.Mesh[] };
-export const buildRigs = (): Rigs => {
-  const crates: THREE.Mesh[] = [];
-  for (let i = 0; i < 2; i++) { const m = new THREE.Mesh(crateGeo(), crateM()); m.castShadow = true; m.receiveShadow = true; crates.push(m); }
-  return { truck: buildTruck(), guns: [buildGun(), buildGun(), buildGun()], crates };
+const sage = (b: Batch, cx: number, cz: number, r0: number, r1: number, n: number, seed: number, avoid?: (x: number, z: number) => boolean, hf?: (x: number, z: number) => number) => {
+  const r = rng(seed);
+  for (let i = 0; i < n; i++) {
+    const a = r() * 6.28, d = r0 + (r1 - r0) * Math.sqrt(r()), x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d;
+    if (avoid?.(x, z)) continue;
+    addVeg(b, "bush", x, hf ? hf(x, z) : 0, z, 0.45 + 0.6 * r(), seed * 13 + i, d > 60 ? 2 : 1);
+  }
 };
-export const poseTruck = (g: THREE.Group, p: TruckPose) => {
-  g.visible = p.visible;
-  g.position.set(...p.pos); g.rotation.set(p.roll, p.yaw, p.pitch, "YZX"); g.updateMatrixWorld(true);
+/** far backdrop: desert hills + a ring of mesas */
+const desertHorizon = (b: Batch, seed: number, night = false, far = true) => {
+  hillRing(b, 0, 0, 700, 8, 30, seed, night ? "#4a4e72" : "#c9a27a");
+  if (far) hillRing(b, 0, 0, 1100, 30, 90, seed + 1, night ? "#3a4068" : "#a99ab0");
+  const r = rng(seed + 2);
+  for (let i = 0; i < 9; i++) { const a = (i / 9) * 6.28 + r() * 0.5, d = 260 + 160 * r(); mesa(b, Math.cos(a) * d, Math.sin(a) * d, 30 + 40 * r(), 18 + 20 * r(), 18 + 22 * r(), seed * 7 + i); }
 };
-/** poses each gun; returns the world muzzle point + direction of each (for flash / smoke cards) */
-export const poseGuns = (rigs: Rigs, poses: GunPose[], scene: THREE.Object3D) => {
-  const out: { muzzle: THREE.Vector3; dir: THREE.Vector3; breech: THREE.Vector3 }[] = [];
-  rigs.guns.forEach((r, i) => {
-    const p = poses[i];
-    r.root.visible = !!p;
-    if (!p) return;
-    const parent = p.onTruck ? rigs.truck : scene;
-    if (r.root.parent !== parent) parent.add(r.root);
-    r.root.position.set(...p.pos);
-    r.root.rotation.set(p.tip, p.yaw, 0, "YXZ");
-    r.tripod.visible = p.tripod;
-    r.body.rotation.set(0, 0, p.pitch);
-    r.root.updateMatrixWorld(true);
-    out.push({ muzzle: r.body.localToWorld(V(MUZZLE_X + 0.04, 0, 0)), dir: r.body.localToWorld(V(MUZZLE_X + 1, 0, 0)).sub(r.body.localToWorld(V(MUZZLE_X, 0, 0))).normalize(), breech: r.body.localToWorld(V(-0.05, 0.08, 0)) });
-  });
-  return out;
+const shiny = (c: string, sh = 70) => {
+  const key = "shiny" + c + sh;
+  let m = mats.get(key) as THREE.MeshPhongMaterial | undefined;
+  if (!m) { m = twoTone(new THREE.MeshPhongMaterial({ color: c, shininess: sh, specular: new THREE.Color("#8890a0") })); mats.set(key, m); }
+  return m;
 };
-export const poseCrates = (rigs: Rigs, poses: CratePose[], scene: THREE.Object3D) => {
-  rigs.crates.forEach((m, i) => {
-    const p = poses[i];
-    if (m.parent !== scene) scene.add(m);
-    m.visible = !!p;
-    if (!p) return;
-    m.position.set(p.pos[0], p.pos[1] + CRATE.H / 2, p.pos[2]); m.rotation.set(p.roll ?? 0, p.yaw, 0, "YXZ");
-  });
-};
+const charM = () => col("#2e2a28");
+const emberM = () => glow("#ff7a2a", 1.9);
 
 // =================================================================================================================
 // SETS
 // =================================================================================================================
 export type SetRig = { name: SetName; group: THREE.Group; tick?: (t: number, id: number) => void };
-/** per-set world settings (haze reach multiplier: the open wheat belt sees far) */
-export const SET_META: Record<SetName, { hazeK: number }> = {
-  field: { hazeK: 1.6 }, farm: { hazeK: 1.6 }, road: { hazeK: 1.6 }, paddock: { hazeK: 1.6 }, dam: { hazeK: 1.4 },
-  camp: { hazeK: 1.2 }, dump: { hazeK: 1.4 }, parade: { hazeK: 1.5 },
+/** per-set world settings: haze reach multiplier; indoor sets hide the sky and use the light's background colour;
+ *  ceil = ceiling height for the corner AO */
+export const SET_META: Record<SetName, { hazeK: number; indoor?: boolean; ceil?: number }> = {
+  desert: { hazeK: 1.8 }, base: { hazeK: 1.5 }, cave: { hazeK: 1.3 },
+  workshop: { hazeK: 1, indoor: true, ceil: 3.1 }, attic: { hazeK: 1, indoor: true, ceil: 3.4 }, oval: { hazeK: 1, indoor: true, ceil: 3.6 },
+  lab: { hazeK: 1, indoor: true, ceil: 3.2 }, office: { hazeK: 1, indoor: true, ceil: 3.0 },
 };
 const done = (name: SetName, b: Batch, cards?: Batch): SetRig => {
   const group = new THREE.Group(); group.name = name;
@@ -906,205 +549,555 @@ const done = (name: SetName, b: Batch, cards?: Batch): SetRig => {
 };
 const FAR = 600;
 
-// ---- field: stubble in front, standing wheat from WHEAT_Z to the horizon (hook, punchline, ending) ----
-const buildField = (): SetRig => {
-  const b = new Batch(), c = new Batch(), WZ = SPOT.WHEAT_Z;
-  terrain(b, stubbleM(), -FAR, FAR, WZ - 0.5, FAR, 4);
-  wheatBlock(b, -FAR, FAR, -420, WZ, WHEAT_H, 3);
-  terrain(b, paddockM(), -FAR, FAR, -FAR, -420, 4);
-  fringe(c, -40, WZ, 40, WZ, 11, 1.4, 3.2);
-  clumps(c, -10, 8, -13, WZ, 520, 12);
-  const [cx, , cz] = SPOT.CAM17;
-  const r = rng(13);
-  for (let i = 0; i < 1900; i++) { // the ending: the lens sits low inside the wheat
-    const x = cx - 12 + 26 * r(), z = cz - 26 + 25 * r();
-    if (Math.hypot(x - cx, z - cz) < 3.6 || (z > cz - 6 && Math.abs(x - cx) < 1.2 + (cz - z) * 0.5)) continue; // keep the lens' sight line open
-    const h = WHEAT_H + 0.15 + 0.35 * r();
-    c.add(clumpGeo(), wheatCardM(i % 3), M4(x, 0, z, r() * 6.28, 0, 0, [0.9 + 0.4 * r(), h, 0.9 + 0.4 * r()]));
-  }
-  tufts(b, 0, 0, 0.5, 9, 150, 14, (x, z) => z < WZ + 0.4 || Math.hypot(x - 0.4, z + 1.2) < 1.6);
-  for (const [x, z, h] of [[-26, -70, 15], [-14, -110, 17], [18, -85, 14], [40, -60, 16], [-55, -48, 13], [62, -130, 18], [28, 30, 14], [-34, 22, 12]]) gum(b, x, z, h, x * 7 + z, 1);
-  horizon(b, 21);
-  return done("field", b, c);
+// ---- desert: the night sky over the desert (the hook) ----
+const buildDesert = (): SetRig => {
+  const b = new Batch();
+  terrain(b, sandDarkM(), -FAR, FAR, -FAR, FAR, 5, (x, z) => 2.5 * (vn2(x / 40, z / 40, 3) - 0.5) + 1.2 * (vn2(x / 13, z / 13, 4) - 0.5), 8);
+  for (const [x, z, w, d, h] of [[-90, -160, 45, 25, 34], [70, -210, 60, 30, 42], [160, -120, 40, 22, 28], [-200, -90, 50, 26, 30], [10, -330, 70, 30, 50]]) mesa(b, x, z, w, d, h, x + z);
+  sage(b, 0, -60, 10, 160, 260, 5);
+  for (let i = 0; i < 30; i++) { const r = rng(40 + i); yucca(b, (r() - 0.5) * 140, -20 - 140 * r(), 1.4 + r(), 50 + i); }
+  desertHorizon(b, 11, true);
+  return done("desert", b);
 };
 
-// ---- farm: track + fence, the yard with the farmhouse and windmill on the left, wheat to the hill ----
-const buildFarm = (): SetRig => {
-  const b = new Batch(), c = new Batch(), e = new Batch(), ec = new Batch();
-  const [[ex0, ex1], [ez0, ez1]] = SPOT.EAT;
-  terrain(b, paddockM(), -FAR, FAR, -126, FAR, 4);
-  terrain(b, paddockM(), -FAR, FAR, -FAR, -126, 5, farmHill, 5);
-  track(b, -FAR, FAR, 1.0, 4.0);
-  terrain(b, groundM("yard", () => P.dirtHD("yardHD", "#c08a5a")), -24, 0, -30, -0.6, 4, undefined, 4, 0.01);
-  wheatBlock(b, -FAR, -24, -126, -0.6, WHEAT_H, 4);
-  wheatBlock(b, 0, FAR, -126, ez0, WHEAT_H, 5);
-  wheatBlock(b, ex1, FAR, ez0, -0.6, WHEAT_H, 6);
-  wheatBlock(b, -24, 0, -126, -30, WHEAT_H, 7);
-  wheatBlock(e, ex0, ex1, ez0, ez1, WHEAT_H, 8); // the patch the herd eats (scaled down in tick)
-  clumps(ec, ex0 + 0.3, ex1 - 0.3, ez0 + 0.3, ez1 - 0.2, 420, 9);
-  clumps(c, ex1, 26, -34, -0.6, 900, 10);
-  clumps(c, 0, ex1, -34, ez0, 500, 15);
-  fringe(c, 0, -0.6, 60, -0.6, 16, 1.0, 2.6);
-  fringe(c, 0, -30, 0, -0.6, 17, 1.0, 2.2);
-  fringe(c, -60, -0.6, -24, -0.6, 18, 1.0, 1.6);
-  fence(b, -70, -0.15, 90, -0.15, 19);
-  fence(b, -24.3, -0.3, -24.3, -30, 20);
-  farmhouse(b); windmill(b);
-  // a small iron shed in the yard
-  rb(b, texM("shedIron", () => P.corrugatedHD("#9ea3a4")), -21.5, -17.5, 0, 2.6, -8, -4.5, 0.04, 2);
-  b.add(slab([[-21.8, -8.3], [-17.2, -8.3], [-17.2, -4.2], [-21.8, -4.2]], 2.6, 0.12, 0.03), ironRedM(), M4(0, 0, 0, 0, 0, 0.05));
-  for (const [x, z, h] of [[-21, -24, 16], [-7, -27, 14], [-19.5, -2.5, 11], [-13, 9.5, 15], [10, 10.5, 17], [24, 8, 13], [-35, 12, 14], [45, 9, 16], [-48, -2, 15]]) gum(b, x, z, h, x * 5 + z * 3, 1);
-  scrub(b, -12, -4, 2, 6, 6, 21);
-  tufts(b, 4, 2.5, 0, 22, 260, 22, (x, z) => z < 0.1 || (z > 1.2 && z < 3.8 && Math.abs(x) < 30));
-  horizon(b, 31, (x, z) => z < -100 && z > -260 && Math.abs(x) < 300);
-  const rig = done("farm", b, c);
-  const eat = new THREE.Group(); e.build(eat, true); buildNoInk(ec, eat); rig.group.add(eat);
-  const wheel = millWheel(); wheel.position.set(SPOT.MILL[0], 10.4, SPOT.MILL[2] + 0.45); rig.group.add(wheel);
+// ---- the army air base ----
+const sidingM = (c: string) => texM("siding" + c, () => P.sidingHD(c));
+const silverM = () => texM("hangarIron", () => P.corrugatedHD("#b8bcbc"));
+const roofIronM = () => texM("roofIron", () => P.corrugatedHD("#8c9a86"));
+const tarM = () => col("#5a6358");
+const winM = () => col("#33475a");
+const frameM = () => col("#f4f0e4");
+/** gable building (barracks / tower base): centre (x, z), yaw, w along local x, d, wall height h; door + steps on +z */
+const barracks = (b: Batch, x: number, z: number, ry: number, burnt: boolean) => {
+  const w = 14, d = 5, h = 3.0, pier = 0.5, m = M4(x, 0, z, ry);
+  const put = (geo: THREE.BufferGeometry, mat: Mat, lm: THREE.Matrix4) => b.add(geo, mat, m.clone().multiply(lm));
+  for (let px = -w / 2 + 0.4; px <= w / 2; px += 2.2) for (const pz of [-d / 2 + 0.3, d / 2 - 0.3]) put(rbox(0.25, pier, 0.25, 0.03), col("#7a6a5a"), M4(px, pier / 2, pz));
+  const wall = burnt ? charM() : sidingM("#efe6d2");
+  put(rbox(w, h, d, 0.05, 2), wall, M4(0, pier + h / 2, 0));
+  // gable roof (two slabs) + ridge
+  const rise = 1.5, sl = Math.hypot(d / 2 + 0.4, rise);
+  for (const s of [-1, 1]) put(rbox(w + 0.6, 0.12, sl, 0.03), burnt ? charM() : tarM(), M4(0, pier + h + rise / 2, s * (d / 4 + 0.1), 0, 0, s * Math.atan2(rise, d / 2 + 0.4)));
+  for (const s of [-1, 1]) put(cached("gable" + d, () => { const g = plate([[-d / 2, 0], [d / 2, 0], [0, rise]], 0.1, 0.02); return g; }), wall, M4(s * (w / 2 - 0.05), pier + h, 0, Math.PI / 2));
+  if (!burnt) {
+    for (let k = -2; k <= 2; k++) { if (k === -1) continue; const wx = k * 2.6; put(rbox(1.1, 1.0, 0.08, 0.02), frameM(), M4(wx, pier + 1.7, d / 2 + 0.02)); put(rbox(0.9, 0.8, 0.06, 0.01), winM(), M4(wx, pier + 1.7, d / 2 + 0.05)); put(rbox(0.06, 0.8, 0.1, 0.01), frameM(), M4(wx, pier + 1.7, d / 2 + 0.06)); }
+    put(rbox(1.1, 2.2, 0.08, 0.02), frameM(), M4(-2, pier + 1.1, d / 2 + 0.02)); put(rbox(0.9, 2.05, 0.06, 0.02), col("#5d7a5a"), M4(-2, pier + 1.05, d / 2 + 0.05));
+  } else for (let k = 0; k < 6; k++) put(rbox(0.12, 0.12, 0.12, 0.03), emberM(), M4(-5 + 2 * k, pier + h + 0.2, 0.5 * (k % 2)));
+  // steps (open underneath: the bat peeks into the dark gap)
+  for (let k = 0; k < 2; k++) put(rbox(1.5, 0.08, 0.36, 0.02), col("#9a7a58"), M4(-2, 0.18 + 0.2 * k, d / 2 + 0.75 - 0.32 * k));
+  for (const s of [-1, 1]) put(plate([[0, 0], [0.75, 0], [0.75, 0.5], [0.62, 0.5]], 0.06, 0.01), col("#8a6a4a"), M4(-2 + s * 0.72, 0, d / 2 + 0.95, Math.PI / 2));
+};
+const hangar = (b: Batch, burnt: boolean) => {
+  const [hx, , hz] = SPOT.HANGAR, W = SPOT.HANGAR_W, D = SPOT.HANGAR_D, H = SPOT.HANGAR_H, rise = 4.6, front = hz + D / 2;
+  const arch = (u: number) => H + rise * Math.sqrt(Math.max(0, 1 - u * u)); // u -1..1 across
+  if (burnt) {
+    // the charred steel frame: arched ribs, the front portal, posts, smouldering debris
+    for (let z = hz - D / 2; z <= front + 0.01; z += D / 5) {
+      for (let i = 0; i < 12; i++) { const u0 = -1 + (2 * i) / 12, u1 = -1 + (2 * (i + 1)) / 12; b.add(rod(V(hx + u0 * W / 2, arch(u0), z), V(hx + u1 * W / 2, arch(u1), z), 0.14), charM()); }
+      for (const s of [-1, 1]) b.add(rod(V(hx + s * W / 2, 0, z), V(hx + s * W / 2, H, z), 0.16), charM());
+    }
+    for (const s of [-1, 1]) b.add(rod(V(hx + s * W / 2, H, hz - D / 2), V(hx + s * W / 2, H, front), 0.12), charM());
+    const r = rng(77);
+    for (let i = 0; i < 26; i++) lump(b, hx + (r() - 0.5) * W * 0.9, 0, hz + (r() - 0.5) * D * 0.9, 0.8 + 1.4 * r(), 0.3 + 0.6 * r(), 0.8 + 1.2 * r(), i, r() * 6, 0);
+    for (let i = 0; i < 14; i++) b.add(rbox(0.3, 0.15, 0.3, 0.05), emberM(), M4(hx + (r() - 0.5) * W * 0.8, 0.3, hz + (r() - 0.5) * D * 0.8, r() * 3));
+    return;
+  }
+  // corrugated walls, a barrel roof, the gable end with the big sliding doors and the star
+  rb(b, silverM(), hx - W / 2, hx - W / 2 + 0.2, 0, H, hz - D / 2, front, 0.05, 2);
+  rb(b, silverM(), hx + W / 2 - 0.2, hx + W / 2, 0, H, hz - D / 2, front, 0.05, 2);
+  rb(b, silverM(), hx - W / 2, hx + W / 2, 0, H, hz - D / 2, hz - D / 2 + 0.2, 0.05, 2);
+  const roof = cached("hangarRoof", () => { const g = new THREE.CylinderGeometry(1, 1, D + 0.8, 40, 1, true, -Math.PI / 2, Math.PI); g.rotateX(-Math.PI / 2); return uvFrom(g, (x, y, z) => [Math.atan2(y, x) * 4, z / 2]); });
+  b.add(roof, lam("hangarRoofM", () => ({ map: P.corrugatedHD("#8c9a86"), side: THREE.DoubleSide })), M4(hx, H, hz, 0, 0, 0, [W / 2 + 0.3, rise, 1]));
+  const gpts: [number, number][] = []; for (let i = 0; i <= 24; i++) { const u = -1 + (2 * i) / 24; gpts.push([u * W / 2, arch(u) - H]); }
+  b.add(plate([[-W / 2, 0], ...gpts, [W / 2, 0]], 0.2, 0.03), sidingM("#e8e0cc"), M4(hx, H, front));
+  rb(b, col("#e8e0cc"), hx - W / 2, hx - W / 2 + 2.2, 0, H, front - 0.2, front + 0.05, 0.04);
+  rb(b, col("#e8e0cc"), hx + W / 2 - 2.2, hx + W / 2, 0, H, front - 0.2, front + 0.05, 0.04);
+  rb(b, col("#2a2a30"), hx - W / 2 + 2.2, hx + W / 2 - 2.2, 0, H - 0.3, front - 0.5, front - 0.3, 0.02);   // the dark inside behind the open gap
+  rb(b, silverM(), hx - W / 2 + 2.2, hx - 0.8, 0, H - 0.25, front + 0.02, front + 0.22, 0.04, 2);         // two sliding doors, a gap open
+  rb(b, silverM(), hx + 1.6, hx + W / 2 - 2.2, 0, H - 0.25, front + 0.22, front + 0.42, 0.04, 2);
+  rb(b, col("#c9b07a"), hx - W / 2, hx + W / 2, H - 0.3, H + 0.05, front + 0.0, front + 0.46, 0.03);       // door track header
+  b.add(decalGeo(V(hx, H + 2.2, front + 0.13), V(0, 0, 1), 3.6, 3.6), lam("starDecal", () => ({ map: P.starHD(), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 })));
+  b.add(decalGeo(V(hx - W / 4 - 0.6, 3.2, front + 0.235), V(0, 0, 1), 2.6, 2.6), lam("starDecal", () => ({ map: P.starHD(), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 })));
+  // wind sock on a mast at the corner
+  b.add(rod(V(hx + W / 2 + 1, 0, front), V(hx + W / 2 + 1, 9, front), 0.06), col("#e8e4da"));
+  b.add(lathe("sock", [[0.35, 0], [0.3, 0.5], [0.22, 1.4], [0.18, 2.0], [0, 2.0]], 14), col("#f08a2c"), M4(hx + W / 2 + 1.1, 8.7, front, 0.4, -Math.PI / 2 + 0.25));
+};
+const controlTower = (b: Batch) => {
+  const [tx, , tz] = SPOT.TOWER;
+  rb(b, sidingM("#efe6d2"), tx - 2, tx + 2, 0, 7.4, tz - 2, tz + 2, 0.05, 2);
+  for (let k = 0; k < 3; k++) { rb(b, frameM(), tx - 0.5, tx + 0.5, 1.6 + 2.2 * k, 2.6 + 2.2 * k, tz + 2, tz + 2.06, 0.02); rb(b, winM(), tx - 0.4, tx + 0.4, 1.7 + 2.2 * k, 2.5 + 2.2 * k, tz + 2.04, tz + 2.09, 0.01); }
+  rb(b, col("#efe6d2"), tx - 2.6, tx + 2.6, 7.4, 7.7, tz - 2.6, tz + 2.6, 0.04);                       // cab floor
+  rb(b, col("#9fc4d8"), tx - 2.2, tx + 2.2, 7.7, 9.9, tz - 2.2, tz + 2.2, 0.02);                        // glazing
+  for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) rb(b, frameM(), tx + sx * 2.2 - 0.1, tx + sx * 2.2 + 0.1, 7.7, 9.9, tz + sz * 2.2 - 0.1, tz + sz * 2.2 + 0.1, 0.02);
+  for (const s of [-1, 1]) rb(b, frameM(), tx - 0.06 + s * 0.8, tx + 0.06 + s * 0.8, 7.7, 9.9, tz + 2.18, tz + 2.26, 0.01);
+  rb(b, col("#5a6358"), tx - 2.9, tx + 2.9, 9.9, 10.25, tz - 2.9, tz + 2.9, 0.06);                      // roof
+  b.add(lathe("beacon", [[0, 0], [0.25, 0], [0.25, 0.35], [0.12, 0.5], [0, 0.5]], 12), glow("#ff5a3a", 1.4), M4(tx, 10.25, tz));
+  for (let x = -2.6; x <= 2.61; x += 0.65) b.add(rod(V(tx + x, 7.7, tz + 2.6), V(tx + x, 8.6, tz + 2.6), 0.03), col("#e8e4da"));
+  b.add(rod(V(tx - 2.6, 8.6, tz + 2.6), V(tx + 2.6, 8.6, tz + 2.6), 0.035), col("#e8e4da"));
+};
+const waterTower = (b: Batch) => {
+  const [wx, , wz] = SPOT.WTOWER, H = 10;
+  const legs = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+  for (const [sx, sz] of legs) b.add(rod(V(wx + sx * 2.6, 0, wz + sz * 2.6), V(wx + sx * 1.9, H, wz + sz * 1.9), 0.13), col("#9a8a74"));
+  for (const yk of [0.3, 0.65]) for (let i = 0; i < 4; i++) { const [ax, az] = legs[i], [bx, bz] = legs[(i + 1) % 4], w = 2.6 - 0.7 * yk; b.add(rod(V(wx + ax * w, H * yk, wz + az * w), V(wx + bx * w, H * yk, wz + bz * w), 0.06), col("#9a8a74")); }
+  b.add(cached("wtTank", () => uvFrom(new THREE.CylinderGeometry(3, 3, 4.2, 32, 1, false), (x, y, z) => [Math.atan2(x, z) * 3, y / 2])), texM("wtIron", () => P.corrugatedHD("#d8d4c8")), M4(wx, H + 2.1, wz));
+  b.add(cached("wtRoof", () => new THREE.ConeGeometry(3.25, 1.7, 32)), col("#a24a3a"), M4(wx, H + 5.05, wz));
+  b.add(rbox(6.6, 0.15, 6.6, 0.03), col("#9a8a74"), M4(wx, H, wz));
+};
+const fuelTank = (b: Batch, burnt: boolean) => {
+  const [cx, , cz] = SPOT.TANK, R = SPOT.TANK_R, L = SPOT.TANK_L, Y = SPOT.TANK_Y;
+  const shell = burnt ? charM() : shiny("#d4d8dc", 50);
+  b.add(cached("tankBody", () => new THREE.CylinderGeometry(R, R, L, 40, 1, true).rotateZ(Math.PI / 2)), shell, M4(cx, Y, cz));
+  for (const s of [-1, 1]) b.add(cached("tankCap", () => new THREE.SphereGeometry(R, 32, 12, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.35, 1).rotateZ(-Math.PI / 2)), shell, M4(cx + s * L / 2, Y, cz, s > 0 ? 0 : Math.PI));
+  for (const x of [-L / 2 + 0.4, L / 2 - 0.4]) b.add(cached("tankBand", () => new THREE.TorusGeometry(R + 0.03, 0.06, 6, 40).rotateY(Math.PI / 2)), burnt ? charM() : col("#9aa0a6"), M4(cx + x, Y, cz));
+  // saddle legs: three frames of steel posts + cross beams
+  for (const dx of [-3.4, 0, 3.4]) {
+    for (const s of [-1, 1]) b.add(rod(V(cx + dx, 0, cz + s * 1.9), V(cx + dx, Y - R * 0.55, cz + s * 1.45), 0.12), col("#5a5e62"));
+    b.add(rod(V(cx + dx, 1.2, cz - 1.75), V(cx + dx, 1.2, cz + 1.75), 0.07), col("#5a5e62"));
+    b.add(rbox(0.3, 0.25, 3.4, 0.04), col("#5a5e62"), M4(cx + dx, Y - R * 0.62, cz));
+    for (const s of [-1, 1]) b.add(rbox(0.5, 0.06, 0.5, 0.02), col("#8a8a88"), M4(cx + dx, 0.03, cz + s * 1.9));
+  }
+  // the pipe underneath that the bats hang from, a valve wheel, the ladder and the catwalk
+  b.add(rod(V(cx - 4.6, 2.12, cz + 1.05), V(cx + 4.2, 2.12, cz + 1.05), 0.06), col("#6a6e72"));
+  b.add(rod(V(cx + 4.2, 2.12, cz + 1.05), V(cx + 4.2, 0, cz + 1.05), 0.06), col("#6a6e72"));
+  b.add(new THREE.TorusGeometry(0.22, 0.035, 6, 18), col("#c8323a"), M4(cx + 4.2, 1.0, cz + 1.3));
+  for (const s of [-0.25, 0.25]) b.add(rod(V(cx + L / 2 + 0.4 + s, 0, cz + 0.8), V(cx + L / 2 + 0.4 + s, Y + R + 0.3, cz + 0.8), 0.03), col("#5a5e62"));
+  for (let y = 0.4; y < Y + R; y += 0.4) b.add(rod(V(cx + L / 2 + 0.15, y, cz + 0.8), V(cx + L / 2 + 0.65, y, cz + 0.8), 0.022), col("#5a5e62"));
+  if (burnt) { const r = rng(9); for (let i = 0; i < 10; i++) b.add(rbox(0.25, 0.12, 0.25, 0.04), emberM(), M4(cx + (r() - 0.5) * L, 0.1, cz + (r() - 0.5) * 3)); }
+};
+/** the General's shiny black 1940s sedan (nose +x); charred = burnt-out shell on flat tyres */
+const generalCar = (b: Batch, burnt: boolean) => {
+  const [x0, , z0] = SPOT.CAR, m = M4(x0, 0, z0, 0);
+  const put = (g: THREE.BufferGeometry, mat: Mat, lm: THREE.Matrix4) => b.add(g, mat, m.clone().multiply(lm));
+  const paint = burnt ? col("#2b2624") : shiny("#16161c", 90), chrome = burnt ? col("#3a3432") : shiny("#d8dde4", 110);
+  const tyreY = burnt ? 0.27 : 0.38;
+  put(rbox(4.5, 0.62, 1.72, 0.22), paint, M4(0, tyreY + 0.42, 0));                          // body
+  put(rbox(2.3, 0.62, 1.52, 0.26), paint, M4(-0.45, tyreY + 1.0, 0));                       // cabin
+  put(rbox(2.0, 0.5, 1.56, 0.04), burnt ? col("#1a1616") : col("#4a5a6e"), M4(-0.45, tyreY + 1.02, 0));  // windows band
+  put(rbox(1.9, 0.62, 1.4, 0.3), paint, M4(1.3, tyreY + 0.62, 0));                          // long hood
+  for (const sx of [-1.35, 1.35]) for (const sz of [-1, 1]) put(cached("fender", () => new THREE.SphereGeometry(1, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2)), paint, M4(sx, tyreY + 0.15, sz * 0.78, 0, 0, 0, [0.72, 0.55, 0.3]));
+  for (const sx of [-1.35, 1.35]) for (const sz of [-1, 1]) wheel(b, m.clone().multiply(M4(sx, tyreY, sz * 0.84, 0, 0, 0, burnt ? [1, 0.72, 1] : [1, 1, 1])), 0.38, 0.24, burnt ? "#3a3432" : "#f4f1ea");
+  if (!burnt) {
+    for (let k = -3; k <= 3; k++) put(rbox(0.05, 0.42, 0.05, 0.01), chrome, M4(2.27, tyreY + 0.55, k * 0.09));   // grille bars
+    for (const s of [-1, 1]) put(cached("headlamp", () => new THREE.SphereGeometry(0.13, 14, 10)), chrome, M4(2.0, tyreY + 0.78, s * 0.62));
+    for (const sx of [-2.3, 2.3]) put(rbox(0.12, 0.12, 1.8, 0.05), chrome, M4(sx, tyreY + 0.18, 0));
+    put(rbox(0.2, 0.08, 0.05, 0.02), chrome, M4(2.15, tyreY + 0.98, 0));                       // hood ornament
+    for (const s of [-1, 1]) put(rbox(0.4, 0.05, 0.04, 0.01), chrome, M4(-0.2, tyreY + 0.62, s * 0.88));   // door handles
+    put(rbox(0.18, 0.12, 0.05, 0.02), col("#c8323a"), M4(2.2, tyreY + 1.05, 0.62));            // a little general's pennant on the fender
+  } else {
+    const r = rng(5); for (let i = 0; i < 8; i++) put(rbox(0.16, 0.08, 0.16, 0.03), emberM(), M4((r() - 0.5) * 3.6, tyreY + 0.8 + r() * 0.5, (r() - 0.5) * 1.2));
+  }
+};
+/** the US flag on a pole; the cloth is rippled every frame by the set's tick */
+const flagMesh = () => {
+  const g = new THREE.PlaneGeometry(3.0, 1.6, 20, 6);
+  const mat = lam("flagCloth", () => ({ map: P.flagHD(), side: THREE.DoubleSide }));
+  const m = new THREE.Mesh(g, mat); m.castShadow = true; m.receiveShadow = true;
+  const base = (g.attributes.position as THREE.BufferAttribute).array.slice();
+  const tick = (t: number) => {
+    const p = g.attributes.position as THREE.BufferAttribute;
+    for (let i = 0; i < p.count; i++) { const x = base[i * 3] + 1.5, y = base[i * 3 + 1]; p.setZ(i, 0.16 * x * Math.sin(x * 2.2 - t * 6) + 0.05 * Math.sin(y * 3 + t * 4) * x); p.setY(i, y - 0.04 * x * x); }
+    p.needsUpdate = true; g.computeVertexNormals();
+  };
+  return { m, tick };
+};
+const buildBase = (): SetRig => {
+  const b = new Batch(), intact = new Batch(), burnt = new Batch(), tank = new Batch(), tankB = new Batch(), car = new Batch(), carB = new Batch();
+  terrain(b, sandM(), -FAR, FAR, -FAR, FAR, 4, (x, z) => (Math.hypot(x, z) > 70 ? 1.6 * (vn2(x / 30, z / 30, 2) - 0.5) * smooth((Math.hypot(x, z) - 70) / 60) : 0), 6);
+  terrain(b, apronM(), -32, 12, -14, 12, 6, undefined, 4, 0.02);
+  terrain(b, groundM("runway", () => P.concreteHD()), -FAR, FAR, -62, -50, 6, undefined, 4, 0.02);
+  for (let x = -200; x < 200; x += 9) rb(b, col("#f4f0e4"), x, x + 4, 0.025, 0.04, -56.3, -55.7, 0.01);
+  hangar(intact, false); hangar(burnt, true);
+  controlTower(b); waterTower(b);
+  for (const [x, z, ry] of SPOT.BARRACKS.map((q) => [q[0], q[2], q[3]])) { barracks(intact, x, z, ry, false); barracks(burnt, x, z, ry, true); }
+  fuelTank(tank, false); fuelTank(tankB, true);
+  generalCar(car, false); generalCar(carB, true);
+  // flag pole
+  const [fx, , fz] = SPOT.FLAG;
+  b.add(rod(V(fx, 0, fz), V(fx, 10, fz), 0.08, 0.05), col("#f4f0e4"));
+  b.add(cached("finial", () => new THREE.SphereGeometry(0.14, 12, 8)), col("#e2c45a"), M4(fx, 10.1, fz));
+  b.add(slab([[fx - 1, fz - 1], [fx + 1, fz - 1], [fx + 1, fz + 1], [fx - 1, fz + 1]], 0, 0.3, 0.05), col("#e8e0cc"));
+  // crates (the bat looks behind the stack), oil drums, sandbags, a jeep-free apron, fences, scrub, mesas
+  const [cx9, , cz9] = SPOT.CRATES9;
+  for (const [dx, dy, dz, ry] of [[0, 0, 0, 0.1], [0.85, 0, 0.1, -0.05], [0.4, 0.62, 0.05, 0.2], [-0.2, 0, 0.75, 0.3]]) b.add(rbox(0.8, 0.6, 0.6, 0.03), lam("batCrate", () => ({ map: P.batCrateHD() })), M4(cx9 + dx, dy + 0.3, cz9 + dz, ry));
+  for (const [x, z] of [[-7.5, 9], [-6.6, 9.4], [-7.0, 10.3], [3.8, 9.5]]) b.add(cached("drum", () => new THREE.CylinderGeometry(0.3, 0.3, 0.9, 16)), col("#a83a2e"), M4(x, 0.45, z));
+  sandbagRing(b, 18, 6, 2.2, -1.2, 1.4, 3, 3);
+  fence(b, -120, 46, 120, 46, 4, 4); fence(b, 60, 46, 60, -120, 5, 4);
+  sage(b, 0, 0, 40, 160, 220, 6, (x, z) => z > -66 && z < 30 && Math.abs(x) < 50);
+  for (let i = 0; i < 22; i++) { const r = rng(80 + i), a = r() * 6.28, d = 45 + 90 * r(); yucca(b, Math.cos(a) * d, Math.sin(a) * d * 0.7 + 10, 1.3 + r(), 90 + i); }
+  desertHorizon(b, 31);
+  const rig = done("base", b);
+  const gI = new THREE.Group(), gB = new THREE.Group(), gT = new THREE.Group(), gTB = new THREE.Group(), gC = new THREE.Group(), gCB = new THREE.Group();
+  intact.build(gI, true); burnt.build(gB, true); tank.build(gT, true); tankB.build(gTB, true); car.build(gC, true); carB.build(gCB, true);
+  rig.group.add(gI, gB, gT, gTB, gC, gCB);
+  const flag = flagMesh(); flag.m.position.set(fx + 1.55, 9.0, fz); rig.group.add(flag.m);
   rig.tick = (t, id) => {
-    wheel.rotation.z = -t * 2.2;
-    const f = t * 30, k = id < 4 ? 0 : id > 4 ? 1 : Math.min(1, Math.max(0, (f - 338) / 32));
-    eat.scale.y = 1 - 0.86 * k * k * (3 - 2 * k);
+    const f = t * 30;
+    const burntAll = id === 13, tankGone = (id === 11 && f >= 1188) || id >= 12;
+    gI.visible = !burntAll; gB.visible = burntAll;
+    gT.visible = !tankGone && id !== 2; gTB.visible = tankGone;
+    const charred = id === 13 && f >= 1394;
+    gC.visible = !charred; gCB.visible = charred;
+    flag.tick(t);
   };
   return rig;
 };
 
-// ---- road: red road along x, fence + wheat on -z, paddock on +z, the crate stack ----
-const buildRoad = (): SetRig => {
-  const b = new Batch(), c = new Batch();
-  terrain(b, paddockM(), -FAR * 2, FAR * 2, -5.2, FAR, 4);
-  track(b, -FAR * 2, FAR * 2, -3.2, 3.2);
-  wheatBlock(b, -FAR * 2, FAR * 2, -300, -5.2, WHEAT_H, 9);
-  terrain(b, paddockM(), -FAR * 2, FAR * 2, -FAR, -300, 4);
-  fringe(c, -45, -5.2, 45, -5.2, 23, 1.0, 2.6);
-  clumps(c, -16, 16, -14, -5.2, 650, 24);
-  fence(b, -300, -4.6, 300, -4.6, 25);
-  const [sx, , sz] = SPOT.STACK6;
-  crateStack(b, sx, sz, 3, 6, 2, 0.05, 26);
-  crateStack(b, sx + 2.6, sz + 0.6, 2, 2, 1, -0.3, 27);
-  for (let x = -300; x <= 600; x += 45) { // telegraph poles along the road
-    b.add(rod(V(x, 0, 6.5), V(x, 6.8, 6.5), 0.12, 0.09), col("#7a5e44"));
-    rb(b, col("#7a5e44"), x - 0.06, x + 0.06, 6.2, 6.32, 5.8, 7.2, 0.02);
+// ---- the cave: overlook platform with a rail, the bowl, the huge mouth in a sandstone hill ----
+const buildCave = (): SetRig => {
+  const b = new Batch(), M = SPOT.MOUTH, hw = SPOT.MOUTH_W / 2, FY = SPOT.FLOOR_Y;
+  const notMouth = (x: number, z: number) => !(Math.abs(x) < hw + 1 && z < -28 && z > -52);
+  const hf = (x: number, z: number) => (notMouth(x, z) ? caveGround(x, z) : FY);
+  terrain(b, sandM(), -50, 50, -80, 30, 4, hf, 0.8);
+  terrain(b, sandM(), -FAR, -50, -FAR, FAR, 4, hf, 8); terrain(b, sandM(), 50, FAR, -FAR, FAR, 4, hf, 8);
+  terrain(b, sandM(), -50, 50, -FAR, -80, 4, hf, 8); terrain(b, sandM(), -50, 50, 30, FAR, 4, hf, 8);
+  // the hill: buttresses either side of the mouth, a lintel lip over it, the big mass behind, rocks along the rim
+  // the cliff: one extruded sandstone butte whose arch-shaped hole IS the cave mouth (the hole's walls are the tunnel)
+  const cliff = cached("cliff", () => {
+    const sh = new THREE.Shape(), r = rng(71), top: [number, number][] = [];
+    for (let i = 0; i <= 24; i++) { const x = -46 + (92 * i) / 24, k = 1 - (Math.abs(x) / 46) ** 2.4; top.push([x, FY + 3 + (17 + 4 * Math.sin(i * 1.3) + 2 * r()) * k]); }
+    sh.moveTo(-46, FY - 3); for (const [x, y] of top) sh.lineTo(x, y); sh.lineTo(46, FY - 3); sh.closePath();
+    const hole = new THREE.Path(); hole.moveTo(-hw, FY - 1); hole.lineTo(hw, FY - 1);
+    for (let i = 0; i <= 20; i++) { const a = (i / 20) * Math.PI; hole.lineTo(hw * Math.cos(a) * (1 + 0.04 * Math.sin(i * 2.1)), FY + 5 + 5.5 * Math.sin(a) + 0.25 * Math.sin(i * 3.3)); }
+    hole.closePath(); sh.holes.push(hole);
+    const g = new THREE.ExtrudeGeometry(sh, { depth: 20, bevelEnabled: false, curveSegments: 8 });
+    g.translate(0, 0, M[2] - 20);
+    return uvFrom(g, (x, y, z) => [(x + z) / 10, y / 10]);
+  });
+  b.add(cliff, rockM(0));
+  for (const [x, y, z, sx, sy, sz, sd] of [[-hw - 6, FY, M[2] + 0.6, 5, 7, 3, 1], [hw + 7, FY, M[2] + 0.8, 6, 6, 3, 2], [-22, FY, M[2] + 0.5, 9, 9, 4, 3], [24, FY, M[2] + 0.4, 9, 11, 4, 4]] as number[][]) lump(b, x, y, z, sx, sy, sz, sd, 0.2 * sd, sd % 3);
+  lump(b, SPOT.LIP15[0], SPOT.LIP15[1] + 0.6, SPOT.LIP15[2] + 0.2, 1.3, 0.5, 1.0, 6, 0.4, 2);    // the ledge the medal bat hangs from
+  // the back of the tunnel: a dark unlit wall, so the mouth reads as a deep black hole
+  b.add(quad(V(-hw - 1, FY - 1, M[2] - 19), V(hw + 1, FY - 1, M[2] - 19), V(hw + 1, FY + 12, M[2] - 19), V(-hw - 1, FY + 12, M[2] - 19)), (() => { let m = mats.get("caveBack"); if (!m) { m = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.012, 0.01, 0.014), fog: false }); mats.set("caveBack", m); } return m; })());
+  terrain(b, groundM("caveFloor", () => P.sandHD("caveFloorHD", "#a07850")), -hw - 1, hw + 1, M[2] - 26, M[2] + 2, 4, undefined, 4, FY + 0.02);
+  for (let i = 0; i < 18; i++) { const r = rng(300 + i); lump(b, (r() - 0.5) * 30, caveGround((r() - 0.5) * 30, -10 - 14 * r()) - 0.3, -10 - 14 * r(), 0.8 + 1.6 * r(), 0.6 + r(), 0.8 + 1.4 * r(), i, r() * 6, i % 3); }
+  // the overlook: flagstone platform, a two-pipe rail on posts, a coin telescope, a bench
+  b.add(slab([[-1, -4.9], [13, -4.9], [13, 3], [-1, 3]], -0.3, 0.32, 0.05), texM("flagstone", () => P.concreteHD()));
+  const RZ = SPOT.RAIL_Z, railM = col("#41604a");
+  for (let x = -0.6; x <= 12.7; x += 1.6) b.add(rod(V(x, 0.1, RZ), V(x, 1.08, RZ), 0.045), railM);
+  for (const y of [0.58, 1.05]) b.add(rod(V(-0.6, y, RZ), V(12.6, y, RZ), 0.04), railM);
+  b.add(rod(V(10.6, 0.1, RZ + 0.5), V(10.6, 1.15, RZ + 0.5), 0.06), col("#3a3a40"));
+  b.add(rbox(0.36, 0.28, 0.55, 0.08), col("#4a6a8a"), M4(10.6, 1.3, RZ + 0.5, 0, 0.25));
+  for (const s of [-1, 1]) b.add(cached("scopeEye", () => new THREE.CylinderGeometry(0.07, 0.07, 0.14, 12).rotateX(Math.PI / 2)), col("#2a2a30"), M4(10.6 + s * 0.1, 1.34, RZ + 0.8, 0, 0.25));
+  rb(b, col("#8a6a4a"), 1.0, 3.0, 0.42, 0.5, 1.4, 1.85, 0.03); for (const x of [1.2, 2.8]) rb(b, col("#5a4a3a"), x - 0.05, x + 0.05, 0.1, 0.42, 1.45, 1.8, 0.02);
+  for (let i = 0; i < 12; i++) { const r = rng(400 + i); yucca(b, -6 + 26 * r(), 4 + 12 * r(), 1.2 + 0.8 * r(), 410 + i); }
+  sage(b, 6, 6, 3, 30, 60, 7, (x, z) => z < 4 && x > -2 && x < 14);
+  sage(b, 0, -20, 8, 40, 60, 8, (x, z) => Math.abs(x) < hw + 3 && z < -18, caveGround);
+  desertHorizon(b, 51, false, false);
+  return done("cave", b);
+};
+
+// ---- interiors ----
+/** a room shell: floor, four walls, ceiling (no shadows cast, so the window key gets in); walls inward */
+const room = (sh: Batch, x0: number, x1: number, z0: number, z1: number, H: number, floor: Mat, wall: Mat, ceil: Mat, wallFront?: Mat) => {
+  sh.add(ground(x0, x1, z0, z1, 0, 1), floor);
+  sh.add(quad(V(x0, 0, z0), V(x1, 0, z0), V(x1, H, z0), V(x0, H, z0), (x1 - x0) / 1, H / 1), wall);   // back (faces +z)
+  sh.add(quad(V(x1, 0, z1), V(x0, 0, z1), V(x0, H, z1), V(x1, H, z1), (x1 - x0) / 1, H / 1), wallFront ?? wall);
+  sh.add(quad(V(x0, 0, z1), V(x0, 0, z0), V(x0, H, z0), V(x0, H, z1), (z1 - z0) / 1, H / 1), wall);   // left (faces +x)
+  sh.add(quad(V(x1, 0, z0), V(x1, 0, z1), V(x1, H, z1), V(x1, H, z0), (z1 - z0) / 1, H / 1), wall);
+  sh.add(quad(V(x0, H, z0), V(x1, H, z0), V(x1, H, z1), V(x0, H, z1), (x1 - x0) / 2, (z1 - z0) / 2), ceil);
+};
+const floorM = () => texM("floorPlanks", () => rep(P.planksHD(), 1, 1));
+const woodM = (c = "#9a6a42") => col(c);
+const jar = (b: Batch, x: number, y: number, z: number, h: number, c: string, lidC = "#c9a24a") => {
+  b.add(lathe("jar", [[0, 0], [0.5, 0], [0.55, 0.12], [0.55, 0.82], [0.42, 0.92], [0.42, 1], [0, 1]], 16), col(c), M4(x, y, z, 0, 0, 0, [h * 0.6, h, h * 0.6]));
+  b.add(cached("jarLid", () => new THREE.CylinderGeometry(0.46, 0.46, 0.14, 16)), col(lidC), M4(x, y + h, z, 0, 0, 0, [h * 0.6, h, h * 0.6]));
+};
+const deskLamp = (b: Batch, x: number, y: number, z: number, shade = "#2f6a4a", ry = 0) => {
+  b.add(lathe("lampFoot", [[0, 0], [0.12, 0], [0.12, 0.03], [0.03, 0.05], [0, 0.05]], 14), col("#3a3a40"), M4(x, y, z));
+  b.add(rod(V(x, y + 0.04, z), V(x + 0.06 * Math.cos(ry), y + 0.36, z - 0.06 * Math.sin(ry)), 0.014), col("#3a3a40"));
+  b.add(lathe("lampShade", [[0.03, 0.12], [0.08, 0.1], [0.15, 0.0], [0.155, -0.01], [0, -0.01]], 16), col(shade), M4(x + 0.1 * Math.cos(ry), y + 0.42, z - 0.1 * Math.sin(ry), ry, 0.5));
+  b.add(cached("bulb", () => new THREE.SphereGeometry(0.045, 10, 8)), glow("#ffe0a0", 2.6), M4(x + 0.12 * Math.cos(ry), y + 0.36, z - 0.12 * Math.sin(ry)));
+};
+const windowGlow = (b: Batch, x0: number, x1: number, y0: number, y1: number, z: number, c = "#fff0cc", k = 1.5, frame = "#f4f0e4") => {
+  b.add(quad(V(x0, y0, z), V(x1, y0, z), V(x1, y1, z), V(x0, y1, z)), glow(c, k));
+  for (const x of [x0, (x0 + x1) / 2, x1]) rb(b, col(frame), x - 0.04, x + 0.04, y0, y1, z, z + 0.06, 0.01);
+  for (const y of [y0, (y0 + y1) / 2, y1]) rb(b, col(frame), x0, x1, y - 0.04, y + 0.04, z, z + 0.06, 0.01);
+  rb(b, col(frame), x0 - 0.1, x1 + 0.1, y0 - 0.12, y0 - 0.02, z, z + 0.16, 0.02);
+};
+
+// workshop: the dentist-inventor's bench, shelves of jars, a pegboard, the planning table with the model town
+const modelHouse = (b: Batch, x: number, y: number, z: number, s: number, ry: number) => {
+  const m = M4(x, y, z, ry, 0, 0, [s, s, s]);
+  const put = (g: THREE.BufferGeometry, mat: Mat, lm = new THREE.Matrix4()) => b.add(g, mat, m.clone().multiply(lm));
+  put(rbox(1, 0.62, 0.8, 0.03), texM("shoji", () => P.shojiHD()), M4(0, 0.31, 0));
+  put(rbox(1.08, 0.06, 0.88, 0.02), woodM("#6a4a32"), M4(0, 0.03, 0));
+  for (const sx of [-0.5, 0.5]) for (const sz of [-0.4, 0.4]) put(rbox(0.07, 0.62, 0.07, 0.01), woodM("#5a3a24"), M4(sx, 0.31, sz));
+  for (const sd of [-1, 1]) put(rbox(1.3, 0.05, 0.62, 0.02), texM("roofTile", () => P.roofTileHD()), M4(0, 0.78, sd * 0.24, 0, 0, sd * 0.62));
+  put(rbox(1.34, 0.08, 0.08, 0.03), col("#3a3e48"), M4(0, 0.97, 0));
+};
+const buildWorkshop = (): SetRig => {
+  const b = new Batch(), sh = new Batch();
+  const wallM = texM("wallWorkshop", () => P.wallpaperHD("ws", "#a9bca2", "#9db096"));
+  room(sh, -3.6, 7.6, -3.0, 5.2, 3.1, floorM(), wallM, col("#e6dcc8"));
+  rb(b, woodM("#7a5236"), -3.6, 7.6, 0, 0.9, -3.0, -2.96, 0.01);   // wainscot
+  windowGlow(b, -1.6, 0.6, 1.15, 2.45, -2.94, "#fff2cc", 1.55);
+  // the bench (free-standing): thick top, legs, a shelf, a vice, a lamp, jars, a spool, a row of tiny capsules
+  const [bx, , bz] = SPOT.BENCH, by = SPOT.BENCH_Y;
+  rb(b, woodM("#b07a48"), bx - 1.3, bx + 1.3, by - 0.08, by, bz - 0.42, bz + 0.42, 0.03, 0.8);
+  for (const sx of [-1.2, 1.2]) for (const sz of [-0.34, 0.34]) rb(b, woodM("#8a5a34"), bx + sx - 0.05, bx + sx + 0.05, 0, by - 0.08, bz + sz - 0.05, bz + sz + 0.05, 0.02);
+  rb(b, woodM("#8a5a34"), bx - 1.25, bx + 1.25, 0.25, 0.3, bz - 0.36, bz + 0.36, 0.02);
+  rb(b, col("#3a5a7a"), bx + 0.9, bx + 1.15, by, by + 0.14, bz - 0.3, bz - 0.12, 0.02);   // vice
+  rb(b, col("#3a5a7a"), bx + 0.92, bx + 1.13, by + 0.14, by + 0.2, bz - 0.36, bz - 0.06, 0.02);
+  deskLamp(b, bx + 0.62, by, bz - 0.26, "#2f6a4a", 2.4);
+  jar(b, bx - 1.0, by, bz - 0.25, 0.16, "#c9e0d8"); jar(b, bx - 0.82, by, bz - 0.28, 0.12, "#e8c47a"); jar(b, bx - 0.9, by, bz - 0.08, 0.1, "#d0a8a0");
+  b.add(cached("spool", () => new THREE.CylinderGeometry(0.035, 0.035, 0.06, 12)), col("#c0353a"), M4(bx + 0.3, by + 0.03, bz + 0.2));
+  for (let k = 0; k < 4; k++) b.add(cached("capsuleS", () => new THREE.CapsuleGeometry(0.012, 0.035, 4, 8).rotateZ(Math.PI / 2)), col("#6e7d3c"), M4(bx + 0.18 + k * 0.05, by + 0.012, bz + 0.3));
+  rb(b, col("#f6f0e0"), bx + 0.25, bx + 0.6, by, by + 0.004, bz - 0.05, bz + 0.18, 0.001);
+  // back wall: shelves with jars + boxes, a pegboard with tool silhouettes, a framed tooth chart (no words)
+  for (const y of [1.4, 1.85, 2.3]) { rb(b, woodM("#8a5a34"), 1.2, 3.4, y, y + 0.04, -3.0, -2.74, 0.01); for (let k = 0; k < 6; k++) jar(b, 1.35 + k * 0.36, y + 0.04, -2.86, 0.14 + 0.06 * ((k * 7 + y * 10) % 3), ["#c9e0d8", "#e8c47a", "#d8b0a0", "#b8c8e8"][k % 4]); }
+  rb(b, col("#c9a878"), -3.4, -2.0, 1.1, 2.3, -2.98, -2.94, 0.01);
+  for (let k = 0; k < 5; k++) rb(b, col("#4a4a52"), -3.25 + k * 0.26, -3.18 + k * 0.26, 1.4 + 0.1 * (k % 2), 2.0, -2.94, -2.9, 0.01);
+  rb(b, col("#f4f0e4"), 4.2, 5.4, 1.3, 2.3, -2.98, -2.94, 0.01); rb(b, col("#c0353a"), 4.15, 5.45, 1.25, 1.3, -2.98, -2.93, 0.005);
+  // a dentist's chair in the corner (cream + red)
+  rb(b, col("#c0353a"), 5.9, 6.7, 0.45, 0.6, -2.4, -1.6, 0.06); rb(b, col("#c0353a"), 5.9, 6.7, 0.6, 1.5, -2.5, -2.32, 0.06);
+  b.add(rod(V(6.3, 0, -2.0), V(6.3, 0.45, -2.0), 0.08), col("#e8e4da"));
+  // the planning table with the model town (a felt base board, a river, paths, two little trees)
+  const [tx, , tz] = SPOT.TABLE, ty = SPOT.TABLE_Y;
+  rb(b, woodM("#7a5236"), tx - 1.05, tx + 1.05, ty - 0.06, ty, tz - 0.75, tz + 0.75, 0.03);
+  for (const sx of [-0.95, 0.95]) for (const sz of [-0.65, 0.65]) rb(b, woodM("#6a4a2c"), tx + sx - 0.05, tx + sx + 0.05, 0, ty - 0.06, tz + sz - 0.05, tz + sz + 0.05, 0.02);
+  rb(b, col("#8fa86a"), tx - 0.95, tx + 0.95, ty, ty + 0.02, tz - 0.65, tz + 0.65, 0.01);
+  b.add(slab([[tx - 0.95, tz + 0.3], [tx + 0.95, tz + 0.15], [tx + 0.95, tz + 0.27], [tx - 0.95, tz + 0.42]], ty + 0.02, 0.006, 0.002), col("#5a9ac8"));
+  const r = rng(61);
+  for (let i = 0; i < 6; i++) for (let k = 0; k < 4; k++) {
+    if (k === 3 && i % 2) continue;
+    modelHouse(b, tx - 0.78 + i * 0.3 + (r() - 0.5) * 0.04, ty + 0.02, tz - 0.5 + k * 0.28 + (k > 1 ? 0.18 : 0) + (r() - 0.5) * 0.04, 0.16 + 0.03 * r(), (r() - 0.5) * 0.3);
   }
-  for (const z of [5.85, 7.15]) for (let x = -300; x < 600; x += 45) b.add(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(V(x, 6.32, z), V(x + 22.5, 5.9, z), V(x + 45, 6.32, z)), 6, 0.012, 3), wireM());
-  for (const [x, z, h] of [[-24, 11, 15], [14, 13, 17], [-50, 9, 13], [40, 10, 16], [80, -14, 15], [130, 11, 17], [-80, -16, 14], [200, -15, 16], [260, 12, 15]]) gum(b, x, z, h, x * 3 + z, 1);
-  scrub(b, 0, 12, 6, 30, 30, 28, (_x, z) => z < 11); // no saltbush on the road verge (it went to a dark lump against the sunset)
-  tufts(b, 0, 6, 3.5, 16, 220, 29, (x, z) => z < 3.6);
-  horizon(b, 41);
-  return done("road", b, c);
+  for (const [x, z] of [[tx + 0.8, tz - 0.5], [tx - 0.85, tz + 0.55]]) { b.add(lobeGeo(1), col("#6a8a4a"), M4(x, ty + 0.1, z, 0, 0, 0, [0.06, 0.07, 0.06])); b.add(rod(V(x, ty, z), V(x, ty + 0.06, z), 0.008), col("#6a4a32")); }
+  const rig = done("workshop", b);
+  const shell = new THREE.Group(); sh.build(shell, false); rig.group.add(shell);
+  return rig;
 };
 
-// ---- paddock: open dry paddock with a low rise, a track, scattered gums and scrub ----
-const buildPaddock = (): SetRig => {
-  const b = new Batch();
-  terrain(b, paddockM(), -FAR, FAR, -FAR, 40, 4, paddockRise, 4);
-  terrain(b, paddockM(), -FAR, FAR, 40, FAR, 4);
-  track(b, -FAR, FAR, 4.6, 7.4, 0.03);
-  for (const [x, z, h] of [[-18, -26, 14], [26, -42, 16], [62, -12, 15], [-44, -58, 13], [12, -125, 15], [-70, -20, 17], [90, -60, 14], [-25, 30, 15], [35, 24, 13]]) gum(b, x, z, h, x * 11 + z, 1);
-  // a dead grey tree
-  b.add(rod(V(-9, 0, -18), V(-8.6, 5.5, -18.3), 0.32, 0.15), col("#b9b3a8"));
-  for (const [dx, dy, dz] of [[1.8, 2.2, 0.4], [-1.5, 1.8, -0.6], [0.6, 2.6, 1.2]]) b.add(rod(V(-8.7, 4.2, -18.2), V(-8.7 + dx, 4.2 + dy, -18.2 + dz), 0.1, 0.03), col("#b9b3a8"));
-  scrub(b, 0, -20, 8, 90, 70, 51, (x, z) => (z > 3 && z < 9) || Math.hypot(x, z) < 6);
-  tufts(b, 0, 0, 1.5, 22, 320, 52, (x, z) => (z > 4.4 && z < 7.6) || Math.hypot(x, z) < 1.4);
-  fence(b, -400, 18, 400, 18, 53, 4);
-  fence(b, -32, 18, -32, -300, 54, 4);
-  horizon(b, 61);
-  return done("paddock", b);
-};
-
-// ---- dam ----
-const buildDam = (): SetRig => {
-  const b = new Batch();
-  // ground with a hole for the dam (the outer bank meets it at BANK_R + 4.2)
-  b.add(cached("damGround", () => { const g = new THREE.RingGeometry((SPOT.BANK_R + 4.0) * 0.8, FAR, 96, 6).rotateX(-Math.PI / 2); return uvFrom(g, (x, _y, z) => [x / 4, z / 4]); }), paddockM());
-  dam(b);
-  // a low spoil berm behind the soldiers: from the lens only their hats show over it
-  b.add(cached("berm", () => new THREE.SphereGeometry(1, 28, 12, 0, Math.PI * 2, 0, Math.PI / 2)), texM("mud", () => P.mudHD()), M4(0.2, -0.02, 13.6, 0, 0, 0, [4.6, 1.25, 1.3]));
-  for (const [x, z, h] of [[-15, -8, 15], [14, -12, 14], [-16, 7, 13], [16, 5, 16], [-4, -19, 15], [7, -18, 13], [30, -30, 14], [-30, -26, 16]]) gum(b, x, z, h, x * 9 + z, 1);
-  scrub(b, 0, 0, 20, 70, 50, 71);
-  tufts(b, 0, 16, 0, 9, 160, 72, (x, z) => Math.hypot(x, z) < SPOT.BANK_R + 0.5);
-  fence(b, -200, -48, 200, -48, 73, 4);
-  horizon(b, 81);
-  return done("dam", b);
-};
-
-// ---- camp ----
-const buildCamp = (): SetRig => {
-  const b = new Batch();
-  terrain(b, paddockM(), -FAR, FAR, -FAR, FAR, 4);
-  terrain(b, groundM("campDirt", () => P.dirtHD("campHD", "#b87048")), -14, 14, -6, 9, 4, undefined, 4, 0.01);
-  bellTent(b, SPOT.TENT[0], SPOT.TENT[2], 0, true);
-  bellTent(b, -7.5, -4.5, 0.4, true, 0.95); bellTent(b, 8.5, -5.5, -0.5, false, 0.95); bellTent(b, -14, -9, 0.2, false, 0.9);
-  fieldDesk(b); tallyBoard(b);
-  crateStack(b, -3.6, 1.2, 2, 2, 1, 0.3, 91);
-  brassMound(b);
-  // lantern pole by the desk
-  const lx = SPOT.DESK[0] + 1.35, lz = SPOT.DESK[2] - 0.9;
-  b.add(rod(V(lx + 0.35, 0, lz), V(lx + 0.35, 2.35, lz), 0.035), col("#5a4030"));
-  b.add(rod(V(lx + 0.35, 2.3, lz), V(lx, 2.3, lz), 0.025), col("#5a4030"));
-  b.add(lathe("lantern", [[0, 0], [0.09, 0], [0.09, 0.03], [0.06, 0.06], [0.07, 0.2], [0.04, 0.26], [0, 0.27]], 12), glow("#ffc46a", 2.2), M4(lx, 1.98, lz));
-  for (const [x, z, h] of [[-20, -16, 16], [18, -22, 15], [-28, 8, 14], [26, 6, 17], [6, -34, 15]]) gum(b, x, z, h, x * 13 + z, 1);
-  scrub(b, 0, 0, 16, 60, 30, 92);
-  horizon(b, 93);
-  return done("camp", b);
-};
-
-// ---- supply dump: the house-tall wall of ammunition boxes ----
-const buildDump = (): SetRig => {
-  const b = new Batch();
-  terrain(b, paddockM(), -FAR, FAR, -FAR, FAR, 4);
-  terrain(b, groundM("dumpDirt", () => P.dirtHD("dumpHD", "#c07a4c")), -16, 16, -6, 8, 4, undefined, 4, 0.01);
-  const r = rng(95);
-  for (let k = 0; k < 14; k++) for (let i = 0; i < 20; i++) for (let j = 0; j < 2; j++) { // no handles on the big wall (polycount)
-    const lx = (i - 9.5) * (CRATE.L + 0.03) + (k % 2) * 0.12 + (r() - 0.5) * 0.06, lz = SPOT.WALL_Z - j * (CRATE.D + 0.03) + (r() - 0.5) * 0.05;
-    if (k === 13 && (i < 2 || i > 17 || r() < 0.15)) continue;
-    b.add(crateGeo(), crateM(), M4(lx, k * CRATE.H + CRATE.H / 2, lz, (r() - 0.5) * 0.05));
+// attic: the cutaway model house on a low plinth in a dark room, front open
+const buildAttic = (): SetRig => {
+  const b = new Batch(), sh = new Batch();
+  room(sh, -4, 4, -3, 4, 3.4, floorM(), texM("wallAttic", () => P.wallpaperHD("at", "#6a7488", "#626c80")), col("#3a3a44"));
+  rb(b, col("#4a3a34"), -1.0, 1.0, 0, 0.12, -0.7, 0.7, 0.03);
+  const W = 0.42, D = 0.4, wood = woodM("#8a5a34"), paper = texM("shojiBig", () => P.shojiHD()), dark = col("#5a3c2a"), cut = col("#e8d8b8");
+  const y0 = 0.12;
+  // back + side walls (paper screens in a wooden frame), floors, the cut edges in pale wood
+  rb(b, paper, -W, W, y0, y0 + 0.92, -D - 0.03, -D, 0.005);
+  for (const s of [-1, 1]) rb(b, paper, s * W - 0.015, s * W + 0.015, y0, y0 + 0.92, -D, D, 0.005);
+  for (const y of [y0, y0 + 0.46, y0 + 0.92]) rb(b, cut, -W - 0.02, W + 0.02, y - 0.03, y, -D - 0.03, D + 0.01, 0.005);
+  for (const x of [-W, W]) rb(b, cut, x - 0.025, x + 0.025, y0, y0 + 0.92, D - 0.02, D + 0.02, 0.005);
+  // rooms: a low table + cushions downstairs, a futon upstairs, a lantern
+  rb(b, wood, -0.14, 0.14, y0, y0 + 0.08, -0.12, 0.12, 0.01); rb(b, col("#c0353a"), -0.32, -0.2, y0, y0 + 0.03, -0.08, 0.08, 0.01); rb(b, col("#3a6ea8"), 0.2, 0.32, y0, y0 + 0.03, -0.08, 0.08, 0.01);
+  rb(b, col("#f4efe2"), -0.36, 0.0, y0 + 0.46, y0 + 0.5, -0.3, 0.05, 0.01); rb(b, col("#c9a24a"), -0.36, 0.0, y0 + 0.5, y0 + 0.52, -0.3, -0.1, 0.01);
+  b.add(cached("lanternS", () => new THREE.CylinderGeometry(0.05, 0.05, 0.1, 12)), glow("#ffd08a", 1.6), M4(0.25, y0 + 0.54, -0.22));
+  // attic: rafters, the ridge beam (the bat hangs from it), roof slabs (front cut), dark wood inside
+  const ry0 = y0 + 0.92, rh = SPOT.RIDGE5[1] + 0.06 - ry0;
+  for (const s of [-1]) { // cutaway: only the back slope of the roof
+    const len = Math.hypot(D + 0.08, rh), a = Math.atan2(rh, D + 0.08);
+    b.add(rbox(2 * W + 0.24, 0.06, len, 0.01), texM("roofTileM", () => P.roofTileHD()), M4(0, ry0 + rh / 2 + 0.03, s * (D + 0.08) / 2 - 0.0, 0, 0, 0).multiply(new THREE.Matrix4().makeRotationX(s * a)));
+    b.add(rbox(2 * W, 0.02, len - 0.04, 0.005), dark, M4(0, ry0 + rh / 2 - 0.02, s * (D + 0.08) / 2, 0, 0, 0).multiply(new THREE.Matrix4().makeRotationX(s * a)));
+    for (let x = -W + 0.05; x <= W; x += 0.27) b.add(rbox(0.03, 0.04, len, 0.005), wood, M4(x, ry0 + rh / 2 - 0.05, s * (D + 0.08) / 2 - s * 0.01, 0, 0, 0).multiply(new THREE.Matrix4().makeRotationX(s * a)));
   }
-  crateStack(b, -5.4, 1.4, 2, 3, 1, 0.4, 96); crateStack(b, 6.5, 1.0, 2, 2, 1, -0.3, 97);
-  crate(b, 2.6, 0, 1.2, 0.7);
-  // ladder against the wall
-  for (const s of [-0.28, 0.28]) b.add(rod(V(-3.2 + s, 0, 0.6), V(-3.2 + s, 5.2, SPOT.WALL_Z + 0.2), 0.035), col("#9a7a52"));
-  for (let k = 1; k < 13; k++) { const u = k / 13; b.add(rod(V(-3.48, 5.2 * u, 0.6 + (SPOT.WALL_Z + 0.2 - 0.6) * u), V(-2.92, 5.2 * u, 0.6 + (SPOT.WALL_Z + 0.2 - 0.6) * u), 0.025), col("#9a7a52")); }
-  for (const [x, z, h] of [[-18, -10, 16], [17, -8, 15], [-24, 10, 14], [24, 12, 16]]) gum(b, x, z, h, x * 17 + z, 1);
-  horizon(b, 98);
-  return done("dump", b);
+  b.add(plate([[-D, 0], [D, 0], [0, rh]], 0.03, 0.005), dark, M4(-W, ry0, 0, Math.PI / 2)); b.add(plate([[-D, 0], [D, 0], [0, rh]], 0.03, 0.005), dark, M4(W, ry0, 0, Math.PI / 2));
+  rb(b, wood, -W - 0.05, W + 0.05, SPOT.RIDGE5[1] - 0.02, SPOT.RIDGE5[1] + 0.04, -0.025, 0.025, 0.006);
+  rb(b, cut, -W - 0.02, W + 0.02, ry0 - 0.03, ry0 + 0.005, D - 0.02, D + 0.03, 0.005);
+  // the workshop around it, dim: a shelf, a stool
+  rb(b, woodM("#6a4a2c"), -3.5, -1.8, 1.2, 1.25, -2.98, -2.7, 0.01); rb(b, woodM("#6a4a2c"), 2.0, 2.5, 0, 0.5, -1.2, -0.7, 0.03);
+  const rig = done("attic", b);
+  const shell = new THREE.Group(); sh.build(shell, false); rig.group.add(shell);
+  return rig;
 };
 
-// ---- parade ground: packed earth, whitewashed stones, a sandbagged gun pit, tents far off ----
-const buildParade = (): SetRig => {
-  const b = new Batch();
-  terrain(b, paddockM(), -FAR, FAR, -FAR, FAR, 4);
-  terrain(b, paradeM(), -45, 45, -60, 14, 4, undefined, 4, 0.01);
-  const r = rng(99);
-  for (let x = -44; x <= 44; x += 1.6) for (const z of [-59.5, 13.5]) b.add(cached("wstone", () => new THREE.SphereGeometry(0.2, 8, 6).scale(1, 0.6, 1)), col("#f2eee4"), M4(x + (r() - 0.5) * 0.2, 0.08, z));
-  for (let z = -58; z <= 12; z += 1.6) for (const x of [-44.5, 44.5]) b.add(cached("wstone", () => new THREE.SphereGeometry(0.2, 8, 6).scale(1, 0.6, 1)), col("#f2eee4"), M4(x, 0.08, z + (r() - 0.5) * 0.2));
-  sandbagRing(b, SPOT.GUN13[0], SPOT.GUN13[2], 1.25, Math.PI - 1.9, Math.PI + 1.9, 3, 100);
-  for (let i = 0; i < 7; i++) bellTent(b, -36 + i * 12, -72 - (i % 2) * 3, 0.1 * i, false, 0.9);
-  b.add(rod(V(30, 0, -50), V(30, 11, -50), 0.09, 0.06), col("#f2eee4"));
-  for (const [x, z, h] of [[-58, -30, 16], [60, -20, 15], [-52, 20, 14], [56, 26, 17], [-20, -95, 15], [25, -100, 16]]) gum(b, x, z, h, x * 19 + z, 1);
-  horizon(b, 101);
-  return done("parade", b);
+// the President's office: curved cream wall, tall windows with gold drapes, two flags, the big desk on an oval rug
+const buildOval = (): SetRig => {
+  const b = new Batch(), sh = new Batch();
+  room(sh, -5, 5, -4.8, 4.5, 3.6, floorM(), texM("wallOval", () => P.wallpaperHD("ov", "#efe4c8", "#e8dcbc")), col("#f4eedf"));
+  const curve = cached("ovalWall", () => { const g = new THREE.CylinderGeometry(4.2, 4.2, 3.6, 40, 1, true, Math.PI * 0.62, Math.PI * 0.76); return uvFrom(g, (x, y, z) => [Math.atan2(x, z) * 4, y]); });
+  b.add(curve, lam("ovalCurve", () => ({ map: P.wallpaperHD("ov", "#efe4c8", "#e8dcbc"), side: THREE.BackSide })), M4(0, 1.8, -0.2));
+  for (const a of [-0.55, 0.55]) {
+    const x = Math.sin(Math.PI + a) * 4.05, z = -0.2 + Math.cos(Math.PI + a) * 4.05;
+    b.add(quad(V(-0.55, 0.9, 0), V(0.55, 0.9, 0), V(0.55, 2.9, 0), V(-0.55, 2.9, 0)), glow("#fff4dc", 1.45), M4(x, 0, z, a));
+    for (const s of [-1, 1]) b.add(rbox(0.38, 2.9, 0.12, 0.06), col("#c9a24a"), M4(x + Math.cos(a) * s * 0.75, 1.65, z - Math.sin(a) * s * 0.75 + 0.05, a));
+    b.add(rbox(1.9, 0.22, 0.16, 0.04), col("#b8903a"), M4(x, 3.1, z + 0.06, a));
+  }
+  rb(b, col("#f6f1e4"), -5, 5, 3.4, 3.6, -4.2, 4.5, 0.02);
+  // flags on poles behind the desk
+  for (const [x, z, tex] of [[-1.3, -3.4, 0], [1.3, -3.4, 1]] as [number, number, number][]) {
+    b.add(rod(V(x, 0, z), V(x, 2.7, z), 0.03), col("#c9a24a"));
+    b.add(cached("eagle", () => new THREE.SphereGeometry(0.06, 10, 8)), col("#e2c45a"), M4(x, 2.74, z));
+    const drape = cached("flagDrape", () => { const g = new THREE.PlaneGeometry(0.62, 1.1, 8, 8); const p = g.attributes.position as THREE.BufferAttribute; for (let i = 0; i < p.count; i++) p.setZ(i, 0.06 * Math.sin(p.getY(i) * 7 + p.getX(i) * 3)); g.computeVertexNormals(); return g; });
+    b.add(drape, tex ? col("#24376a", THREE.DoubleSide) : lam("flagCloth2", () => ({ map: P.flagHD(), side: THREE.DoubleSide })), M4(x + 0.33, 2.05, z, 0, -0.15));
+  }
+  // the rug, the desk (dark wood, green leather top), a lamp, a phone, a pen set, the drawing
+  b.add(cached("rug", () => new THREE.PlaneGeometry(5.2, 3.3).rotateX(-Math.PI / 2)), lam("rugM", () => ({ map: P.rugHD(), transparent: true, alphaTest: 0.5 })), M4(0, 0.012, -0.3));
+  const [dx, , dz] = SPOT.DESK6, dy = SPOT.DESK_Y, dw = col("#5a3420");
+  rb(b, dw, dx - 1.05, dx + 1.05, dy - 0.07, dy, dz - 0.48, dz + 0.48, 0.03);
+  rb(b, col("#3a6a4a"), dx - 0.9, dx + 0.9, dy, dy + 0.005, dz - 0.38, dz + 0.36, 0.003);
+  rb(b, dw, dx - 1.0, dx + 1.0, 0, dy - 0.07, dz + 0.36, dz + 0.44, 0.03);                       // modesty panel (hides the legs)
+  for (const s of [-1, 1]) rb(b, dw, dx + s * 0.72 - 0.26, dx + s * 0.72 + 0.26, 0, dy - 0.07, dz - 0.44, dz + 0.4, 0.03);
+  for (const s of [-1, 1]) for (let k = 0; k < 3; k++) rb(b, col("#7a4a2c"), dx + s * 0.72 - 0.2, dx + s * 0.72 + 0.2, 0.12 + k * 0.2, 0.28 + k * 0.2, dz + 0.4, dz + 0.43, 0.01);
+  rb(b, col("#c9a24a"), dx - 0.5, dx + 0.5, 0.36, 0.42, dz + 0.44, dz + 0.46, 0.005);
+  deskLamp(b, dx - 0.78, dy, dz - 0.25, "#2f6a4a", 0.4);
+  rb(b, col("#2a2a30"), dx + 0.6, dx + 0.82, dy, dy + 0.06, dz - 0.25, dz - 0.1, 0.02); b.add(rod(V(dx + 0.6, dy + 0.1, dz - 0.18), V(dx + 0.82, dy + 0.1, dz - 0.18), 0.025), col("#2a2a30"));
+  b.add(cached("penset", () => new THREE.CylinderGeometry(0.05, 0.06, 0.04, 12)), col("#c9a24a"), M4(dx + 0.3, dy + 0.02, dz - 0.3));
+  const [px, py, pz] = SPOT.PAPER6;
+  b.add(cached("paper6", () => new THREE.PlaneGeometry(0.42, 0.3).rotateX(-Math.PI / 2)), lam("drawingM", () => ({ map: P.drawingHD() })), M4(px, py, pz, 0.12));
+  // a bookcase + a fireplace mantel at the sides
+  const rig = done("oval", b);
+  const shell = new THREE.Group(); sh.build(shell, false); rig.group.add(shell);
+  return rig;
+};
+
+// the chemistry lab: teal-white tiles, a black-topped bench, glowing flasks, a burner, bubbles (tick)
+const flask = (b: Batch, x: number, y: number, z: number, s: number, liquid: string, k: number, kind = 0) => {
+  const glass = lam("glass", () => ({ color: "#cfe8ec", transparent: true, opacity: 0.45, depthWrite: false }));
+  const prof: [number, number][] = kind === 0 ? [[0, 0], [0.25, 0.02], [0.45, 0.2], [0.5, 0.42], [0.42, 0.62], [0.13, 0.78], [0.12, 1.05], [0.14, 1.08]]
+    : kind === 1 ? [[0, 0], [0.5, 0], [0.5, 0.04], [0.16, 0.72], [0.16, 1.0], [0.18, 1.03]] : [[0, 0], [0.12, 0], [0.12, 1.0], [0.14, 1.02]];
+  b.add(lathe("flask" + kind, prof, 18), glass, M4(x, y, z, 0, 0, 0, [s, s, s]));
+  const lp: [number, number][] = kind === 0 ? [[0, 0], [0.24, 0.02], [0.43, 0.2], [0.48, 0.42], [0.43, 0.56], [0, 0.56]] : kind === 1 ? [[0, 0], [0.47, 0], [0.47, 0.04], [0.33, 0.36], [0, 0.36]] : [[0, 0], [0.11, 0], [0.11, 0.55], [0, 0.55]];
+  b.add(lathe("liquid" + kind, lp, 18), glow(liquid, k), M4(x, y + 0.004, z, 0, 0, 0, [s * 0.98, s, s * 0.98]));
+};
+const buildLab = (): SetRig => {
+  const b = new Batch(), sh = new Batch();
+  room(sh, -4, 4, -2.8, 4.2, 3.2, texM("labFloor", () => P.concreteHD()), texM("labTile", () => rep(P.tileHD("#dbece6"), 1, 1)), col("#e4ece8"));
+  windowGlow(b, -3.2, -1.6, 1.0, 2.8, -2.76, "#e8f6ff", 1.5, "#dfe8e4"); windowGlow(b, 1.8, 3.4, 1.0, 2.8, -2.76, "#e8f6ff", 1.5, "#dfe8e4");
+  const [lx, , lz] = SPOT.LABBENCH, ly = SPOT.LAB_Y;
+  rb(b, col("#24262c"), lx - 1.3, lx + 1.3, ly - 0.05, ly, lz - 0.42, lz + 0.42, 0.02);
+  rb(b, col("#e8ece6"), lx - 1.25, lx + 1.25, 0, ly - 0.05, lz - 0.38, lz + 0.38, 0.03);
+  for (let k = 0; k < 4; k++) { rb(b, col("#f4f6f2"), lx - 1.2 + k * 0.62, lx - 0.66 + k * 0.62, 0.08, ly - 0.12, lz + 0.38, lz + 0.41, 0.02); b.add(cached("knobL", () => new THREE.SphereGeometry(0.025, 8, 6)), col("#3a3a40"), M4(lx - 0.93 + k * 0.62, ly - 0.25, lz + 0.43)); }
+  // glassware on the bench: the hero green, an orange, a blue burner flame, a rack of test tubes, a retort stand + coil
+  flask(b, lx + 0.85, ly, lz - 0.15, 0.3, "#5aff8a", 1.7, 0); flask(b, lx + 0.45, ly, lz - 0.22, 0.24, "#ffa02a", 1.6, 1); flask(b, lx - 0.95, ly, lz - 0.2, 0.26, "#5aff8a", 1.6, 1);
+  rb(b, woodM("#9a6a42"), lx + 0.05, lx + 0.35, ly, ly + 0.05, lz - 0.3, lz - 0.2, 0.01);
+  for (let k = 0; k < 5; k++) flask(b, lx + 0.08 + k * 0.06, ly + 0.01, lz - 0.25, 0.14, ["#5aff8a", "#ffa02a", "#8ac8ff", "#ff6a5a", "#5aff8a"][k], 1.5, 2);
+  b.add(lathe("burner", [[0, 0], [0.04, 0], [0.04, 0.01], [0.012, 0.02], [0.012, 0.12], [0, 0.12]], 12), col("#8a929a"), M4(lx + 0.85, ly, lz + 0.12));
+  b.add(lathe("bflame", [[0, 0], [0.018, 0.02], [0.012, 0.06], [0, 0.09]], 10), glow("#6ab0ff", 2.2), M4(lx + 0.85, ly + 0.12, lz + 0.12));
+  b.add(rod(V(lx - 0.5, ly, lz - 0.3), V(lx - 0.5, ly + 0.7, lz - 0.3), 0.012), col("#8a929a"));
+  b.add(new THREE.TorusGeometry(0.06, 0.012, 6, 16).rotateX(Math.PI / 2), col("#8a929a"), M4(lx - 0.42, ly + 0.45, lz - 0.3));
+  b.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(Array.from({ length: 30 }, (_, i) => V(lx - 0.2 + 0.05 * Math.cos(i * 1.2), ly + 0.18 + i * 0.012, lz - 0.3 + 0.05 * Math.sin(i * 1.2)))), 60, 0.008, 5), lam("glass2", () => ({ color: "#bfe6ee" })));
+  // shelves of bottles on the back wall, a fume hood, a periodic-ish chart of coloured squares (no letters)
+  for (const y of [1.3, 1.75, 2.2]) { rb(b, col("#c9d2ce"), -1.2, 1.4, y, y + 0.03, -2.8, -2.55, 0.01); for (let k = 0; k < 8; k++) jar(b, -1.08 + k * 0.32, y + 0.03, -2.68, 0.15 + 0.07 * ((k * 3) % 2), ["#8a5a34", "#3a6a4a", "#c9e0d8", "#4a3a6a"][k % 4], "#2a2a30"); }
+  for (let i = 0; i < 6; i++) for (let k = 0; k < 4; k++) rb(b, col(["#e8c47a", "#8ac8e8", "#e88a7a", "#9ad89a"][(i + k) % 4]), 2.0 + i * 0.2, 2.17 + i * 0.2, 1.1 + k * 0.2, 1.27 + k * 0.2, -2.79, -2.77, 0.005);
+  rb(b, col("#c9d2ce"), -3.9, -2.6, 0, 2.6, -2.8, -2.0, 0.04);
+  // bubbles rising in the big green flask (posed in tick)
+  const rig = done("lab", b);
+  const shell = new THREE.Group(); sh.build(shell, false); rig.group.add(shell);
+  const bub: THREE.Mesh[] = [];
+  for (let i = 0; i < 6; i++) { const m = new THREE.Mesh(cached("bub", () => new THREE.SphereGeometry(1, 8, 6)), glow("#c8ffd6", 1.8)); bub.push(m); rig.group.add(m); }
+  rig.tick = (t) => bub.forEach((m, i) => {
+    const u = (t * 0.9 + i / 6) % 1, big = i < 3;
+    const [fx, fz, s] = big ? [lx + 0.85, lz - 0.15, 0.3] : [lx - 0.95, lz - 0.2, 0.26];
+    m.position.set(fx + 0.04 * Math.sin(i * 2 + t * 5), ly + 0.03 + u * 0.15 * s / 0.3, fz + 0.03 * Math.cos(i * 3)); m.scale.setScalar(0.008 + 0.01 * u);
+  });
+  return rig;
+};
+
+// the War Department office: grey walls, filing cabinets, the desk, the money bags, the wastebasket, the dusk window
+const moneyBag = (b: Batch, x: number, y: number, z: number, s: number, ry: number) => {
+  b.add(lathe("bag", [[0, 0], [0.38, 0.03], [0.5, 0.25], [0.46, 0.55], [0.26, 0.78], [0.12, 0.86], [0.16, 0.95], [0.2, 1.02], [0.1, 1.04], [0, 1.0]], 18), texM("bagCloth", () => P.hessianHD()), M4(x, y, z, ry, 0, 0, [s, s, s]));
+  b.add(cached("bagTie", () => new THREE.TorusGeometry(0.13, 0.03, 6, 14).rotateX(Math.PI / 2)), col("#8a5a34"), M4(x, y + 0.86 * s, z, 0, 0, 0, [s, s, s]));
+  b.add(cached("bagPatch", () => new THREE.CircleGeometry(0.1, 16)), col("#c0353a"), M4(x + Math.sin(ry) * 0.47 * s, y + 0.38 * s, z + Math.cos(ry) * 0.47 * s, ry));
+};
+const buildOffice = (): SetRig => {
+  const b = new Batch(), sh = new Batch();
+  room(sh, -3.5, 3.5, -3.0, 3.6, 3.0, texM("officeFloor", () => rep(P.planksHD(), 1, 1)), texM("wallOffice", () => P.wallpaperHD("of", "#9a9e96", "#929690")), col("#c9cbc4"));
+  rb(b, col("#6a6e66"), -3.5, 3.5, 0, 0.95, -3.0, -2.96, 0.01);
+  b.add(quad(V(-1.9, 1.0, -2.95), V(-0.3, 1.0, -2.95), V(-0.3, 2.6, -2.95), V(-1.9, 2.6, -2.95)), (() => { const m = new THREE.MeshBasicMaterial({ map: P.duskWindowHD(), color: new THREE.Color(1.35, 1.3, 1.25) }); return m; })());
+  rb(b, col("#d8d4c8"), -2.0, -0.2, 0.9, 1.0, -2.96, -2.8, 0.02); for (const x of [-1.95, -0.25]) rb(b, col("#d8d4c8"), x - 0.05, x + 0.05, 1.0, 2.6, -2.96, -2.9, 0.01);
+  // filing cabinets, a coat stand, a wall clock without numerals, a framed map of coloured blobs
+  for (const x of [1.6, 2.2, 2.8]) { rb(b, col("#7a7f74"), x - 0.28, x + 0.28, 0, 1.35, -2.95, -2.35, 0.03); for (let k = 0; k < 4; k++) { rb(b, col("#868b80"), x - 0.24, x + 0.24, 0.08 + k * 0.32, 0.36 + k * 0.32, -2.36, -2.33, 0.01); rb(b, col("#c9c4b0"), x - 0.06, x + 0.06, 0.28 + k * 0.32, 0.31 + k * 0.32, -2.33, -2.3, 0.005); } }
+  b.add(cached("clock", () => new THREE.CylinderGeometry(0.22, 0.22, 0.05, 24).rotateX(Math.PI / 2)), col("#f4f0e4"), M4(0.6, 2.35, -2.95));
+  b.add(rbox(0.02, 0.15, 0.01, 0.003), col("#2a2a30"), M4(0.6, 2.4, -2.92)); b.add(rbox(0.11, 0.02, 0.01, 0.003), col("#2a2a30"), M4(0.65, 2.35, -2.92));
+  rb(b, col("#c9b48a"), 0.0, 1.2, 1.2, 1.95, -2.98, -2.95, 0.01);
+  for (const [x, y, c] of [[0.3, 1.5, "#8aa86a"], [0.7, 1.7, "#d8a86a"], [0.9, 1.4, "#8ab8d8"]] as [number, number, string][]) b.add(cached("blob", () => new THREE.CircleGeometry(0.15, 10)), col(c), M4(x, y, -2.94));
+  // the desk: steel grey with a dark green top, the money bags, the filing tray, a lamp, the wastebasket on the floor
+  const [dx, , dz] = SPOT.ODESK, dy = SPOT.ODESK_Y;
+  rb(b, col("#3d5a46"), dx - 0.95, dx + 0.95, dy - 0.05, dy, dz - 0.45, dz + 0.45, 0.02);
+  rb(b, col("#6f7570"), dx - 0.92, dx + 0.92, 0, dy - 0.05, dz + 0.32, dz + 0.42, 0.02);
+  for (const s of [-1, 1]) rb(b, col("#6f7570"), dx + s * 0.65 - 0.25, dx + s * 0.65 + 0.25, 0, dy - 0.05, dz - 0.42, dz + 0.4, 0.02);
+  const [bgx, bgy, bgz] = SPOT.BAGS14;
+  moneyBag(b, bgx - 0.1, bgy, bgz, 0.36, 0.3); moneyBag(b, bgx + 0.22, bgy, bgz - 0.05, 0.32, -0.4); moneyBag(b, bgx + 0.05, bgy, bgz + 0.24, 0.3, 0.9); moneyBag(b, bgx + 0.06, bgy + 0.3, bgz + 0.06, 0.28, 0.1);
+  moneyBag(b, -2.4, 0, -2.4, 0.5, 0.4); moneyBag(b, -2.0, 0, -2.6, 0.44, -0.3); moneyBag(b, -2.25, 0.38, -2.5, 0.4, 1.1);
+  const [tx, ty, tz] = SPOT.TRAY14;
+  rb(b, col("#8a9088"), tx - 0.2, tx + 0.2, ty, ty + 0.015, tz - 0.15, tz + 0.15, 0.005);
+  for (const s of [-1, 1]) rb(b, col("#8a9088"), tx + s * 0.2 - 0.01, tx + s * 0.2 + 0.01, ty, ty + 0.07, tz - 0.15, tz + 0.15, 0.003);
+  rb(b, col("#8a9088"), tx - 0.2, tx + 0.2, ty, ty + 0.07, tz - 0.16, tz - 0.14, 0.003);
+  deskLamp(b, dx - 0.7, dy, dz - 0.3, "#2f6a4a", 0.6);
+  rb(b, col("#f6f0e0"), dx - 0.2, dx + 0.2, dy, dy + 0.01, dz - 0.1, dz + 0.18, 0.002);
+  const [wx, , wz] = SPOT.BASKET14;
+  b.add(lathe("basket", [[0, 0], [0.17, 0], [0.17, 0.01], [0.21, 0.38], [0.2, 0.39], [0.155, 0.02], [0, 0.02]], 20), col("#4f5a4a"), M4(wx, 0, wz));
+  for (let k = 0; k < 10; k++) { const a = (k / 10) * 6.28; b.add(rod(V(wx + Math.cos(a) * 0.17, 0, wz + Math.sin(a) * 0.17), V(wx + Math.cos(a) * 0.21, 0.38, wz + Math.sin(a) * 0.21), 0.006), col("#2f362c")); }
+  b.add(cached("rimB", () => new THREE.TorusGeometry(0.21, 0.012, 6, 24).rotateX(Math.PI / 2)), col("#2f362c"), M4(wx, 0.385, wz));
+  const rig = done("office", b);
+  const shell = new THREE.Group(); sh.build(shell, false); rig.group.add(shell);
+  return rig;
 };
 
 /** every set of the film; world.ts adds the groups and toggles .visible per shot */
 export const buildSets = (): Record<SetName, SetRig> => ({
-  field: buildField(), farm: buildFarm(), road: buildRoad(), paddock: buildPaddock(), dam: buildDam(), camp: buildCamp(), dump: buildDump(), parade: buildParade(),
+  desert: buildDesert(), base: buildBase(), cave: buildCave(), workshop: buildWorkshop(), attic: buildAttic(), oval: buildOval(), lab: buildLab(), office: buildOffice(),
 });
+
+// =================================================================================================================
+// RIGS: the hook's bomb casing (panels hinge open), the bat crate of shot 8 (lid). Built once, posed per frame.
+// =================================================================================================================
+export type BombRig = { root: THREE.Group; panels: THREE.Group[] };
+const buildBomb = (): BombRig => {
+  const root = new THREE.Group(), b = new Batch(), olive = texM("oliveBomb", () => P.oliveHD());
+  // vertical, nose down: nose cone below, the panel section (4 quarter shells), the tail cone + 4 fins + a box ring above
+  b.add(lathe("bombNose", [[0.0, -1.55], [0.18, -1.5], [0.38, -1.36], [0.52, -1.12], [0.58, -0.86], [0.58, -0.8], [0.0, -0.8]], 28), olive);
+  b.add(cached("bombBand", () => new THREE.CylinderGeometry(0.595, 0.595, 0.12, 28)), col("#e2c040"), M4(0, -0.95, 0));
+  b.add(lathe("bombTail", [[0.0, 0.85], [0.58, 0.85], [0.56, 1.05], [0.42, 1.4], [0.24, 1.62], [0.0, 1.66]], 28), olive);
+  for (let k = 0; k < 4; k++) b.add(plate([[0, 0], [0.62, 0.15], [0.62, 0.92], [0.1, 0.8]], 0.05, 0.015), col("#5f6a34"), M4(0, 1.0, 0, (k * Math.PI) / 2, 0, 0).multiply(M4(0.2, 0, 0)));
+  b.add(cached("finRing", () => new THREE.CylinderGeometry(0.86, 0.86, 0.3, 32, 1, true)), lam("finRingM", () => ({ color: "#5f6a34", side: THREE.DoubleSide })), M4(0, 1.75, 0));
+  b.add(cached("bombCore", () => new THREE.CylinderGeometry(0.42, 0.42, 1.7, 20)), col("#2e2a2a"), M4(0, 0.02, 0));
+  for (let k = 0; k < 4; k++) b.add(cached("tray", () => new THREE.CylinderGeometry(0.5, 0.5, 0.04, 20)), col("#8a7a5a"), M4(0, -0.6 + k * 0.42, 0));
+  b.build(root, true);
+  const panels: THREE.Group[] = [];
+  for (let k = 0; k < 4; k++) {
+    const hinge = new THREE.Group(), pb = new Batch();
+    const shell = cached("bombPanel", () => { const g = new THREE.CylinderGeometry(0.6, 0.6, 1.66, 10, 1, true, -Math.PI / 4 + 0.03, Math.PI / 2 - 0.06); g.translate(0, -0.83, 0); return uvFrom(g, (x, y, z) => [Math.atan2(x, z), y]); });
+    pb.add(shell, lam("bombPanelM", () => ({ map: P.oliveHD(), side: THREE.DoubleSide })));
+    pb.add(cached("panelRivets", () => { const parts: THREE.BufferGeometry[] = []; for (let i = 0; i < 5; i++) parts.push(new THREE.SphereGeometry(0.025, 6, 4).translate(0, -0.2 - i * 0.3, 0.6)); return mergeGeometries(parts, false); }), col("#3a4020"));
+    pb.build(hinge, true);
+    hinge.position.set(0, 0.84, 0); hinge.rotation.y = (k * Math.PI) / 2;
+    const pivot = new THREE.Group(); pivot.add(hinge); root.add(pivot); panels.push(hinge);
+  }
+  return { root, panels };
+};
+export type CrateRig = { root: THREE.Group; lid: THREE.Group };
+const buildCrate = (): CrateRig => {
+  const root = new THREE.Group(), lid = new THREE.Group(), b = new Batch(), l = new Batch(), m = lam("batCrate", () => ({ map: P.batCrateHD() }));
+  b.add(rbox(0.9, 0.56, 0.62, 0.03), m, M4(0, 0, 0));
+  for (const s of [-1, 1]) b.add(rbox(0.06, 0.06, 0.3, 0.02), col("#6a4a2c"), M4(s * 0.48, 0.12, 0));
+  l.add(rbox(0.94, 0.06, 0.66, 0.02), m, M4(0, 0.03, 0.33));
+  b.build(root, true); l.build(lid, true);
+  lid.position.set(0, 0.28, -0.33); root.add(lid);
+  return { root, lid };
+};
+export type Rigs = { bomb: BombRig; crate: CrateRig };
+export const buildRigs = (): Rigs => ({ bomb: buildBomb(), crate: buildCrate() });
+export const poseBomb = (r: BombRig, p: BombPose) => {
+  r.root.visible = p.visible;
+  if (!p.visible) return;
+  r.root.position.set(...p.pos); r.root.rotation.set(p.tilt * 0.6, p.spin, p.tilt, "YXZ");
+  r.panels.forEach((h, k) => h.rotation.set(-1.9 * p.open, (k * Math.PI) / 2, 0, "YXZ"));
+  r.root.updateMatrixWorld(true);
+};
+export const poseCrate = (r: CrateRig, p: CratePose) => {
+  r.root.visible = p.visible;
+  if (!p.visible) return;
+  r.root.position.set(p.pos[0], p.pos[1], p.pos[2]); r.root.rotation.set(0, p.yaw, p.jolt, "YXZ");
+  r.lid.rotation.x = -p.lid;
+  r.root.updateMatrixWorld(true);
+};
 
 // =================================================================================================================
 // FOREGROUND framing props (story.ts FOREGROUND, composition.md 3.3). world.ts calls fgUpdate(group, id, f, cam) every
 // frame; the kits are built once into `group` (cached by kit name) and placed in camera space ("cam") or world space.
-// Kit front = local +z (faces the lens). Layer 0 (the wheat cards: NOINK), the shot's DOF blurs them.
+// Kit front = local +z (faces the lens). The shot's DOF blurs them.
 // =================================================================================================================
 const fgKit = (kit: string): THREE.Group => {
-  const g = new THREE.Group(), b = new Batch(), c = new Batch();
+  const g = new THREE.Group(), b = new Batch();
   switch (kit) {
-    case "wheat": { const r = rng(5); for (let i = 0; i < 9; i++) c.add(clumpGeo(), wheatCardM(i % 3), M4((r() - 0.5) * 0.7, -0.2, (r() - 0.5) * 0.4, r() * 6.28, 0, 0, [0.8, 0.9 + 0.5 * r(), 0.8])); break; }
-    case "fence_post": b.add(rbox(0.14, 1.3, 0.14, 0.03), postM(), M4(0, 0.65, 0, 0.3)); for (const y of [0.58, 0.84, 1.1]) b.add(rod(V(0, y, 0), V(-2.5, y - 0.05, -1.5), 0.012), wireM()); break;
-    case "sandbags": sandbagRing(b, 0, 0, 0.9, -0.8, 0.8, 2, 7); break;
-    default: crate(b, 0, 0, 0, 0.2);
+    case "yucca": yucca(b, 0, 0, 1.6, 7); addVeg(b, "bush", 0.8, 0, 0.4, 0.7, 3, 0); break;
+    case "sandbags": sandbagRing(b, 0, 0, 1.2, -0.9, 0.9, 3, 7); break;
+    default: for (const [dx, dy, ry] of [[0, 0, 0.1], [0.82, 0, -0.1], [0.4, 0.6, 0.25]]) b.add(rbox(0.8, 0.6, 0.6, 0.03), lam("batCrate", () => ({ map: P.batCrateHD() })), M4(dx, dy + 0.3, 0, ry));
   }
   b.build(g, false);
-  buildNoInk(c, g);
   g.name = "fg_" + kit;
   return g;
 };

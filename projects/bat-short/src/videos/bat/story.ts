@@ -101,7 +101,7 @@ export const EV = {
 export const SPOT = {
   // desert (shot 1): the camera hangs in the night sky, the desert floor 30 m below
   CAM1: [0, 30, 8] as V3,
-  BOMB1: [0.25, 32.5, -1.0] as V3,          // where the casing pops
+  BOMB1: [0.25, 32.9, -4.0] as V3,          // where the casing pops
   // base: hangar (doors on +z), control tower, water tower, barracks, the big fuel tank on legs, the General's car
   HANGAR: [-18, 0, -24] as V3, HANGAR_W: 20, HANGAR_D: 20, HANGAR_H: 7.2,
   TOWER: [6, 0, -32] as V3,
@@ -114,11 +114,11 @@ export const SPOT = {
   CRATES9: [1.5, 0, -5.0] as V3,             // the crate stack the bat looks behind
   SOLDIER2: [14.7, 0, 13.8] as V3,
   // cave: overlook platform at y 0, the bowl falls to the cave floor at y -8, the mouth on z = -30 (x -7..7, up to y 3)
-  ADAMS3: [5.4, 0, -3.4] as V3,
+  ADAMS3: [6.6, 0, -3.0] as V3,
   RAIL_Z: -4.4,
   MOUTH: [0, -8, -30] as V3, MOUTH_W: 14, MOUTH_H: 11,
   FLOOR_Y: -8,
-  LIP15: [1.2, 2.05, -30.4] as V3,           // shot 15: the medal bat hangs from the cave lip (feet at the rock)
+  LIP15: [1.2, 1.8, -30.4] as V3,           // shot 15: the medal bat hangs from the cave lip (feet at the rock)
   CAM15: [0.0, -5.2, -40] as V3,
   // workshop: bench centre, the planning table with the model town
   BENCH: [0, 0, 0] as V3, BENCH_Y: 0.92,
@@ -130,9 +130,9 @@ export const SPOT = {
   HOUSE5: [0, 0, 0] as V3, RIDGE5: [0, 1.44, 0] as V3,
   // oval office: the desk, the President behind it, Adams in front
   DESK6: [0, 0, -1.4] as V3, DESK_Y: 0.8,
-  PRES6: [0.05, -0.36, -2.15] as V3,
-  ADAMS6: [1.15, 0, -0.35] as V3,
-  PAPER6: [-0.12, 0.805, -1.12] as V3,
+  PRES6: [0.05, -0.2, -1.93] as V3,
+  ADAMS6: [-0.35, 0, -0.65] as V3,
+  PAPER6: [0.3, 0.805, -1.68] as V3,
   // lab
   LABBENCH: [0, 0, 0] as V3, LAB_Y: 0.92,
   CHEM7: [0.42, 0, -0.85] as V3,
@@ -140,8 +140,8 @@ export const SPOT = {
   // office
   ODESK: [0, 0, -1.1] as V3, ODESK_Y: 0.78,
   OFFICER14: [0.15, 0, -1.8] as V3,
-  BAGS14: [-0.55, 0.78, -1.05] as V3,
-  BASKET14: [0.98, 0, -0.35] as V3,
+  BAGS14: [-0.38, 0.78, -1.08] as V3,
+  BASKET14: [0.6, 0, -0.38] as V3,
   TRAY14: [0.6, 0.78, -0.95] as V3,
 };
 
@@ -160,7 +160,7 @@ export const bombAt = (id: number, f: number): BombPose => {
   if (id !== 1) return { visible: false, pos: [0, -99, 0], tilt: 0, open: 0, spin: 0 };
   const B = SPOT.BOMB1, u = clamp01(f / EV.POP1);
   // drops in fast from above the frame and settles into a slow fall at the centre (cartoon hang), then sinks away
-  const y = f < EV.POP1 ? B[1] + 17 * (1 - u) ** 2.4 : B[1] - 0.9 * ((f - EV.POP1) / FPS) - 3.2 * ((f - EV.POP1) / FPS) ** 2;
+  const y = f < EV.POP1 ? B[1] + 7.5 * (1 - u) ** 1.6 : B[1] - 0.9 * ((f - EV.POP1) / FPS) - 3.2 * ((f - EV.POP1) / FPS) ** 2;
   const x = B[0] + 0.9 * (1 - u) ** 2;
   const open = f < EV.POP1 ? 0 : easeOut((f - EV.POP1) / 7);
   return { visible: true, pos: [x, y, B[2]], tilt: 0.16 * Math.sin(f * 0.07) + 0.12 * (1 - u), open, spin: f * 0.015 };
@@ -256,7 +256,7 @@ const S1 = (f: number): Shot => {
   return zoom(c.pos, c.look, c.fov!, pushK(f, 0, 0.001) * pushK(f, EV.POP1, 0, 0.006, 14), { roll: c.roll });
 };
 // 2 (114-170): the base at dusk past the soldier's shoulder (right third); the swarm dives in from the top left
-const S2 = (f: number): Shot => P({ pos: [16.2, 1.72, 17.2], look: [-4, 5.2, -16], fov: 48, roll: -0.025 }, f, 114, 0.0022, 0.007, 14, 137);
+const S2 = (f: number): Shot => zoom([16.2, 1.55, 17.2], [-4, 4.4, -16], 48, pushK(f, 114, 0.0016) * pushK(f, 137, 0, 0.007, 14), { roll: -0.025 });
 // 3 (171-327): establishing wide over the overlook toward the cave mouth, glide down to Adams at the rail by "Adams";
 // tilt up with the column at 290, punch in on Adams' turn at 308
 const S3 = (f: number): Shot => {
@@ -264,7 +264,7 @@ const S3 = (f: number): Shot => {
   const c2 = C([7.0, 1.9, 0.4], [-0.6, 4.5, -30], 50, 0.02);
   const u = gl(f, 176, 52), v = gl(f, 284, 26);
   const s = mix(mix(a, b, u), c2, v);
-  return P(s, f, 228, 0.0018, 0.007, 16, 305);
+  return zoom(s.pos, s.look, s.fov!, pushK(f, 228, 0.0016) * pushK(f, 305, 0, 0.007, 16), { roll: s.roll });
 };
 // 4a (328-366): Adams behind his bench, the bulb pops; 4b (367-429): bench close-up; 4c (430-546): the planning model
 const S4a = (f: number): Shot => P({ pos: [0.75, 1.56, 2.35], look: [0.02, 1.5, -0.9], fov: 42, roll: 0.02 }, f, 328, 0.0028, 0.008, 12, 330);
@@ -279,14 +279,14 @@ const S4c = (f: number): Shot => {
 // 5 (547-652): the cutaway model house; push into the attic, then onto the timer; POOF
 const S5 = (f: number): Shot => {
   const R = SPOT.RIDGE5;
-  const a = C([0.25, 1.15, 2.6], [0.0, 0.95, 0.0], 40, 0.02), b = C([0.12, 1.28, 1.05], [R[0], R[1] - 0.18, 0.0], 38, -0.02);
-  const c = C([0.06, 1.2, 0.5], [R[0], R[1] - 0.27, 0.0], 36, 0.01);
+  const a = C([0.35, 1.0, 3.6], [0.0, 0.85, 0.0], 40, 0.02), b = C([0.22, 1.32, 2.3], [R[0], R[1] - 0.3, 0.0], 38, -0.02);
+  const c = C([0.08, 1.26, 0.95], [R[0], R[1] - 0.12, 0.0], 36, 0.01);
   const s = mix(mix(a, b, gl(f, 553, 40)), c, gl(f, 600, 28));
   return P(s, f, 547, 0.0016, 0.009, 12, 626);
 };
 // 6 (653-732): the President's desk from the front-left, Adams on the right; push on the stamp
 const S6 = (f: number): Shot => {
-  const a = C([-1.45, 1.5, 2.3], [0.25, 1.05, -1.4], 44, 0.025), b = C([-1.1, 1.42, 1.75], [0.18, 1.0, -1.45], 42, -0.02);
+  const a = C([1.35, 1.55, 2.6], [-0.1, 1.05, -1.4], 46, 0.025), b = C([1.15, 1.5, 2.15], [-0.1, 1.02, -1.4], 46, -0.02);
   return P(between(a, b, gl(f, 662, 40)), f, 653, 0.002, 0.008, 14, 709);
 };
 // 7 (733-852): the lab two-shot; glide toward the bat on the bench for the flex
@@ -314,7 +314,7 @@ const S9s = (f: number): Shot => {
   return { pos: pos.map((v) => v / 7) as V3, look: look.map((v) => v / 7) as V3, fov: 46, roll: 0.02 * Math.sin(f * 0.05) };
 };
 // 10 (1110-1149): low under the fuel tank, looking up along the pipe at the row of hanging bats
-const S10 = (f: number): Shot => P({ pos: [1.55, 0.95, 6.15], look: [-2.2, 2.0, 5.05], fov: 46, roll: -0.04 }, f, 1110, 0.003, 0.007, 14, 1124);
+const S10 = (f: number): Shot => zoom([0.9, 0.85, 8.2], [-1.5, 1.95, 5.05], 36, pushK(f, 1110, 0.0025) * pushK(f, 1124, 0, 0.006, 14), { roll: -0.04 });
 // 11 (1150-1214): wide on the tank; WHOOMP
 const S11 = (f: number): Shot => P({ pos: [15, 4.2, 25], look: [-2, 4.6, 3], fov: 50, roll: 0.02 }, f, 1150, 0.0018, 0.006, 10, 1186);
 // 12 (1215-1301): the bucket line in the foreground, crane up to the whole base burning by 1274
@@ -324,7 +324,7 @@ const S12 = (f: number): Shot => {
 };
 // 13a (1302-1364): smoky glide past the burnt hangar frame; 13b (1365-1417): the General polishes his car
 const S13a = (f: number): Shot => {
-  const a = C([0.5, 3.0, 2.0], [-15, 4.6, -24], 48, 0.02), b = C([-9.0, 2.4, 0.5], [-19, 4.2, -22], 46, -0.02);
+  const a = C([2.5, 3.2, -6.5], [-15, 4.6, -24], 48, 0.02), b = C([-4.0, 2.8, -9.5], [-18, 4.5, -24], 46, -0.02);
   return between(a, b, gl(f, 1302, 62));
 };
 const S13b = (f: number): Shot => {
@@ -333,7 +333,7 @@ const S13b = (f: number): Shot => {
 };
 // 14 (1418-1514): the grey office, the officer, the money bags, the wastebasket; push on the drop
 const S14 = (f: number): Shot => {
-  const a = C([-0.75, 1.48, 2.1], [0.2, 1.05, -1.0], 46, 0.02), b = C([-0.45, 1.4, 1.7], [0.3, 1.0, -0.9], 44, -0.02);
+  const a = C([-0.4, 1.5, 2.6], [0.15, 1.05, -0.9], 54, 0.02), b = C([-0.2, 1.45, 2.3], [0.15, 1.0, -0.9], 52, -0.02);
   return P(between(a, b, gl(f, 1458, 36)), f, 1418, 0.0018, 0.006, 14, 1487);
 };
 // 15 (1515-1649): from inside the cave, out through the mouth at the moon; dolly along the line onto the medal bat on
@@ -342,7 +342,7 @@ const S15 = (f: number): Shot => {
   const L = SPOT.LIP15, B: V3 = [L[0], L[1] - 0.22, L[2]], c0 = SPOT.CAM15, dir: V3 = [B[0] - c0[0], B[1] - c0[1], B[2] - c0[2]];
   const len = Math.hypot(...dir), u = gl(f, 1528, 66), d = lerp(len, 1.25, u) * pushK(f, 1594, 0.0024);
   const n: V3 = [dir[0] / len, dir[1] / len, dir[2] / len];
-  return { pos: [B[0] - n[0] * d, B[1] - n[1] * d, B[2] - n[2] * d], look: [B[0] + n[0] * 3, B[1] + n[1] * 3 - 0.15 * (1 - u), B[2] + n[2] * 3], fov: lerp(50, 42, u), roll: lerp(0.02, -0.03, u) };
+  return { pos: [B[0] - n[0] * d, B[1] - n[1] * d, B[2] - n[2] * d], look: [B[0] + n[0] * 3, B[1] + n[1] * 3 - 0.09 * (d + 3), B[2] + n[2] * 3], fov: lerp(50, 42, u), roll: lerp(0.02, -0.03, u) };
 };
 
 const CAMS: Record<number, Key[]> = {
@@ -430,7 +430,7 @@ export const DOF: Dof[] = [
   { f: 853, cInf: 0 },
   { f: 858, dur: 46, cInf: 7, focus: () => [9.6, 1.4, 12.4] },
   { f: 968, cInf: 10, focus: (f) => bat9At(f) },
-  { f: 1110, cInf: 11, focus: () => [-0.5, 1.95, 5.05] },
+  { f: 1110, cInf: 11, focus: () => [-0.9, 1.95, 5.05] },
   { f: 1150, cInf: 0 },
   { f: 1215, cInf: 7, focus: () => [9, 1.4, 13] },
   { f: 1232, dur: 42, cInf: 0 },

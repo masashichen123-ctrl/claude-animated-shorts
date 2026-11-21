@@ -1,30 +1,48 @@
-// The whole film as one three.js scene graph (owner: world, with lights.ts): sky dome, sun disc + halo, clouds, the
-// light rig, all eight sets (build.ts, one visible at a time), the moving rigs (army truck, Lewis guns, loose crates)
-// and the cast cards. update(id, f, camera, scene) poses everything for shot `id` at frame f (a pure function of
+// The whole film as one three.js scene graph (owner: world, with lights.ts): sky dome, sun / moon disc + halo, stars,
+// clouds, the light rig, all eight sets (build.ts, one visible at a time; indoor sets hide the sky), the moving rigs
+// (the bomb casing, the bat crate), the cast cards (people: tall cards; bats + items: square cards) and the practical
+// lights (set lamps + the stage's fire / bulb / POOF glows). update(id, f, camera, scene) poses everything for shot `id` at frame f (a pure function of
 // id + f) and returns the camera's look point.
 import * as THREE from "three";
 import { ctex, cloudHD } from "./paint";
-import { buildSets, buildRigs, poseTruck, poseGuns, poseCrates, SET_META, SetRig, Rigs, WHEAT } from "./build";
+import { buildSets, buildRigs, poseBomb, poseCrate, SET_META, SetRig, Rigs, CLOCK } from "./build";
 import * as B from "./build";
-import { LIGHTS, LOOK, LightPreset, LightName, lightOf, SHOT_SUN, SHOT_SUN_FROM, SHOT_SKY, CUR } from "./lights";
+import { LIGHTS, LOOK, LightPreset, LightName, lightOf, SHOT_SUN, SHOT_SUN_FROM, SHOT_SUN_DIR, SHOT_SKY, CUR } from "./lights";
 import { TONE, CHAR, HAZE, untone } from "./shade";
 import { NOINK } from "./ink";
 import { Pool, Actor, Fx, stage } from "./cast";
-import { FPS, SHOTS, ShotDef, SetName, SPOT, camAt, truckAt, gunsAt, cratesAt } from "./story";
+import { CARD_K } from "./cardshade";
+import { cardShade } from "./cardshade";
+import { FPS, SHOTS, ShotDef, SetName, SPOT, camAt, bombAt, crateAt } from "./story";
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
+/** square card geometry (bats, small lit items): 1 x 1 m, centred */
+const SQ = new THREE.PlaneGeometry(1, 1);
 /** shots whose sky gets the 4 view-placed hero clouds, and their [azimuth offset, elevation (rad), width m, aspect] */
-const HERO_CLOUD_SHOTS = new Set([3, 4, 6, 7, 11, 13, 15, 16]);
+const HERO_CLOUD_SHOTS = new Set([2, 3, 8, 11, 12]);
 const HERO_CLOUDS: [number, number, number, number][] = [[-0.14, 0.075, 220, 3.2], [0.13, 0.11, 250, 2.8], [0.0, 0.045, 320, 6], [-0.3, 0.05, 200, 5]];
 /** camera-relative sun azimuth actually used for a shot (sun disc only when it is roughly ahead of the lens) */
 const o2 = (id: number) => Math.abs(SHOT_SUN[id]?.az ?? 90);
 type Lamp = { p: [number, number, number]; I: number; halo: number; col?: string };
-/** practical lamps per set: the camp's lit tent doors, the desk lamp and the lantern (dusk) */
-const D = SPOT.DESK;
+/** practical lamps per set: desk lamps, the attic lantern, the lab's glowing flasks */
 const LAMPS: Partial<Record<SetName, Lamp[]>> = {
-  camp: [{ p: [0, 0.95, 2.6], I: 7, halo: 1.6 }, { p: [D[0] + 0.45, 1.06, D[2] - 0.18], I: 5, halo: 0.55 }, { p: [D[0] + 1.35, 2.1, D[2] - 0.9], I: 6, halo: 0.9 },
-    { p: [-6.6, 0.95, -2.5], I: 5, halo: 1.4 }],
+  workshop: [{ p: [SPOT.BENCH[0] + 0.74, SPOT.BENCH_Y + 0.33, SPOT.BENCH[2] - 0.35], I: 2.2, halo: 0.25 }, { p: [SPOT.TABLE[0], 2.6, SPOT.TABLE[2]], I: 3.0, halo: 0 }],
+  attic: [{ p: [0.25, 0.66, -0.22], I: 0.5, halo: 0.12, col: "#ffc070" }, { p: [0.2, 2.4, 1.4], I: 2.2, halo: 0 }],
+  oval: [{ p: [SPOT.DESK6[0] - 0.7, SPOT.DESK_Y + 0.36, SPOT.DESK6[2] - 0.23], I: 2.0, halo: 0.3 }],
+  lab: [{ p: [0.85, SPOT.LAB_Y + 0.15, -0.15], I: 1.6, halo: 0.35, col: "#7dffa0" }, { p: [-0.95, SPOT.LAB_Y + 0.12, -0.2], I: 1.2, halo: 0.3, col: "#7dffa0" }, { p: [0.45, SPOT.LAB_Y + 0.1, -0.22], I: 0.8, halo: 0.2, col: "#ffb050" }],
+  office: [{ p: [SPOT.ODESK[0] - 0.62, SPOT.ODESK_Y + 0.36, SPOT.ODESK[2] - 0.33], I: 2.4, halo: 0.3 }],
 };
+/** the moon: a pale disc with soft craters and a bright limb (bloom keys on it) */
+const moonTex = () => ctex("moonDisc", 256, 256, (g) => {
+  const gr = g.createRadialGradient(118, 112, 10, 128, 128, 124);
+  gr.addColorStop(0, "rgba(255,252,236,1)"); gr.addColorStop(0.85, "rgba(246,240,214,1)"); gr.addColorStop(0.97, "rgba(236,228,200,1)"); gr.addColorStop(1, "rgba(236,228,200,0)");
+  g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
+  for (const [x, y, r] of [[90, 100, 26], [160, 150, 34], [150, 80, 16], [100, 170, 18], [190, 110, 12]]) { g.fillStyle = "rgba(190,182,160,0.45)"; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); }
+});
+const starTex = () => ctex("starDot", 32, 32, (g) => {
+  const gr = g.createRadialGradient(16, 16, 0, 16, 16, 16); gr.addColorStop(0, "rgba(255,255,255,1)"); gr.addColorStop(0.3, "rgba(255,255,255,0.8)"); gr.addColorStop(1, "rgba(255,255,255,0)");
+  g.fillStyle = gr; g.fillRect(0, 0, 32, 32);
+});
 /** sun disc (solid, soft rim) and the flat golden halo (lighting.md 6 / depth.md 6.4: r50 13-26 % of the frame width) */
 const discTex = () => ctex("sunDisc", 128, 128, (g) => {
   const gr = g.createRadialGradient(64, 64, 58, 64, 64, 64); gr.addColorStop(0, "rgba(255,255,255,1)"); gr.addColorStop(1, "rgba(255,255,255,0)");
@@ -47,6 +65,9 @@ export class World {
   root = new THREE.Group();
   private pool = new Pool();
   private actors: Actor[] = [];
+  private sqActors: Actor[] = [];
+  private stars: THREE.Points;
+  private moonMap = moonTex(); private discMap: THREE.Texture;
   private fxs: Fx[] = [];
   private hemi: THREE.HemisphereLight; private sun: THREE.DirectionalLight;
   private sky: THREE.Mesh; private skyMat: THREE.ShaderMaterial;
@@ -94,7 +115,8 @@ export class World {
     this.sky = new THREE.Mesh(new THREE.SphereGeometry(1100, 48, 24), this.skyMat);
     this.sky.renderOrder = -1; this.sky.frustumCulled = false; this.sky.layers.set(NOINK);
     R.add(this.sky);
-    this.sunDisc = new THREE.Sprite(new THREE.SpriteMaterial({ map: discTex(), color: new THREE.Color(6.0, 4.4, 2.4), fog: false, depthWrite: false }));
+    this.discMap = discTex();
+    this.sunDisc = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.discMap, color: new THREE.Color(6.0, 4.4, 2.4), fog: false, depthWrite: false }));
     this.sunHalo = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex(), color: new THREE.Color(1, 1, 1), fog: false, depthWrite: false, depthTest: true,
       transparent: true, blending: THREE.AdditiveBlending }));
     this.sunDisc.renderOrder = -0.5; this.sunHalo.renderOrder = 5;
@@ -144,6 +166,21 @@ export class World {
       m.userData.hero = k; m.userData.el = 0.2; m.layers.set(NOINK); m.renderOrder = -0.7 + k * 0.001;
       this.clouds.push(m); R.add(m);
     }
+    // ---- stars: points on the sky shell (night only), a few brighter ones, never above the bloom threshold much
+    {
+      const n = 900, pos = new Float32Array(n * 3), colr = new Float32Array(n * 3);
+      const rnd2 = (k: number) => { const x = Math.sin(k * 91.7 + 17.3) * 43758.5453; return x - Math.floor(x); };
+      for (let i = 0; i < n; i++) {
+        const a = rnd2(i) * Math.PI * 2, e = Math.asin(0.06 + 0.94 * rnd2(i + 4000)), d = 1000;
+        pos.set([Math.cos(a) * Math.cos(e) * d, Math.sin(e) * d, Math.sin(a) * Math.cos(e) * d], i * 3);
+        const k = rnd2(i + 9000) < 0.08 ? 1.6 : 0.55 + 0.5 * rnd2(i + 7000);
+        colr.set([k, k, k * 1.08], i * 3);
+      }
+      const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); g.setAttribute("color", new THREE.BufferAttribute(colr, 3));
+      this.stars = new THREE.Points(g, new THREE.PointsMaterial({ map: starTex(), size: 5, sizeAttenuation: false, vertexColors: true, transparent: true, depthWrite: false, fog: false }));
+      this.stars.layers.set(NOINK); this.stars.renderOrder = -0.9; this.stars.frustumCulled = false; this.stars.visible = false;
+      R.add(this.stars);
+    }
     // ---- practicals (lighting.md 3.3): lamps per set, the flame light; additive halos so lamps glow ----
     for (let i = 0; i < 6; i++) {
       const p = new THREE.PointLight("#ffd9a0", 0, 0, 2); p.castShadow = false; p.visible = false; this.points.push(p); R.add(p);
@@ -158,7 +195,7 @@ export class World {
     this.sets = buildSets();
     for (const k of Object.keys(this.sets) as SetName[]) { this.sets[k].group.visible = false; R.add(this.sets[k].group); }
     this.rigs = buildRigs();
-    R.add(this.rigs.truck);
+    R.add(this.rigs.bomb.root, this.rigs.crate.root);
     this.fg.name = "foreground"; R.add(this.fg);
   }
 
@@ -174,6 +211,8 @@ export class World {
       fx += x / n; fz += z / n;
     }
     const n = Math.hypot(fx, fz) || 1; fx /= n; fz /= n;
+    const abs = SHOT_SUN_DIR[id];
+    if (abs && !late) { v = new THREE.Vector3(...abs).normalize(); this.sunCache.set(key, v); return v; }
     const o = late ? sw![1] : SHOT_SUN[id];
     const az = THREE.MathUtils.degToRad(o?.az ?? L.az), el = THREE.MathUtils.degToRad(o?.el ?? L.el);
     const hx = fx * Math.cos(az) - fz * Math.sin(az), hz = fz * Math.cos(az) + fx * Math.sin(az); // screen right = (-fz, fx)
@@ -183,16 +222,21 @@ export class World {
   }
 
   private actor(i: number) { while (this.actors.length <= i) this.actors.push(new Actor(this.root)); return this.actors[i]; }
+  private sqActor(i: number) {
+    while (this.sqActors.length <= i) { const a = new Actor(this.root, SQ); a.mat = cardShade(a.mat, true); a.mesh.material = a.mat; this.sqActors.push(a); }
+    return this.sqActors[i];
+  }
   private fx(i: number) { while (this.fxs.length <= i) this.fxs.push(new Fx(this.root)); return this.fxs[i]; }
 
-  /** lamps of the active set; halos on every bulb */
-  private practicals(set: SetName, L: LightPreset) {
-    const hot = (LAMPS[set] ?? []).map((l) => ({ p: V(...l.p), I: l.I, col: l.col ?? L.pracCol, halo: l.halo }));
+  /** lamps of the active set + the stage's glows (fire, bulb, POOF); halos on lamp bulbs */
+  private practicals(set: SetName, L: LightPreset, extra: { p: [number, number, number]; I: number; col: string; d?: number }[] = []) {
+    const hot = [...(LAMPS[set] ?? []).map((l) => ({ p: V(...l.p), I: l.I, col: l.col ?? L.pracCol, halo: l.halo, d: 0 })),
+      ...extra.map((l) => ({ p: V(...l.p), I: l.I, col: l.col, halo: 0, d: l.d ?? 0 }))].slice(0, this.points.length);
     for (let i = 0; i < this.points.length; i++) {
       const pl = this.points[i], h = this.halos[i], q = hot[i];
       pl.visible = !!q; h.visible = !!q && q.halo > 0;
       if (!q) continue;
-      pl.position.copy(q.p); pl.color.set(q.col); pl.intensity = q.I;
+      pl.position.copy(q.p); pl.color.set(q.col); pl.intensity = q.I; pl.distance = q.d; pl.decay = q.d ? 1.2 : 2;
       if (h.visible) { h.position.copy(q.p); h.scale.setScalar(q.halo); (h.material as THREE.SpriteMaterial).color.set(q.col).multiplyScalar(0.55); }
     }
     for (const sp of this.spots) sp.visible = false;
@@ -200,7 +244,7 @@ export class World {
 
   update(id: number, f: number, cam: THREE.PerspectiveCamera, scene: THREE.Scene) {
     const t = f / FPS, s = SHOTS[id - 1], ln = lightOf(id), L = LIGHTS[ln], K = LOOK[ln], meta = SET_META[s.set];
-    WHEAT.uTime.value = t;
+    CLOCK.uTime.value = t;
     CUR.id = id;
     // ---- camera ----
     const c = camAt(id, f);
@@ -213,7 +257,8 @@ export class World {
     this.hemi.color.set(L.sky); this.hemi.groundColor.set(L.ground); this.hemi.intensity = L.hemiI;
     this.sun.color.set(L.sunCol); this.sun.intensity = L.sunI;
     let Rr = THREE.MathUtils.clamp(dist * 1.15 + 7, 12, 95);
-    if (ln === "golden" || ln === "dusk" || ln === "morning") Rr = Math.max(Rr, 30);
+    if (ln === "dusk" || ln === "night") Rr = Math.max(Rr, 30);
+    if (meta.indoor) Rr = THREE.MathUtils.clamp(dist * 1.2 + 3, 5, 14);
     this.sun.position.copy(focus).addScaledVector(sunDir, 220); this.sun.target.position.copy(focus);
     const sc = this.sun.shadow.camera;
     sc.left = -Rr; sc.right = Rr; sc.top = Rr; sc.bottom = -Rr; sc.near = 20; sc.far = 480; sc.updateProjectionMatrix();
@@ -228,9 +273,10 @@ export class World {
     TONE.uLambert.value = L.lambert; TONE.uSideK.value = L.sideK; TONE.uTerm.value = L.term; TONE.uBounce.value.set(...K.bounce); TONE.uSat.value = K.sat;
     TONE.uPrac.value = L.prac; TONE.uAlbFloor.value.set(...L.albFloor); TONE.uRim.value.set(...L.rim);
     TONE.uGobo.value = L.gobo; TONE.uGoboScale.value = L.goboScale; TONE.uGoboOff.value.set(0.04 * t, 0.015 * t); TONE.uSunW.value.copy(sunDir);
-    TONE.uAO.value = L.ao * 0.6; TONE.uAOR.value = L.aoR; TONE.uFloorY.value = 0; TONE.uCeilY.value = 1e4; // outdoors: wall bases only
+    TONE.uAO.value = L.ao * 0.6; TONE.uAOR.value = L.aoR; TONE.uFloorY.value = 0; TONE.uCeilY.value = meta.ceil ?? 1e4; // outdoors: wall bases only
     CHAR.uCharTint.value.set(...L.charTint); CHAR.uCharShade.value = L.charShade; CHAR.uGrad.value = L.charGrad;
     CHAR.uBodyGrad.value = L.bodyGrad; CHAR.uSideTint.value.set(...L.sideTint);
+    CARD_K.uGain.value = L.cardGain ?? 1; CARD_K.uRimCol.value.set(...(L.cardRim ?? [0.95, 0.52, 0.16])); CARD_K.uRimK.value = L.cardRimK ?? 0;
     // ---- sky, fog (colour = horizon colour), sun disc + halo, clouds ----
     const su = this.skyMat.uniforms;
     const SK = SHOT_SKY[id] ?? K.sky;
@@ -245,15 +291,21 @@ export class World {
     HAZE.uHaze.value.set(HZ.start * hk, HZ.len * hk, HZ.h * hk, HZ.max); HAZE.uHazeSat.value = HZ.sat; HAZE.uHazeY0.value = 0;
     // ink reads scene.fog linearly: near = haze start, far ~ where the haze reaches ~90 %
     this.fog.near = HZ.start * hk; this.fog.far = HZ.max > 0 ? HZ.start * hk + 2.3 * HZ.len * hk : 1e5;
-    scene.fog = this.fog; scene.background = null;
-    const outdoors = true;
-    const showSun = (ln === "golden" || ln === "dusk" || ln === "morning") && (o2(id) < 70);
+    scene.fog = this.fog;
+    const outdoors = !meta.indoor;
+    scene.background = outdoors ? null : untone(L.bg ?? "#2a2a2a", new THREE.Color());
+    const moon = (L.moon ?? 0) > 0;
+    const showSun = outdoors && (ln === "dusk" || moon) && (SHOT_SUN_DIR[id] !== undefined || o2(id) < 70);
+    this.stars.visible = outdoors && moon;
     this.sunDisc.visible = this.sunHalo.visible = showSun;
     if (showSun) {
       this.sunDisc.position.copy(cam.position).addScaledVector(sunDir, 900);
-      this.sunDisc.scale.setScalar(2 * 900 * Math.tan(THREE.MathUtils.degToRad(1.7)));
-      this.sunHalo.position.copy(this.sunDisc.position); this.sunHalo.scale.setScalar(2 * 900 * Math.tan(THREE.MathUtils.degToRad(24)));
-      (this.sunHalo.material as THREE.SpriteMaterial).color.set(L.sunDisc).multiplyScalar(1.3);
+      const dm = this.sunDisc.material as THREE.SpriteMaterial;
+      dm.map = moon ? this.moonMap : this.discMap;
+      if (moon) dm.color.setRGB(2.1, 2.05, 1.85); else dm.color.setRGB(6.0, 4.4, 2.4);
+      this.sunDisc.scale.setScalar(2 * 900 * Math.tan(THREE.MathUtils.degToRad(moon ? L.moon! : 1.7)));
+      this.sunHalo.position.copy(this.sunDisc.position); this.sunHalo.scale.setScalar(2 * 900 * Math.tan(THREE.MathUtils.degToRad(moon ? L.moon! * 4.5 : 24)));
+      (this.sunHalo.material as THREE.SpriteMaterial).color.set(moon ? "#6a8acc" : L.sunDisc).multiplyScalar(moon ? 0.55 : 1.3);
     }
     const skyAt = (elR: number, out: THREE.Color) => { // the sky stop colour at an elevation (radians), for the cloud pre-mix
       const st = SK.e.map((d) => THREE.MathUtils.degToRad(d));
@@ -282,23 +334,20 @@ export class World {
     // ---- sets: only the active one ----
     for (const k of Object.keys(this.sets) as SetName[]) this.sets[k].group.visible = k === s.set;
     this.sets[s.set].tick?.(t, id);
-    // ---- rigs: truck, guns, loose crates ----
-    const tp = truckAt(id, f);
-    poseTruck(this.rigs.truck, tp);
-    const gp = gunsAt(id, f);
-    const guns = poseGuns(this.rigs, gp, this.root);
-    poseCrates(this.rigs, cratesAt(id, f), this.root);
-    this.practicals(s.set, L);
+    // ---- rigs: the bomb casing, the bat crate ----
+    const bp = bombAt(id, f), cp = crateAt(id, f);
+    poseBomb(this.rigs.bomb, bp); poseCrate(this.rigs.crate, cp);
     // ---- cast + effects ----
     const right = V(0, 0, 0).setFromMatrixColumn(cam.matrixWorld, 0), up = V(0, 0, 0).setFromMatrixColumn(cam.matrixWorld, 1);
-    const st = stage(id, t, { pos: cam.position, right, up }, { truck: tp, guns, gunPoses: gp });
+    const st = stage(id, t, { pos: cam.position, right, up, sun: sunDir }, { bomb: bp, crate: cp });
+    this.practicals(s.set, L, st.lights);
     this.frustum.setFromProjectionMatrix(this.m4.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse));
-    let ai = 0;
+    let ai = 0, si = 0;
     const used: Actor[] = [];
     for (const p of st.places) {
       const sc2 = p.scale ?? 1;
-      if (!this.frustum.intersectsSphere(this.sph.set(this.v.set(p.x, p.y + 1.1 * sc2, p.z), 3.5))) continue;
-      const a = this.actor(ai++);
+      if (p.sq ? !this.frustum.intersectsSphere(this.sph.set(this.v.set(p.x, p.y, p.z), sc2)) : !this.frustum.intersectsSphere(this.sph.set(this.v.set(p.x, p.y + 1.1 * sc2, p.z), 3.5))) continue;
+      const a = p.sq ? this.sqActor(si++) : this.actor(ai++);
       const [w, h, k] = p.size ?? [300, 500, 0.5];
       a.r = this.pool.req(p.key, w, h, k, p.draw);
       a.mesh.visible = true;
@@ -310,6 +359,7 @@ export class World {
       used.push(a);
     }
     for (let i = ai; i < this.actors.length; i++) this.actors[i].mesh.visible = false;
+    for (let i = si; i < this.sqActors.length; i++) this.sqActors[i].mesh.visible = false;
     let fi = 0;
     const fused: Fx[] = [];
     for (const p of st.fx) {

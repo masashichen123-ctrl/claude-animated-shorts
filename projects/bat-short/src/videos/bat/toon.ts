@@ -979,19 +979,6 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
       p.band([[hx - 4 * u, hy + 6 * u], [hx + 14 * u, hy - 26 * u]], "#3a2a22", 2.4 * u, 1 * u, "round");
       p.poly([[hx + 10 * u, hy - 18 * u], [hx + 30 * u, hy - 52 * u], [hx + 22 * u, hy - 20 * u]], "#f4efe2", 1.4 * u);
       p.dot(hx, hy, 5.5 * u);
-    } else if (prop === "handset") { // black earpiece on a cord
-      p.stroke(curve([hx, hy + 10 * u], [hx + 30 * u, hy + 60 * u], [hx + 60 * u, hy + 40 * u]), 2.4 * u, "#2a2224");
-      p.poly(rrect(hx - 7 * u, hy - 4 * u, hx + 7 * u, hy + 18 * u, 4 * u), "#2a2224", 1.6 * u);
-      p.ell(hx, hy - 6 * u, 11 * u, 6 * u, "#2a2224", 1.6 * u);
-      p.dot(hx + 3 * u, hy + 8 * u, 5.5 * u);
-    } else if (prop === "lewis") { // the Lewis gun at the hip: fat shroud, drum on top, wooden stock
-      const dir = f, by = hy - 2 * u;
-      p.poly(rrect(Math.min(hx - 50 * u * dir, hx + 70 * u * dir), by - 9 * u, Math.max(hx - 50 * u * dir, hx + 70 * u * dir), by + 9 * u, 6 * u), "#3d4246", 2.4 * u);
-      p.poly(rrect(Math.min(hx + 62 * u * dir, hx + 96 * u * dir), by - 3 * u, Math.max(hx + 62 * u * dir, hx + 96 * u * dir), by + 3 * u, 2 * u), "#2a2e31", 1.6 * u);
-      p.poly([[hx - 48 * u * dir, by - 6 * u], [hx - 92 * u * dir, by + 4 * u], [hx - 92 * u * dir, by + 18 * u], [hx - 46 * u * dir, by + 8 * u]], "#8a5a34", 2 * u);
-      p.ell(hx + 4 * u * dir, by - 14 * u, 26 * u, 7 * u, "#4a5056", 2.2 * u);
-      for (const t of [-0.6, -0.2, 0.2, 0.6]) p.stroke([[hx + 4 * u * dir + t * 26 * u, by - 20 * u], [hx + 4 * u * dir + t * 26 * u, by - 8 * u]], 1.4 * u);
-      p.dot(hx, hy, 5.5 * u);
     } else if (Array.isArray(prop) && prop[0] === "stamp") { // rubber stamp: round wooden knob in the fist, red pad below
       p.ell(hx, hy - 6 * u, 9 * u, 8 * u, "#8a5a34", 1.8 * u);
       p.band([[hx, hy], [hx, hy + 22 * u]], "#a8784a", 6 * u, 1.4 * u, "round");

@@ -1,19 +1,19 @@
 // Our cast as lit flat sprites in the 3D world (owner: characters, with toon.ts / cardshade.ts). Each frame every
-// character asks for a drawing (a key + a draw call); the pool keeps one canvas per distinct drawing. Characters and
-// emus are yaw-only billboards shaded by cardShade() (scene tint, bright floor, side gradient toward the sun, painted
-// crescent in the drawing); standing ones get a soft multiply contact blob. Effects (muzzle flashes, dust, smoke,
-// sparkles, the jammed spring) are unlit cards. Cards, effects and blobs live on the NOINK layer so the world ink pass
-// never outlines their quads. Herds of 100+ emus stay cheap: drawings are keyed by (pose, quantised phase, tint, size
-// tier), so a whole herd shares a few dozen canvases.
-// CONTRACT with world.ts: stage(id, t, cam, rig) -> { places, fx }; Pool / Actor / Fx draw them.
+// character asks for a drawing (a key + a draw call); the pool keeps one canvas per distinct drawing. People are
+// yaw-only billboards shaded by cardShade() (scene tint, bright floor, side gradient toward the sun, painted crescent in
+// the drawing); standing ones get a soft multiply contact blob. BATS are square cards (billboards when flying), keyed by
+// (pose, quantised flap phase, expression, size tier), so a swarm of 300 shares a few dozen canvases. Effects (flames,
+// fireballs, POOF, smoke, the idea bulb) are unlit cards; glow > 1 blooms. Cards, effects and blobs live on the NOINK
+// layer so the world ink pass never outlines their quads.
+// CONTRACT with world.ts: stage(id, t, cam, rig) -> { places, fx, lights }; Pool / Actor / Fx draw them.
 import * as THREE from "three";
 import {
-  Pen, bodyFront, bodySide, fxContact, fxShadow, fxSmoke, fxDustCloud, fxSparkle, fxSpeed, fxStars, fxBurst, fxMuzzle, fxDust, fxSpring, fxClack,
-  Outfit, Expr, FrontOpts, SideOpts, ArmPose, ArmSpec, emuSide, EmuOpts, EmuPose, EmuEye,
-  GUNNER, SERGEANT, MAJOR, FARMER, ENEMY,
+  Pen, bodyFront, bodySide, fxContact, fxShadow, fxSmoke, fxDustCloud, fxSparkle, fxSpeed, fxStars, fxBurst, fxDust,
+  Outfit, Expr, FrontOpts, SideOpts, ArmPose, ArmSpec, batDraw, BatOpts, BatPose, BatExpr, fxFlame, fxFireball, fxPoof, fxBulb, capsule, mix as mixC,
+  ADAMS, ADAMS_HAT, CHEMIST, PRESIDENT, GENERAL, GENERAL_SINGED, SOLDIER, SOLDIER2, OFFICER,
 } from "./toon";
 import {
-  FPS, SHOTS, SPOT, V3, Light, smooth, clamp01, EV, TruckPose, GunPose, truckPt, truck9X, emu12At, farmHill, paddockRise, damY, damNoise, CRATE, STACK_N,
+  FPS, SHOTS, SPOT, V3, Light, smooth, clamp01, easeOut, lerp, lerp3, add, EV, BombPose, CratePose, bat9At, ribbonAt, hero1At, camAt, caveGround,
 } from "./story";
 import { NOINK } from "./ink";
 import { cardShade, blobMaterial, CARD_K, updateEnvTint } from "./cardshade";
@@ -121,6 +121,8 @@ export type Place = {
   scale?: number; mirror?: boolean; yaw?: number; roll?: number; size?: [number, number, number];
   /** face the camera fully (top-down aerials): the card copies the camera orientation, then rolls by `roll` */
   billboard?: boolean;
+  /** square card centred on (x, y, z), scale = its size in metres (bats, small lit props) */
+  sq?: boolean;
 };
 /** effect card: billboard (or flat on the ground), rot = screen roll, soft = see-through, glow = colour multiplier (> 1 blooms) */
 export type FxPlace = { key: string; cw: number; ch: number; draw: (p: Pen) => void; x: number; y: number; z: number; w: number; h: number; flat?: boolean; rot?: number; soft?: boolean; glow?: number };
@@ -209,8 +211,8 @@ const person = (cam: CamInfo, who: Who, x: number, y: number, z: number, view: {
  *  stretched AWAY from the sun, length ~1.6 m / tan(sun elevation), capped. Golden: world.ts casts real card shadows. */
 // charshade.md 3.4: core ~.62-.70 on screen, near-neutral (B/R <= 1.12), ~0.6-0.8 body width, soft edge
 // keyed by string so new light presets ("morning", "gallery") work; an unknown key falls back to day
-const CONTACT: Record<string, [number, number, number]> = { day: [0.62, 0.6, 0.66], golden: [0.58, 0.54, 0.66], morning: [0.6, 0.57, 0.67],
-  dusk: [0.58, 0.55, 0.66] };
+const CONTACT: Record<string, [number, number, number]> = { day: [0.62, 0.6, 0.66], dusk: [0.6, 0.6, 0.72], night: [0.62, 0.64, 0.78],
+  interior: [0.6, 0.57, 0.62], lab: [0.6, 0.62, 0.66], office: [0.6, 0.6, 0.66] };
 const TAIL: [number, number, number] = [0.72, 0.7, 0.78];
 const toSrgb = (v: number) => { const c = clamp01(v); return c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055; };
 const hexOf = (c: [number, number, number], k: number) => "#" + c.map((v) => Math.round(255 * toSrgb(1 - (1 - v) * k)).toString(16).padStart(2, "0")).join("");
@@ -229,7 +231,9 @@ const blob = (out: Stage, x: number, y: number, z: number, sc = 1, k = 1) => {
 };
 
 // ---------------- staging helpers ----------------
-export type Stage = { places: Place[]; fx: FxPlace[] };
+/** a practical light this frame (fire glow, the bulb, the POOF flash): world.ts feeds them to its point lights */
+export type Glow = { p: V3; I: number; col: string; d?: number };
+export type Stage = { places: Place[]; fx: FxPlace[]; lights: Glow[] };
 /** frame-steady expression switch: before ts (seconds, minus the reaction lead) a, after b */
 const at = <T,>(t: number, ts: number, a: T, b: T) => (t < ts - LEAD ? a : b);
 /** mouth flaps while talking: alternate speak / closed every ~4 f inside [t0, t1) */
@@ -305,20 +309,7 @@ const puff = (out: Stage, c: V3, s: number, size: number, life: number, seed: nu
     w: size * (0.7 + 0.3 * u), h: size * (0.7 + 0.3 * u), soft: true });
 };
 void fxSmoke;
-const DUST = "#dca27a", DUST_GOLD = "#e8b88a";
-/** bullet strike: a dirt kick-up card (14 f) planted on the ground at c */
-const strike = (out: Stage, c: V3, f: number, f0: number, size = 1.0, seed = 0) => {
-  const u = (f - f0) / 14;
-  if (u < 0 || u >= 1) return;
-  const k = q(u, 14);
-  out.fx.push({ key: `dust${k}|${seed % 4}`, cw: 400, ch: 400, draw: (p) => fxDust(p, k, seed % 4), x: c[0], y: c[1] + size * 0.32, z: c[2], w: size, h: size });
-};
-/** muzzle flash at a gun's muzzle, pointing along its barrel on screen */
-const muzzle = (out: Stage, cam: CamInfo, m: THREE.Vector3, dir: THREE.Vector3, f: number, size = 0.75) => {
-  const rot = Math.atan2(dir.dot(cam.up), dir.dot(cam.right)), k = f % 3;
-  out.fx.push({ key: `muzzle${k}`, cw: 400, ch: 400, draw: (p) => fxMuzzle(p, k), x: m.x + dir.x * size * 0.12, y: m.y + dir.y * size * 0.12, z: m.z + dir.z * size * 0.12,
-    w: size, h: size, rot, glow: 1.9 });
-};
+const DUST = "#dca27a", SMOKE = "#8a8288", SMOKE_D = "#5a5258";
 /** sparkle burst (on ones) over a point, 20 f long, starting at frame f0 */
 const sparkle = (out: Stage, c: V3, f: number, f0: number, size = 0.9, glow = 1.3) => {
   const u = (f - f0) / 20;
@@ -339,27 +330,6 @@ const speed = (out: Stage, cam: CamInfo, c: V3, dir: THREE.Vector3, f: number, w
   out.fx.push({ key: `speed${ph}`, cw: 600, ch: 300, draw: (p) => fxSpeed(p, ph), x: c[0] - dir.x * w * 0.6, y: c[1], z: c[2] - dir.z * w * 0.6, w, h: w * 0.42, rot });
 };
 
-// ---------------- emus ----------------
-const _d = new THREE.Vector3();
-type EmuSpec = { pose: EmuPose; dir?: [number, number]; face?: -1 | 1; phase?: number; turn?: number; eye?: EmuEye; peck?: number; helmet?: boolean;
-  scale?: number; tint?: number; blink?: number; billboard?: boolean };
-/** one emu card. dir = world walking direction (picks mirroring); face = screen facing for standing birds */
-const emu = (out: Stage, cam: CamInfo, i: number, p: V3, o: EmuSpec, t: number, shadow = true) => {
-  const sc = o.scale ?? 1, d = cam.pos.distanceTo(_d.set(p[0], p[1] + 1.1, p[2])) / sc;
-  const [w, h, k] = tier(d), far = w <= 240;
-  let mirror = false;
-  if (o.dir) mirror = o.dir[0] * cam.right.x + o.dir[1] * cam.right.z < 0; else if (o.face) mirror = o.face < 0;
-  const light = far ? -2.2 : light2D(cam, mirror);
-  const ph = o.phase === undefined ? 0 : q(((o.phase % 1) + 1) % 1, far ? 8 : 16);
-  const blink = o.blink ?? lidAt(t, i);
-  const eo: EmuOpts = { pose: o.pose, phase: ph, turn: q(o.turn ?? 0, 10), eye: o.eye ?? "open", peck: q(o.peck ?? 0, far ? 4 : 12), tint: o.tint ?? i % 3,
-    helmet: o.helmet, light, blink: far ? 0 : blink, seed: 3 + (i % 2) };
-  out.places.push({ key: `E|${fkey(eo)}`, draw: (pn) => emuSide(pn, eo), x: p[0], y: p[1], z: p[2], scale: sc, mirror, size: [w, h, k], billboard: o.billboard,
-    roll: o.billboard && o.dir ? -Math.atan2(o.dir[0] * cam.up.x + o.dir[1] * cam.up.z, Math.abs(o.dir[0] * cam.right.x + o.dir[1] * cam.right.z)) * (mirror ? -1 : 1) : undefined });
-  if (shadow && !o.billboard) blob(out, p[0], p[1], p[2], sc * 1.15, 0.9);
-};
-const H = (i: number, s: number) => hh(i, s);
-
 // ---------------- people helpers ----------------
 /** a seated character (crouched gunner, dazed soldier, Meredith at the desk) */
 const sitter = (out: Stage, cam: CamInfo, i: number, o: Outfit, okey: string, p: V3, beats: Beat[], t: number, facing: -1 | 1,
@@ -369,323 +339,395 @@ const sitter = (out: Stage, cam: CamInfo, i: number, o: Outfit, okey: string, p:
   if (shadow) blob(out, p[0], p[1], p[2], scale * 1.2);
 };
 
-/** what world.ts posed this frame: the truck, the guns (world muzzle / direction / breech) */
-export type RigInfo = { truck: TruckPose; guns: { muzzle: THREE.Vector3; dir: THREE.Vector3; breech: THREE.Vector3 }[]; gunPoses: GunPose[] };
+const H = (i: number, s: number) => hh(i, s);
+
+// ---------------- bats ----------------
+const _cp = new THREE.Vector3(), _up = new THREE.Vector3();
+type BatSpec = { pose: BatPose; phase?: number; expr?: BatExpr; look?: number; gaze?: number; bomb?: 0 | 1 | 2; medal?: boolean; tilt?: number;
+  size?: number; roll?: number; tint?: number; blink?: boolean; spin?: number };
+/** one bat: a square billboard card of `size` metres centred on p; a glowing capsule adds a bloom dot on the belly */
+const bat = (out: Stage, cam: CamInfo, i: number, p: V3, o: BatSpec, t: number) => {
+  const size = o.size ?? 0.45, d = cam.pos.distanceTo(_cp.set(p[0], p[1], p[2]));
+  if (d < 0.35) return;
+  const px = (size / Math.max(0.05, d)) * 1900 * 1.33;
+  const cw = px > 700 ? 1024 : px > 330 ? 512 : px > 150 ? 256 : 128, lod = cw <= 128 ? 0 : 1;
+  const fly = o.pose === "fly" || o.pose === "cheer";
+  const bo: BatOpts = {
+    pose: o.pose, phase: fly ? q((((o.phase ?? 0) % 1) + 1) % 1, lod ? 12 : 6) : 0, expr: o.expr ?? "open", look: q(o.look ?? 0, 4), gaze: q(o.gaze ?? 0, 4),
+    bomb: o.bomb ?? 0, tint: o.tint ?? i % 3, medal: o.medal, tilt: Math.round(o.tilt ?? 0), blink: o.blink === false || !lod ? 0 : lidAt(t, i),
+    light: lod ? light2D(cam, false) : -2.2, lod, spin: Math.round(o.spin ?? 0),
+  };
+  out.places.push({ key: `B|${fkey(bo)}`, draw: (pn) => batDraw(pn, bo), x: p[0], y: p[1], z: p[2], scale: size, sq: true, billboard: true, roll: o.roll ?? 0, size: [cw, cw, cw / 600] });
+  if (o.bomb === 2) { // the capsule's pilot light: a bloom dot on the belly (just in front of the card)
+    const hang = o.pose === "hang", wrap = o.pose === "wrap" || hang, dy = hang ? 0.183 : wrap ? -0.183 : -0.143;
+    _up.copy(cam.up).multiplyScalar(dy * size);
+    const tc = _cp.set(cam.pos.x - p[0], cam.pos.y - p[1], cam.pos.z - p[2]).normalize().multiplyScalar(0.02);
+    const k = 0.75 + 0.25 * Math.sin(t * 22 + i);
+    out.fx.push({ key: "gdot", cw: 64, ch: 64, draw: glowDot, x: p[0] + _up.x + tc.x + 0.03 * size, y: p[1] + _up.y + tc.y, z: p[2] + _up.z + tc.z, w: 0.13 * size * k + 0.03, h: 0.13 * size * k + 0.03, soft: true, glow: 3.2 });
+  }
+};
+const glowDot = (p: Pen) => {
+  const g = p.g, gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, "rgba(255,240,180,1)"); gr.addColorStop(0.35, "rgba(255,150,60,0.9)"); gr.addColorStop(1, "rgba(255,90,30,0)");
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+};
+/** flap phase of a bat (fast wingbeat ~5 Hz) */
+const flap = (f: number, i: number, rate = 6) => (f / rate + H(i, 7)) % 1;
+
+// ---------------- fire + bangs ----------------
+const flame = (out: Stage, c: V3, size: number, f: number, seed: number, glow = 2.1) => {
+  const k = q((f / 7 + seed * 0.37) % 1, 8);
+  out.fx.push({ key: `flame${k}|${seed % 3}`, cw: 300, ch: 400, draw: (p) => fxFlame(p, k, seed % 3), x: c[0], y: c[1] + size * 0.47, z: c[2], w: size * 0.75, h: size, glow });
+};
+/** a flame that grows in over 6 f from frame f0 */
+const fireAt = (out: Stage, c: V3, size: number, f: number, f0: number, seed: number) => { if (f >= f0) flame(out, c, size * easeOut((f - f0) / 6), f, seed); };
+const fireball = (out: Stage, c: V3, size: number, f: number, f0: number, life = 40, seed = 0) => {
+  const u = (f - f0) / life;
+  if (u < 0 || u >= 1) return;
+  const k = q(u, 30);
+  out.fx.push({ key: `fball${k}|${seed}`, cw: 600, ch: 600, draw: (p) => fxFireball(p, k, seed), x: c[0], y: c[1], z: c[2], w: size, h: size, glow: lerp(2.6, 1.0, smooth((u - 0.3) / 0.5)) });
+};
+const poof = (out: Stage, c: V3, size: number, f: number, f0: number, life = 16) => {
+  const u = (f - f0) / life;
+  if (u < 0 || u >= 1) return;
+  const k = q(u, 16);
+  out.fx.push({ key: `poof${k}`, cw: 400, ch: 400, draw: (p) => fxPoof(p, k), x: c[0], y: c[1], z: c[2], w: size, h: size, glow: 1.6 });
+};
+/** rising smoke: a puff every `every` frames from c, drifting up and sideways */
+const smokeCol = (out: Stage, c: V3, f: number, n: number, size: number, tint: string, every = 5, rise = 1.6, drift = 0.5, seed = 0) => {
+  for (let k = 0; k < n; k++) {
+    const g = Math.floor(f / every) * every - k * every, s = (f - g) / FPS;
+    if (s < 0) continue;
+    const life = (n * every) / FPS;
+    puff(out, [c[0] + drift * s, c[1] + rise * s, c[2] + 0.2 * Math.sin(g + seed)], s, size * (0.7 + 0.5 * (s / life)), life, g + seed, tint);
+  }
+};
+
+/** what world.ts posed this frame: the bomb casing and the bat crate */
+export type RigInfo = { bomb: BombPose; crate: CratePose };
 
 // ---------------- per-shot staging ----------------
 /** everything with a face, and every effect card, in shot `id` at time t (pure function of id + t) */
 export const stage = (id: number, t: number, cam: CamInfo, rig: RigInfo): Stage => {
-  const out: Stage = { places: [], fx: [] };
+  const out: Stage = { places: [], fx: [], lights: [] };
   const s = SHOTS[id - 1], f = t * FPS, F = Math.round(f);
   LNAME = s.light;
   findSun(cam, SUN);
-  // muzzle flashes wherever a gun fires this frame
-  rig.gunPoses.forEach((g, k) => { if (g.fire && rig.guns[k]) muzzle(out, cam, rig.guns[k].muzzle, rig.guns[k].dir, F, id === 8 ? 0.6 : 0.8); });
   const S = SPOT;
   switch (id) {
-    case 1: { // the hook: the crouched gunner sweats; ONE emu steps out of the wheat and stares him down
-      const u = clamp01((f - 17) / 42), e0: V3 = [S.EMU1[0] - 0.7, 0, S.EMU1[2] - 3.6];
-      const ep: V3 = [e0[0] + (S.EMU1[0] - e0[0]) * u, 0, e0[2] + (S.EMU1[2] - e0[2]) * u];
-      const walking = f > 17 && u < 1;
-      const lean = f >= EV.EMU1_LEAN - 2;
-      emu(out, cam, 1, ep, { pose: walking ? "walk" : lean ? "lean" : "stand", dir: walking ? [0.15, 1] : undefined, face: faceTo(cam, ep, S.GUNNER1),
-        phase: (f - EV.EMU1_STEPS) / 28, eye: lean ? "wide" : u >= 1 ? "stare" : "open", turn: lean ? 0.3 : 0.1 }, t);
-      const gf = faceTo(cam, S.GUNNER1, S.EMU1);
-      sitter(out, cam, 2, GUNNER, "gunner", S.GUNNER1, [
-        { f: 0, expr: "nervous", armF: "point", lean: 6, look: 1 },
-        { f: 36, expr: "nervous", headTilt: -6, gaze: 0.4 },
-        { f: 79, expr: "pained", lean: 2, headTilt: 4 },                // "war"
-        { f: 96, expr: "shock", lean: -6, shrug: 1, headTilt: 0, dur: 4 }, // "emus"
-      ], t, gf, (fo) => ({ ...fo, sweat: sweatAt(f, 26) ?? sweatAt(f, 56) ?? sweatAt(f, 84) ?? sweatAt(f, 104) }), 1, false);
-      break;
-    }
-    case 2: { // "And lost.": the emu proud on the crate, the gunner dazed with his hat askew, the gun in the stubble
-      const ep: V3 = [S.CRATE2[0] + 0.05, CRATE.H, S.CRATE2[2]];
-      emu(out, cam, 1, ep, { pose: "proud", face: faceTo(cam, ep, S.GUNNER2), eye: f < 127 ? "open" : "happy", turn: 0.45 }, t, false);
-      sitter(out, cam, 2, GUNNER, "gunner", S.GUNNER2, [
-        { f: 121, expr: "dazed", headTilt: -12, lean: -8, shrug: 0.4 },
-        { f: 136, headTilt: 9, dur: 10 }, { f: 148, headTilt: -9, dur: 10 },
-      ], t, faceTo(cam, S.GUNNER2, ep), (fo) => ({ ...fo, hatTilt: -0.55, hatLift: 0.12, armR: "shrug", armL: "hang" }));
-      const sh: V3 = [S.GUNNER2[0], 2.0, S.GUNNER2[2]], k = q((t * 1.4) % 1, 16);
-      out.fx.push({ key: `stars${k}`, cw: 420, ch: 210, draw: (p) => fxStars(p, k), x: sh[0] - 0.05, y: sh[1] - 0.25, z: sh[2], w: 0.8, h: 0.4 });
-      for (let j = 0; j < 3; j++) puff(out, [S.GUN2[0] + (j - 1) * 0.45, 0.15, S.GUN2[2] + 0.2], t - (EV.KICK2 - 2 + j * 2) / FPS, 0.9 + 0.3 * j, 0.9, j, DUST);
-      break;
-    }
-    case 3: { // the veteran farmer, proud by his fence
-      const fp = S.FARMER3;
-      actor(out, cam, 3, FARMER, "farmer", fp, [
-        { f: 157, expr: "smile", look: -0.4, lean: 2 },
-        { f: 213, expr: "proud", lean: -4, headTilt: -4 },          // "veterans"
-        { f: 227, expr: "grin", headTilt: 6, lean: 2 },             // "farms"
-        { f: 250, expr: "smile_closed", headTilt: -3 },             // "Western Australia"
-        { f: 284, expr: "proud", look: -1, armB: "point", lean: 4 }, // "wheat": points at it
-      ], t, -1, (fo) => ({ ...fo, prop: "pitchfork" }));
-      break;
-    }
-    case 4: { // the herd pours over the hill and into the wheat; the near ones eat the patch; the farmer's jaw drops
-      const N = 140, v = 8.5;
-      for (let i = 0; i < N; i++) {
-        const front = i < 12, z0 = front ? -1e9 : -178 + 150 * H(i, 2);
-        const ztf = -4.6 - 6.5 * H(i, 6), xt = front ? 7.4 - 0.077 * (1.3 - ztf) + 0.32 * (1.3 - ztf) * ((i % 6) / 5 * 2 - 1) * 0.8 : -40 + 90 * H(i, 5), zt = front ? ztf : -16 - 26 * H(i, 7);
-        const zs = front ? zt - 7 - 7 * H(i, 1) : z0, x0 = front ? xt - 1.5 + 3 * H(i, 8) : xt * 0.7 + 20 * (H(i, 8) - 0.5);
-        const run = clamp01(((f - 305) / FPS * v) / Math.max(1, zt - zs)), z = zs + (zt - zs) * run, x = x0 + (xt - x0) * run;
-        const arrived = run >= 1, y = farmHill(x, z);
-        const ph = (f / 15 + H(i, 9)) % 1;
-        emu(out, cam, 20 + i, [x, y, z], arrived
-          ? { pose: (front && f < 352) || H(i, 12) < 0.4 ? "stand" : "peck", face: H(i, 10) < 0.5 ? -1 : 1, peck: 0.25 + 0.3 * (0.5 + 0.5 * Math.sin(f * 0.35 + i)), tint: i % 3, scale: 0.92 + 0.16 * H(i, 11) }
-          : { pose: "run", dir: [xt - x0, zt - zs], phase: ph, tint: i % 3, scale: 0.92 + 0.16 * H(i, 11) }, t, f < 358);
-        if (!arrived && f < 358 && i % 4 === 0) puff(out, [x, y + 0.2, z - 0.6], ((f + i * 5) % 20) / FPS, 1.6, 0.66, i, DUST);
-      }
-      const fp = S.FARMER3;
-      actor(out, cam, 3, FARMER, "farmer", fp, [
-        { f: 305, expr: "smile", look: -1 },
-        { f: 330, expr: "nervous", look: -1, headTilt: 4 },        // "emus"
-        { f: 358, expr: "jawdrop", lean: -7, shrug: 1, headTilt: 0, dur: 4 }, // cut: jaw drop
-        { f: 368, expr: "jawdrop", lean: -10, armB: "up", dur: 6 }, // "ate"
-      ], t, -1, (fo) => ({ ...fo, prop: "pitchfork", hatLift: f < 357 ? 0 : 0.55 * smooth((f - 357) / 6) + 0.06 * Math.sin(f * 0.8), hatTilt: f < 357 ? 0 : 0.18 }));
-      break;
-    }
-    case 5: { // the wall telephone: crank, then yell into it; emus pecking in the yard beyond the posts
-      const fp = S.FARMER5, cranking = EV.CRANK5.some(([a, b]) => f >= a && f <= b);
-      actor(out, cam, 3, FARMER, "farmer", fp, [
-        { f: 389, expr: "annoyed", lean: 5, look: 1 },
-        { f: 399, expr: "stern", headTilt: 4 },                   // "farmers"
-        { f: 405, expr: "yell", lean: 10, headTilt: -5, shrug: 0.6 }, // "called in the army"
-        { f: 426, expr: "yell", lean: 13, headTilt: 6, shrug: 1 },  // "army"
-      ], t, faceTo(cam, fp, S.PHONE), (fo) => ({ ...fo, prop: "handset", armL: cranking ? "crank" : "out", wave: cranking ? q((f / 8) % 1, 8) : undefined, sweat: sweatAt(f, 430) }));
-      for (let i = 0; i < 6; i++) {
-        const p: V3 = [1.2 + 2.8 * H(i, 21), 0, -11.5 + 0.9 * H(i, 22)];
-        emu(out, cam, 40 + i, p, { pose: i % 3 === 2 ? "stand" : "peck", face: H(i, 23) < 0.5 ? -1 : 1, peck: 0.5 + 0.5 * Math.sin(f * 0.3 + i * 1.7), tint: i % 3 }, t);
+    case 1: { // the hook: the casing pops, hundreds of bats spiral out, one flies into the lens and grins
+      const B = rig.bomb.pos;
+      if (f >= EV.POP1) {
+        poof(out, [B[0], B[1] - 0.2, B[2] + 0.4], 3.6, f, EV.POP1, 12);
+        out.lights.push({ p: [B[0], B[1], B[2] + 1], I: 9 * Math.max(0, 1 - (f - EV.POP1) / 18), col: "#ffb060" });
+        for (let i = 1; i < 240; i++) {
+          const dl = (i % 30) * 0.45 + Math.floor(i / 30) * 0.5, sec = (f - EV.POP1 - dl) / FPS;
+          if (sec <= 0) continue;
+          const th = i * 2.39996 + sec * (2.4 + 0.8 * H(i, 1)), r = (0.5 + 6.5 * (1 - Math.exp(-1.7 * sec))) * (0.55 + 0.7 * H(i, 2)) + 2.2 * sec;
+          const p: V3 = [B[0] + r * Math.cos(th), B[1] + 0.85 * r * Math.sin(th) + 0.9 * sec, B[2] + (H(i, 3) - 0.35) * 5 * sec];
+          bat(out, cam, i, p, { pose: "fly", phase: flap(f, i, 5), bomb: 2, size: 0.42 + 0.12 * H(i, 4), roll: 0.5 * Math.sin(th), expr: H(i, 5) < 0.3 ? "grin" : "open", blink: false }, t);
+        }
+        const hp = hero1At(f), u = clamp01((f - EV.POP1) / 15);
+        bat(out, cam, 0, hp, { pose: u < 1 ? "fly" : "cheer", phase: flap(f, 0, 4), bomb: 2, size: lerp(0.4, 0.5, u), expr: f >= EV.GRIN1 - 2 ? "grin" : "open", gaze: 0, roll: 0.25 * (1 - u) }, t);
       }
       break;
     }
-    case 6: { // the army arrives
-      const tk = rig.truck;
-      if (f < EV.STOP6 + 4) trail(out, (g) => { const x = -(9 * Math.max(0, (EV.STOP6 - g) / FPS) + 6 * Math.max(0, (EV.STOP6 - g) / FPS) ** 2); return [x - 2.8, 0.4, (g % 2) * 0.8 - 0.4]; }, f, 6, 1.8, DUST);
-      for (let j = 0; j < 4; j++) puff(out, [1.6 + (j - 2) * 0.9, 0.3, (j % 2 ? 1.2 : -1.2)], t - (EV.STOP6 + j) / FPS, 1.4 + 0.25 * j, 1.2, j + 3, DUST);
-      // Meredith climbs out of the cab and strides to the front
-      const u = smooth((f - 460) / 20), mp: V3 = [1.4 + (S.MAJOR6[0] - 1.4) * u, 0, 1.0 + (S.MAJOR6[2] - 1.0) * u];
-      if (f >= 458) actor(out, cam, 4, MAJOR, "major", mp, [
-        { f: 458, expr: "proud", lean: -4 },
-        { f: 463, expr: "proud", headTilt: -5, lean: -6 },          // "Meredith"
-        { f: 475, armF: "point", expr: "stern", lean: 3 },          // "arrived"
-        { f: 494, armF: "hang", expr: "smile", headTilt: 4 },       // "with two"
-        { f: 559, armF: "point", expr: "proud", lean: 4 },          // "and 10,000"
-      ], t, -1, (fo) => ({ ...fo, prop: "stick" }));
-      if (f < 527) S.SOLDIERS6.forEach((p, k) => actor(out, cam, 5 + k, k ? SERGEANT : GUNNER, k ? "sarge" : "gunner", p, [
-        { f: 450, expr: "smile", look: 1 },
-        { f: 490, expr: "stern", headTilt: -3 },
-        { f: EV.SALUTE6, expr: "proud", lean: -3, headTilt: 3 },   // "soldiers": snap salute
-      ], t, 1, (fo) => ({ ...fo, salute: f >= EV.SALUTE6 - 2 })));
-      // the tripods thump down: dust at the feet
-      EV.GUNS6.forEach((g0, k) => { for (let j = 0; j < 2; j++) puff(out, [S.TRIPODS6[k][0] + (j ? 0.4 : -0.4), 0.1, S.TRIPODS6[k][2]], t - (g0 + 4) / FPS, 1.0, 0.8, k * 2 + j, DUST); });
-      // the stack: a soldier lifts the last box overhead and sets it on top at CRATE6
-      if (f >= 552) {
-        const up = f < EV.CRATE6 + 2;
-        actor(out, cam, 5, GUNNER, "gunner", S.STACKER6, [
-          { f: 552, expr: "pained", armF: "up", armB: "up", lean: -3, shrug: 0.6 },
-          { f: EV.CRATE6, expr: "proud", armF: "hang", armB: "hip", lean: 0, shrug: 0, dur: 6 }, // "bullets"
-        ], t, -1, (fo) => ({ ...fo, sweat: sweatAt(f, 560), ...(up ? { armR: "up" as ArmPose, armL: "up" as ArmPose } : {}) }));
-        if (f >= EV.CRATE6 - 1) for (let j = 0; j < 2; j++) puff(out, [S.STACK6[0] + (j - 0.5) * 0.7, STACK_N * CRATE.H + 0.05, S.STACK6[2] + 0.3], t - (EV.CRATE6 + j) / FPS, 0.8, 0.8, j, DUST);
-        sparkle(out, [S.STACK6[0] + 0.3, STACK_N * CRATE.H + 0.8, S.STACK6[2] + 0.4], f, EV.CRATE6 + 1, 1.0);
+    case 2: { // the swarm dives onto the base at dusk; little roof fires; the soldier's cap flies off
+      const sp = S.SOLDIER2, cap = f >= EV.KICK2 - 1;
+      actor(out, cam, 2, SOLDIER, "soldier", sp, [
+        { f: 114, expr: "smile", look: -1, lean: 2 },
+        { f: EV.DIVE2, expr: "nervous", look: -1, gaze: -1, headTilt: 6 },
+        { f: 130, expr: "shock", gaze: -0.6, lean: -4 },
+        { f: EV.KICK2, expr: "jawdrop", lean: -9, shrug: 1, headTilt: 0, gaze: 0, dur: 4 },
+      ], t, -1, (fo) => ({ ...fo, hatLift: cap ? 0.6 + 3.2 * easeOut((f - EV.KICK2 + 1) / 14) : 0, hatTilt: cap ? 0.9 * easeOut((f - EV.KICK2 + 1) / 14) : 0, sweat: sweatAt(f, 126) }));
+      const roofs: V3[] = [[-20, 11.6, -18], [-13, 11.2, -20], [6, 5.2, -10], [13, 5.2, -9.6], [24, 5.2, -12]];
+      EV.FIRES2.forEach((f0, k) => { fireAt(out, roofs[k], 2.2 + 0.4 * (k % 2), f, f0, k); if (f >= f0) { smokeCol(out, [roofs[k][0], roofs[k][1] + 1.5, roofs[k][2]], f, 4, 2.4, SMOKE, 6, 1.5, 0.6, k); out.lights.push({ p: [roofs[k][0], roofs[k][1] + 1.5, roofs[k][2] + 2], I: 14, col: "#ff9a40", d: 40 }); } });
+      for (let i = 0; i < 230; i++) {
+        const t0 = 113 + (i % 46) * 0.45, u = (f - t0) / (16 + 8 * H(i, 11));
+        if (u <= 0) continue;
+        const tgt = roofs[i % 5], st: V3 = [-34 + 20 * H(i, 12), 34 + 14 * H(i, 13), -30 + 20 * H(i, 14)];
+        const end: V3 = [tgt[0] + (H(i, 15) - 0.5) * 9, tgt[1] + 1.5 + 5 * H(i, 16), tgt[2] + (H(i, 17) - 0.5) * 8];
+        const k = easeOut(Math.min(1, u)), mid: V3 = lerp3(st, end, 0.5);
+        let p = lerp3(lerp3(st, [mid[0], mid[1] + 6, mid[2] + 6], k), lerp3([mid[0], mid[1] + 6, mid[2] + 6], end, k), k);
+        if (u > 1) { const a = (f - t0) * 0.12 + i; p = [end[0] + 1.6 * Math.cos(a), end[1] + 0.6 * Math.sin(a * 1.3), end[2] + 1.6 * Math.sin(a)]; }
+        bat(out, cam, 10 + i, p, { pose: "fly", phase: flap(f, i), bomb: 2, size: 0.6 + 0.2 * H(i, 18), roll: u < 1 ? -0.5 : 0.3 * Math.sin(f * 0.2 + i), blink: false }, t);
       }
-      void tk;
+      for (let i = 0; i < 5; i++) { // a few close ones swoop past the soldier (big in the frame, never through the lens)
+        const t0 = 118 + i * 5, u = (f - t0) / 22;
+        if (u <= 0 || u >= 1) continue;
+        const p: V3 = [lerp(4, 14, u) + 2 * i, lerp(8, 3.2 + 0.4 * i, easeOut(u)), lerp(4, 9, u) - i];
+        bat(out, cam, 300 + i, p, { pose: "fly", phase: flap(f, i, 4), bomb: 2, size: 0.62, expr: "grin", roll: -0.4 }, t);
+      }
       break;
     }
-    case 7: { // first day: firing, the dust lands short, the emus trot over the rise and away
-      sitter(out, cam, 2, GUNNER, "gunner", S.GUNNER7, [
-        { f: 602, expr: "stern", lean: 6, look: -0.6 },
-        { f: 640, expr: "annoyed", headTilt: -4 },
-        { f: 672, expr: "pained", headTilt: 6, lean: 0 },         // "range"
-      ], t, -1, (fo) => ({ ...fo, armR: "point", armL: "point" }), 1, false);
-      for (let i = 0; i < 26; i++) {
-        const z0 = -52 - 26 * H(i, 31), x = -9 + 15 * H(i, 32) - (z0 + 52) * 0.1, vz = 12 + 6 * H(i, 33);
-        const z = z0 - vz * (f - 602) / FPS, y = paddockRise(x, z);
-        emu(out, cam, 60 + i, [x, y, z], { pose: "run", dir: [0.05, -1], phase: (f / 13 + H(i, 34)) % 1, tint: i % 3 }, t, false);
+    case 3: { // Adams at the overlook rail; the column of bats spirals out of the cave; he turns to us, big eyes
+      actor(out, cam, 3, ADAMS_HAT, "adamsHat", S.ADAMS3, [
+        { f: 171, expr: "smile", look: -1, lean: 2 },
+        { f: 194, expr: "proud", headTilt: -4, look: -0.6 },             // "dentist"
+        { f: 224, expr: "smile_closed", headTilt: 5, lean: -2 },          // "Adams"
+        { f: 266, expr: "smile", look: -1, gaze: 0.4 },                   // "cave"
+        { f: 290, expr: "awe", look: -1, gaze: -0.8, lean: -5 },          // the column
+        { f: EV.TURN3, expr: "shock", look: 0, gaze: 0, lean: -9, shrug: 1, headTilt: 0, dur: 4 }, // "bats": turns to us
+      ], t, -1, (fo) => ({ ...fo, hatLift: f >= EV.TURN3 - 1 ? 0.25 * easeOut((f - EV.TURN3 + 1) / 5) : 0 }));
+      if (f >= EV.COLUMN3 - 8) for (let i = 0; i < 360; i++) {
+        const sp = (0.5 + 0.25 * H(i, 21)) * (f - (EV.COLUMN3 - 8)) / FPS - 1.25 * H(i, 22);
+        if (sp <= 0 || sp >= 1) continue;
+        const c = ribbonAt(3, sp), a = i * 2.39996 + f * 0.16 + sp * 9, r = 0.6 + 3.6 * sp;
+        bat(out, cam, 20 + i, [c[0] + r * Math.cos(a), c[1] + 0.6 * r * Math.sin(a * 0.7), c[2] + r * Math.sin(a)], { pose: "fly", phase: flap(f, i), size: 0.85, roll: 0.4 * Math.cos(a), blink: false }, t);
       }
-      EV.STRIKE7.forEach((f0, k) => strike(out, [-5 + 8 * H(k, 41), 0, -24 - 10 * H(k, 42)], f, f0, 1.4, k)); // dust falling short (cues.md)
       break;
     }
-    case 8: { // the dam: a thousand emus drinking; the soldiers hidden behind the bank; the jam
-      const cam8b: V3 = [-2.0, 1.75, 7.9];
-      for (let i = 0; i < 170; i++) {
-        // crowded along the water's edge: near shore (toward the soldiers, +z), far shore, a few on the banks
-        const g = i < 55 ? 0 : i < 140 ? 1 : 2;
-        const a = g === 0 ? Math.PI / 2 + (H(i, 51) - 0.5) * 1.9 : g === 1 ? -Math.PI / 2 + (H(i, 51) - 0.5) * 3.4 : (H(i, 51) < 0.5 ? 0 : Math.PI) + (H(i, 52) - 0.5) * 1.6;
-        const k = damNoise(a), rn = g < 2 ? S.DAM_R + 0.15 + 1.3 * H(i, 53) : S.DAM_R + 1.8 + 3 * H(i, 54);
-        const p: V3 = [Math.cos(a) * rn * k, damY(rn), Math.sin(a) * rn * k];
-        if (f >= 797 && Math.hypot(p[0] - cam8b[0], p[2] - cam8b[2]) < 3.2) continue;
-        if (g === 0 && Math.abs(p[0]) < 1.6 && f < 797) continue; // keep the soldiers' sight line to the water open
-        const drink = rn < S.DAM_R + 1.0 && H(i, 55) < 0.8, face: -1 | 1 = H(i, 59) < 0.5 ? -1 : 1;
-        const walkK = !drink && H(i, 56) < 0.3, tang: [number, number] = [-Math.sin(a), Math.cos(a)];
-        const pp: V3 = walkK ? [p[0] + tang[0] * 0.7 * t, p[1], p[2] + tang[1] * 0.7 * t] : p;
-        emu(out, cam, 100 + i, pp, drink ? { pose: "drink", face, tint: i % 3 }
-          : walkK ? { pose: "walk", dir: tang, phase: (f / 26 + H(i, 57)) % 1, tint: i % 3 } : { pose: H(i, 58) < 0.5 ? "stand" : "peck", face, peck: 0.6, tint: i % 3 }, t);
-      }
-      const jam = f >= EV.CLACK8;
-      sitter(out, cam, 2, GUNNER, "gunner", f >= 797 ? [S.GUNNER8[0], 0.72, S.GUNNER8[2]] : S.GUNNER8, [
-        { f: 695, expr: "stern", lean: 8, look: -1 },
-        { f: 776, expr: "grin", lean: 10 },                       // "dam"
-        { f: 790, expr: "stern", lean: 12, headTilt: -3 },
-        { f: EV.JAM8, expr: "blank", lean: 0, headTilt: 0, shrug: 0.3, dur: 2 }, // "jammed": blank
-      ], t, -1, (fo) => ({ ...fo, armR: jam ? "hang" : "point", armL: jam ? "hang" : "point" }), 1, false);
-      sitter(out, cam, 6, SERGEANT, "sarge", S.SARGE8, [
-        { f: 695, expr: "smile", lean: 8, look: -1, headTilt: 3 },
-        { f: 727, expr: "grin", headTilt: -4 },                   // "thousand"
-      ], t, -1, (x) => x, 1, false);
-      const g = rig.guns[0];
-      if (g && jam) {
-        const b = g.breech, s0 = (f - EV.CLACK8) / FPS;
-        if (s0 < 0.2) out.fx.push({ key: "clack", cw: 300, ch: 300, draw: (p) => fxClack(p), x: b.x - 0.25, y: b.y + 0.05, z: b.z - 0.2, w: 0.36, h: 0.36, glow: 1.2 });
-        for (let j = 0; j < 3; j++) puff(out, [b.x - 0.35 - 0.12 * j, b.y + 0.1 + 0.1 * j, b.z - 0.3], s0 - j * 0.07, 0.3 + 0.08 * j, 0.9, j, "#d8d4d8");
-        if (f >= EV.JAM8) { // the drum spring pops out and up
-          const u = (f - EV.JAM8) / 18, k = q(Math.min(1, u), 18);
-          out.fx.push({ key: `spring${k}`, cw: 300, ch: 400, draw: (p) => fxSpring(p, k), x: b.x - 0.3 - 0.25 * u, y: b.y + 0.2 + 0.55 * Math.sin(Math.min(1, u) * 2.2), z: b.z - 0.35, w: 0.24, h: 0.32, rot: 0.6 * u });
+    case 4: {
+      if (f < EV.CU4) { // the idea: a light bulb pops on over his head
+        actor(out, cam, 4, ADAMS, "adams", S.ADAMS4, [
+          { f: 328, expr: "neutral", gaze: 1, lean: 4, look: -0.3 },
+          { f: EV.BULB4, expr: "awe", gaze: -1, lean: -3, headTilt: 0, dur: 3 },
+          { f: 346, expr: "grin", gaze: -0.4, headTilt: 6, armF: "point" },
+        ], t, 1);
+        if (f >= EV.BULB4) {
+          const u = (f - EV.BULB4) / 8, k = q(Math.min(1.4, u), 10), bp: V3 = [S.ADAMS4[0] + 0.05, 2.32, S.ADAMS4[2] + 0.1];
+          out.fx.push({ key: `bulb${k}`, cw: 300, ch: 400, draw: (p) => fxBulb(p, k), x: bp[0], y: bp[1], z: bp[2], w: 0.36, h: 0.48, glow: 2.0 });
+          sparkle(out, [bp[0], bp[1] + 0.05, bp[2]], f, EV.BULB4, 0.7, 1.6);
+          out.lights.push({ p: bp, I: 3 * Math.min(1, u), col: "#ffe08a", d: 5 });
+        }
+      } else if (f < EV.CUT4) { // bench close-up: the capsule goes on, the bat is not impressed
+        const strapped = f >= EV.STRAP4;
+        actor(out, cam, 4, ADAMS, "adams", [S.ADAMS4[0] + 0.1, 0, S.ADAMS4[2]], [
+          { f: 367, expr: "grin", gaze: 1, lean: 9, look: -0.6, armF: "hang" },
+          { f: EV.STRAP4, expr: "proud", gaze: 0.6, lean: 5 },
+          { f: EV.MEH4, expr: "nervous", gaze: 1, lean: 4 },
+        ], t, -1, (fo) => ({ ...fo, prop: strapped ? null : "tweezers" }));
+        const bt = S.BAT4;
+        bat(out, cam, 1, [bt[0], bt[1] + 0.15, bt[2]], {
+          pose: "sit", size: 0.3, bomb: strapped ? 1 : 0, roll: 0,
+          expr: f < 400 ? "open" : f < EV.MEH4 - 2 ? "wide" : "meh", look: f < 400 ? 0.6 : 0, gaze: f < 400 ? -0.8 : f < EV.MEH4 - 2 ? 1 : 0, tilt: f < 400 ? 6 : f < EV.MEH4 - 2 ? -4 : 0,
+        }, t);
+        if (strapped) sparkle(out, [bt[0] + 0.05, bt[1] + 0.12, bt[2] + 0.05], f, EV.STRAP4, 0.25, 1.4);
+      } else { // the planning model: he flies the toy bomber over the little town, toy bats sprinkle down
+        const ap: V3 = [SPOT.ADAMS4C[0] + 0.32 * Math.sin((f - 430) / 26), 0, 0.32];
+        actor(out, cam, 4, ADAMS, "adams", ap, [
+          { f: 430, expr: "grin", lean: 4, look: -1 },
+          { f: 452, expr: "proud", headTilt: -5, lean: 6 },                 // "Japan"
+          { f: 514, expr: "smile_closed", headTilt: 5 },                    // "wood"
+        ], t, -1, (fo) => ({ ...fo, prop: "bomber" }));
+        // bomber position on the card (design x ~117, y ~55): offset left 0.395, up 1.99 from the feet
+        const rt = cam.right, bomberAt = (g: number): V3 => { const x = SPOT.ADAMS4C[0] + 0.32 * Math.sin((g - 430) / 26); return [x - rt.x * 0.4, 2.0, 0.32 - rt.z * 0.4]; };
+        for (let k = 0; k < 30; k++) {
+          const g0 = 452 + k * 3, u = (f - g0) / 26;
+          if (u < 0 || u >= 1) continue;
+          const b0 = bomberAt(g0), p: V3 = [b0[0] + 0.12 * Math.sin(u * 7 + k), lerp(b0[1] - 0.05, SPOT.TABLE_Y + 0.12, easeOut(u)), b0[2] + 0.3 + 0.9 * H(k, 31) * u];
+          bat(out, cam, 40 + k, p, { pose: u < 0.85 ? "fly" : "wrap", phase: flap(f, k, 4), size: 0.11, bomb: 1, blink: false, roll: 0.3 * Math.sin(u * 9 + k) }, t);
         }
       }
       break;
     }
-    case 9: { // a: Meredith bolts the gun onto the tray; b: tracking the bouncing truck, the emus pull away
-      const tk = rig.truck;
-      if (f < EV.CUT9) {
-        const mp = truckPt(tk, [-1.6, 1.02, 0.5]);
-        const strikeK = EV.HAMMER9.reduce((a, g0) => Math.max(a, f >= g0 - 3 && f < g0 + 2 ? clamp01((f - (g0 - 3)) / 3) : 0), 0);
-        actor(out, cam, 4, MAJOR, "major", mp, [
-          { f: 825, expr: "stern", lean: 6, look: 1 },
-          { f: 835, expr: "annoyed", lean: 9, headTilt: -4 },       // "bolted"
-          { f: 852, expr: "grin", lean: 2, headTilt: 5 },           // "gun"
-          { f: 866, expr: "proud", lean: -3 },                      // "truck"
-        ], t, 1, (fo) => ({ ...fo, prop: f < 852 ? ["hammer", strikeK] : "stick" }), 1);
-        const gb = truckPt(tk, [-1.0, 1.75, 0]);
-        EV.HAMMER9.forEach((g0, k) => { const u = (f - g0) / 6; if (u >= 0 && u < 1) out.fx.push({ key: `burst${q(u, 6)}`, cw: 500, ch: 500, draw: (p) => fxBurst(p, q(u, 6), "#fff3b0", 8, 30, 200), x: gb[0], y: gb[1], z: gb[2] + 0.2, w: 0.7, h: 0.7, glow: 1.4 }); void k; });
-        actor(out, cam, 5, GUNNER, "gunner", [2.2, 0, S.TRUCK9[2] + 1.6], [
-          { f: 825, expr: "smile", look: -1 }, { f: 850, expr: "grin", headTilt: 5 },
-        ], t, -1);
+    case 5: { // the attic: it flutters in, hangs cosy, the timer ticks... POOF
+      const R = S.RIDGE5, hangC: V3 = [R[0] + 0.05, R[1] - 0.02 - 0.24 * 0.2, R[2]];
+      if (f < EV.HANG5 - 2) {
+        const u = clamp01((f - 547) / (EV.HANG5 - 2 - 547)), p = lerp3([0.95, 1.62, 0.55], [hangC[0], hangC[1] - 0.05, 0.02], easeOut(u));
+        bat(out, cam, 1, p, { pose: "fly", phase: flap(f, 1, 4), size: 0.2, bomb: 1, expr: "open", look: -0.6, roll: -0.3 * (1 - u) }, t);
       } else {
-        const gp = truckPt(tk, [-1.45, 1.02, 0.15]);
-        sitter(out, cam, 2, GUNNER, "gunner", gp, [
-          { f: EV.CUT9, expr: "nervous", lean: 6 },
-          { f: 890, expr: "shock", lean: -4, headTilt: 8, dur: 4 },
-          { f: 900, expr: "pained", headTilt: -8, lean: 8 },        // "outran"
-          { f: 916, expr: "nervous", headTilt: 6 },
-        ], t, 1, (fo) => ({ ...fo, headTilt: (fo.headTilt ?? 0) + 7 * Math.sin(f * 1.7), armR: "point", armL: "point", sweat: sweatAt(f, 893) }), 1, false);
-        trail(out, (g) => [truck9X(g) - 3.0, 0.4, S.TRUCK9[2] + ((g / 3) % 2 ? 0.5 : -0.9)], f, 5, 1.6, DUST, 4);
-        for (let i = 0; i < 9; i++) {
-          const x = truck9X(EV.CUT9) + 9 + 12 * H(i, 61) + (9.2 + 4.5 + 1.5 * H(i, 62)) * (f - EV.CUT9) / FPS, z = S.TRUCK9[2] - 6 + 9 * H(i, 63);
-          emu(out, cam, 140 + i, [x, 0, z], { pose: "run", dir: [1, 0], phase: (f / 11 + H(i, 64)) % 1, tint: i % 3, scale: 1 + 0.1 * H(i, 65) }, t);
-          speed(out, cam, [x - 0.4, 1.1, z], new THREE.Vector3(1, 0, 0), f + i * 3, 2.0);
-          if (i % 2 === 0) puff(out, [x - 0.6, 0.2, z], ((f + i * 7) % 15) / FPS, 1.1, 0.5, i, DUST);
+        const popped = f >= EV.POOF5, tick = f >= EV.TICK5 && !popped;
+        bat(out, cam, 1, hangC, { pose: "hang", size: 0.2, bomb: tick ? 2 : 1, tilt: 0,
+          expr: popped ? "pop" : f < 580 ? "happy" : f < EV.TICK5 ? "shut" : f < 618 ? "shut" : "wide", look: 0, blink: !popped && f < 600 }, t);
+        if (tick && F % 6 < 3) sparkle(out, [hangC[0] + 0.03, hangC[1] + 0.06, hangC[2] + 0.04], f, EV.TICK5 + 1, 0.06, 1.2);
+        if (popped) {
+          poof(out, [hangC[0] + 0.02, hangC[1] + 0.1, hangC[2] + 0.04], 0.2, f, EV.POOF5, 14);
+          smokeCol(out, [hangC[0], hangC[1] + 0.05, hangC[2] + 0.05], f, 3, 0.16, "#cfc8cc", 4, 0.25, 0.04, 3);
+          out.lights.push({ p: [hangC[0], hangC[1], hangC[2] + 0.2], I: 2.5 * Math.max(0, 1 - (f - EV.POOF5) / 10), col: "#ffe8b0", d: 3 });
         }
-        for (let k = 0; k < 3; k++) strike(out, [truck9X(930) + 8 + 14 * H(k, 66), 0, S.TRUCK9[2] - 9 + 14 * H(k, 67)], f, 930 + k * 2, 1.2, k);
       }
       break;
     }
-    case 10: { // dusk: the report with a pen flourish, the tally board, then the mountain of brass behind the tent
-      sitter(out, cam, 4, MAJOR, "major", S.MAJOR10, [
-        { f: 937, expr: "smile_closed", lean: 6, look: 0.4, gaze: 0.6 },
-        { f: EV.FLOURISH10, expr: "proud", armF: "up", lean: -4, gaze: 0, dur: 4 }, // "claimed": flourish
-        { f: 972, armF: "hold", expr: "grin", headTilt: 5, lean: 4 },
-        { f: 1011, look: -1, expr: "proud", headTilt: -4, lean: -2 }, // "emus": eyes on the tally board
-        { f: 1060, look: 0.6, expr: "smile_closed", headTilt: 3 },
-        { f: 1085, expr: "proud", lean: -6, headTilt: -6 },          // "bullets"
-      ], t, 1, (fo) => ({ ...fo, prop: "pen", armR: fo.armR ?? "hold" }), 1, false);
-      sparkle(out, [SPOT.MAJOR10[0] + 0.55, 1.75, SPOT.MAJOR10[2]], f, EV.FLOURISH10 + 1, 0.7);
-      for (let k = 0; k < 40; k++) { // glints all over the camera side of the brass mountain, from the reveal to the end
-        const a = (H(k, 71) - 0.5) * 2.4, r = 1.2 + 8 * H(k, 72), y = 7.6 * (1 - r / 10.8);
-        sparkle(out, [SPOT.BRASS[0] + Math.sin(a) * r, y + 0.5, SPOT.BRASS[2] + Math.cos(a) * r + 0.8], f, 1040 + ((k * 7) % 90), 2.0 + 1.4 * H(k, 73), 2.2);
+    case 6: { // the President's office: he looks over his glasses, grins, slams the stamp
+      const sk = f < 702 ? 0 : f < EV.STAMP6 ? smooth((f - 702) / (EV.STAMP6 - 702)) * 0 : 1;
+      const raise = f >= 696 && f < EV.STAMP6 - 3, k = raise ? 0 : f < EV.STAMP6 ? 0.5 : f < 724 ? 1 : 1 - smooth((f - 724) / 8) * 0.6;
+      void sk;
+      actor(out, cam, 6, PRESIDENT, "president", S.PRES6, [
+        { f: 653, expr: "stern", gaze: 1, lean: 5, look: -0.2, headTilt: -4 },   // over his glasses at the drawing
+        { f: 680, expr: "neutral", gaze: 0.6, headTilt: 5 },
+        { f: 695, expr: "smile", gaze: 0, look: 0.6 },
+        { f: 703, expr: "grin", lean: -3 },
+        { f: EV.STAMP6, expr: "laugh", lean: 6, headTilt: -4, dur: 3 },
+      ], t, -1, (fo) => ({ ...fo, prop: f >= 690 ? ["stamp", k] : null }));
+      actor(out, cam, 7, ADAMS, "adams", S.ADAMS6, [
+        { f: 653, expr: "nervous", look: -1, lean: 3, shrug: 0.4 },
+        { f: 688, expr: "nervous", headTilt: 6 },
+        { f: EV.STAMP6, expr: "shock", lean: -6, shrug: 1, dur: 3 },
+        { f: EV.YES6 + 4, expr: "relief_open", lean: 2, shrug: 0, armF: "up", armB: "up" },
+      ], t, 1, (fo) => ({ ...fo, sweat: sweatAt(f, 662) ?? sweatAt(f, 690) }));
+      if (f >= EV.STAMP6) { // the red ink mark on the drawing (shapes only, no words)
+        const [px, py, pz] = S.PAPER6;
+        out.fx.push({ key: "stampmark", cw: 256, ch: 160, draw: stampMark, x: px + 0.02, y: py + 0.004, z: pz + 0.02, w: 0.2, h: 0.12, flat: true, rot: 0.12 });
+        sparkle(out, [px, py + 0.08, pz + 0.05], f, EV.STAMP6 + 1, 0.4, 1.4);
       }
       break;
     }
-    case 11: { // the house-tall wall of ammunition: the soldier pats it proudly
-      actor(out, cam, 5, GUNNER, "gunner", S.SOLDIER11, [
-        { f: 1135, expr: "smile", look: -1, lean: -2 },
-        { f: 1150, expr: "proud", headTilt: -4, lean: -5 },          // "army"
-        { f: 1170, expr: "grin", headTilt: 6, lean: 3 },             // "plenty"
-      ], t, -1, (fo) => { // two proud pats on the wall: hand up, slap down on the frame of the pat
-        const pat = Math.max(...EV.PATS11.map((g) => { const d = f - g; return d >= -6 && d < 0 ? (d + 6) / 6 : d >= 0 && d < 5 ? 1 - d / 5 : 0; }));
-        return { ...fo, armL: ["up", "out", q(pat, 6)] as ArmSpec, armR: "hip" };
+    case 7: { // the lab: the chemist shows the tiny capsule; the bat tries one on, flexes, thumbs up
+      actor(out, cam, 8, CHEMIST, "chemist", S.CHEM7, [
+        { f: 733, expr: "smile", look: -1, lean: 3 },
+        { f: 764, expr: "proud", headTilt: -5 },                          // "napalm"
+        { f: 781, expr: "grin", headTilt: 4 },                            // "designed"
+        { f: EV.TWEEZ7 - 4, expr: "awe", gaze: -1, lean: -2, look: 0.4 },
+        { f: 812, expr: "smile_closed", gaze: 0.6, look: -1, lean: 5 },   // "small"
+        { f: EV.FLEX7, expr: "laugh", headTilt: 6 },
+      ], t, -1, (fo) => ({ ...fo, prop: f >= 790 && f < EV.FIT7 - 6 ? "tweezers" : null }));
+      const fitted = f >= EV.FIT7, b7 = S.BAT7;
+      bat(out, cam, 2, [b7[0], b7[1] + 0.15, b7[2]], {
+        pose: f >= EV.FLEX7 + 4 ? "thumbs" : f >= EV.FLEX7 - 2 ? "flex" : "sit", size: 0.3, bomb: fitted ? 1 : 0,
+        expr: f < 800 ? "open" : f < EV.FIT7 ? "wide" : f < 838 ? "happy" : f < EV.FLEX7 + 4 ? "smug" : "wink",
+        look: f < EV.FIT7 ? 0.7 : 0, gaze: f < 800 ? -0.4 : f < EV.FIT7 ? -1 : f < 838 ? 0.8 : 0, tilt: f < EV.FIT7 ? 8 : f < 838 ? -6 : 0,
+      }, t);
+      if (fitted) sparkle(out, [b7[0] - 0.02, b7[1] + 0.12, b7[2] + 0.05], f, EV.FIT7, 0.25, 1.4);
+      if (f >= EV.FLEX7) sparkle(out, [b7[0] + 0.12, b7[1] + 0.3, b7[2] + 0.05], f, EV.FLEX7, 0.2, 1.5);
+      break;
+    }
+    case 8: { // the test base: two soldiers carry the crate; the lid pops, the armed bats escape
+      const c = rig.crate.pos, walking = f < 928, ph = (c[0] / 0.8) % 1;
+      const carry = (dx: number, i: number, o: Outfit, key: string, facing: -1 | 1) => actor(out, cam, i, o, key, [c[0] + dx, 0, c[2] + 0.02], [
+        { f: 853, expr: "smile", look: -0.5, lean: 3 },
+        { f: EV.CRATE8, expr: "proud", headTilt: 4 },
+        { f: EV.LID8, expr: "shock", lean: -6, shrug: 1, gaze: -0.6, dur: 3 },
+        { f: EV.ESCAPE8 + 6, expr: i === 9 ? "yell" : "jawdrop", gaze: -1 },
+      ], t, facing, (fo) => ({ ...fo, mode: walking ? "stroll" : "stand", phase: ph + (i === 9 ? 0.5 : 0), armR: f < EV.LID8 ? "out" : i === 9 && f >= EV.ESCAPE8 ? (F % 8 < 4 ? "up" : "wave") : "shrug",
+        armL: f < EV.LID8 ? "out" : "shrug" }));
+      carry(-0.72, 9, SOLDIER, "soldier", 1); carry(0.72, 10, SOLDIER2, "soldier2", -1);
+      if (f >= EV.LID8) poof(out, [c[0], c[1] + 0.5, c[2] + 0.1], 1.2, f, EV.LID8, 10);
+      for (let i = 0; i < 9; i++) {
+        const u = (f - EV.ESCAPE8 - i * 1.3) / FPS;
+        if (u <= 0) continue;
+        const a = i * 2.2 + u * 3, p: V3 = [c[0] - 0.2 + (i - 4) * 0.25 * u * 3 + Math.cos(a) * 0.5, c[1] + 0.6 + 2.6 * u + 0.4 * Math.sin(a), c[2] + Math.sin(a) * 0.8 + 0.6 * u];
+        bat(out, cam, 60 + i, p, { pose: "fly", phase: flap(f, i, 4), bomb: 2, size: 0.42, expr: i % 3 === 0 ? "grin" : "open", roll: 0.4 * Math.sin(a) }, t);
+      }
+      break;
+    }
+    case 9: { // one bat looks for the nearest dark place: under the step (sniff, no), behind the crates (sniff, no), the tank
+      const p = bat9At(f), sniff1 = f >= 1006 && f < 1018, no1 = f >= 1018 && f < 1032, sniff2 = f >= 1058 && f < 1068, no2 = f >= 1068 && f < 1080;
+      const shake = no1 || no2 ? 16 * Math.sin((f - (no1 ? 1018 : 1068)) * 1.4) : 0;
+      const nxt = bat9At(f + 4), dir = (nxt[0] - p[0]) * cam.right.x + (nxt[2] - p[2]) * cam.right.z;
+      bat(out, cam, 3, p, { pose: "fly", phase: flap(f, 3, sniff1 || sniff2 ? 7 : 5), bomb: 2, size: 0.4, expr: sniff1 || sniff2 ? "sniff" : no1 || no2 ? "meh" : "open",
+        look: sniff1 || sniff2 ? 0 : clamp01(Math.abs(dir) * 4) * Math.sign(dir), tilt: shake, roll: -0.25 * clamp01(Math.abs(dir) * 3) * Math.sign(dir) }, t);
+      break;
+    }
+    case 10: { // under the fuel tank: five bats in a neat row, timers ticking, all grin
+      for (let k = 0; k < 5; k++) {
+        const p: V3 = [S.TANK[0] + 2.6 - 0.55 * k, 2.12 - 0.06 - 0.23 * 0.5, S.TANK[2] + 1.05];
+        const g = 1116 + k * 2;
+        bat(out, cam, 70 + k, p, { pose: "hang", size: 0.5, bomb: 2, expr: f < g ? "open" : "grin", look: 0, gaze: 0, tilt: 3 * Math.sin(f * 0.15 + k) }, t);
+      }
+      break;
+    }
+    case 11: { // WHOOMP: the tank goes up in a cartoon fireball; the bats flutter out and cheer
+      const Tk = S.TANK, c: V3 = [Tk[0], S.TANK_Y, Tk[2] + 1];
+      fireball(out, c, 15, f, EV.TANK11, 34, 1);
+      fireball(out, [c[0] - 3, c[1] + 2, c[2] - 1], 10, f, EV.TANK11 + 3, 30, 2);
+      fireball(out, [c[0] + 3.5, c[1] + 1.5, c[2] - 0.5], 9, f, EV.TANK11 + 5, 30, 3);
+      if (f >= EV.TANK11) {
+        const u = (f - EV.TANK11) / 30;
+        out.lights.push({ p: [c[0], c[1] + 2, c[2] + 5], I: 60 * Math.max(0.2, 1 - u), col: "#ff9a40", d: 80 });
+        if (f >= EV.TANK11 + 12) { smokeCol(out, [c[0], c[1] + 4, c[2]], f, 7, 6, SMOKE_D, 4, 3.0, 0.8, 1); for (const dx of [-3.5, 0, 3.5]) flame(out, [c[0] + dx, 0.2, c[2]], 3.2, f, 11 + dx, 2.0); }
+        for (let k = 0; k < 5; k++) {
+          const v = (f - EV.TANK11 - 4 - k * 2) / FPS;
+          if (v <= 0) continue;
+          const w = easeOut(v / 0.9), p: V3 = lerp3([c[0] + 2.6 - 0.55 * k, 1.9, c[2] + 1.2], [3.5 + 1.6 * k, 3.2 + 0.9 * (k % 3) + 0.2 * Math.sin(v * 9 + k), 13 + 0.8 * (k % 2)], w);
+          bat(out, cam, 70 + k, p, { pose: v > 0.3 ? "cheer" : "fly", phase: flap(f, k, 4), bomb: 0, size: 0.9, expr: "grin", roll: 0.2 * Math.sin(v * 5 + k) }, t);
+        }
+      }
+      break;
+    }
+    case 12: { // the fire spreads: barracks and hangar roofs burn, the bucket line (one bucket is empty), crane up
+      const F0 = 1215, roofs: V3[] = [[-23, 11.4, -18], [-18, 11.8, -20], [-13, 11.3, -19], [-25, 7.6, -15], [-11, 7.6, -15],
+        [5, 5.2, -9.5], [9, 5.6, -10], [14, 5.2, -9.6], [22, 5.2, -12], [27, 5.6, -13], [32, 5.2, -14], [9, 5.2, -23], [15, 5.6, -24]];
+      roofs.forEach((r, k) => { fireAt(out, r, 2.6 + 1.2 * H(k, 41), f, F0 - 20 + k * 6, k); if (f > F0 + k * 6) smokeCol(out, [r[0], r[1] + 2, r[2]], f, 4, 3.2, SMOKE, 6, 2.2, 0.8, k); });
+      const T0 = S.TANK; for (const dx of [-3.5, 0, 3.5]) flame(out, [T0[0] + dx, 0.2, T0[2]], 3, f, 21 + dx, 2.0);
+      smokeCol(out, [T0[0], 6, T0[2]], f, 6, 5, SMOKE_D, 5, 2.6, 0.6, 9);
+      for (const p of [[-18, 9, -16], [12, 6, -10], [-3, 4, 4]] as V3[]) out.lights.push({ p: [p[0], p[1], p[2] + 3], I: 26, col: "#ff9a40", d: 60 });
+      const line: V3[] = [[11.2, 0, 15.0], [9.9, 0, 14.0], [8.6, 0, 13.0], [7.3, 0, 12.0]];
+      line.forEach((p, k) => {
+        const last = k === 3, swing = Math.floor((f - F0) / 10 + k) % 2 === 0;
+        actor(out, cam, 11 + k, k % 2 ? SOLDIER2 : SOLDIER, k % 2 ? "soldier2" : "soldier", p, [
+          { f: F0, expr: last ? "stern" : "pained", lean: 6, look: -1 },
+          { f: 1257, expr: last ? "blank" : "nervous", gaze: last ? 1 : 0, headTilt: last ? -8 : 4 },
+          { f: 1274, expr: last ? "pained" : "yell", lean: -3 },
+        ], t, -1, (fo) => ({ ...fo, prop: last ? (f >= 1248 ? "bucketTip" : "bucket") : "bucket", armR: last ? undefined : swing ? "out" : "hang", sweat: sweatAt(f, 1230 + 9 * k) }));
       });
-      sparkle(out, [S.SOLDIER11[0] - 1.6, 4.2, S.WALL_Z + 0.4], f, 1170, 1.2);
       break;
     }
-    case 12: { // one emu strolls past the gun, unbothered, ten puffs at its feet, a peck on "ten"
-      const ep = emu12At(f), peckK = f >= EV.PECK12 - 9 && f < EV.PECK12 + 9 ? Math.sin(Math.PI * (f - EV.PECK12 + 9) / 18) : 0;
-      emu(out, cam, 1, ep, peckK > 0.02 ? { pose: "peck", face: 1, peck: peckK, eye: "happy" } : { pose: "walk", dir: [1, 0], phase: (f - 1204) / 28, eye: "open", turn: 0.15 }, t);
-      for (let k = 0; k < 10; k++) {
-        const f0 = EV.PUFF12 + 4 * k, e = emu12At(f0), side = k % 2 ? 1 : -1;
-        strike(out, [e[0] + 0.4 + side * (0.35 + 0.25 * H(k, 81)), 0, e[2] + side * 0.4 + 0.3 * (H(k, 82) - 0.5)], f, f0, 1.1, k);
-      }
-      break;
-    }
-    case 13: { // explainer: the enemy marches in a neat line toward the sandbagged gun
-      for (let i = 0; i < 15; i++) {
-        const x = -7.7 + i * 1.1, z = -7.4 + 2.6 * (f - 1270) / 112;
-        out.places.push(person(cam, { i: 200 + i, o: ENEMY, okey: "enemy" }, x, 0, z, { side: false, mirror: false },
-          { mode: "march", phase: q((((f - EV.MARCH13) / 30) % 1 + 1) % 1, 30), expr: "stern", facing: 0, blink: 0 }, {}, 0.92));
-        blob(out, x, 0, z, 0.92);
-      }
-      break;
-    }
-    case 14: {
-      if (f < EV.CUT14) { // top-down: the starburst
-        const s0 = Math.max(0, (f - EV.SCATTER14) / FPS), C0 = S.GUNNER14;
-        out.places.push({ ...person(cam, { i: 2, o: GUNNER, okey: "gunner" }, C0[0], 0, C0[2], { side: false, mirror: false },
-          { mode: "stand", expr: s0 > 0 ? "shock" : "nervous", prop: "lewis", facing: Math.floor(f / 9) % 2 ? 1 : -1, blink: 0 }, {}, 1), billboard: true });
-        for (let i = 0; i < 44; i++) {
-          const a = (i / 44) * Math.PI * 2 + 0.3 * (H(i, 91) - 0.5), toCam = Math.max(0, Math.sin(a)), r = 1.3 + 1.6 * H(i, 92) * (1 - 0.5 * toCam) + (1.5 + 0.8 * H(i, 93)) * (1 - 0.6 * toCam) * s0; // the ones running at the lens stay in frame longer
-          const p: V3 = [C0[0] + Math.cos(a) * r, 0, C0[2] + Math.sin(a) * r], dir: [number, number] = [Math.cos(a), Math.sin(a)];
-          emu(out, cam, 160 + i, p, s0 > 0 ? { pose: "run", dir, phase: (f / 10 + H(i, 94)) % 1, tint: i % 3, billboard: true } : { pose: "stand", dir, tint: i % 3, billboard: true }, t, false);
-          if (s0 > 0) speed(out, cam, [p[0], 0.4, p[2]], new THREE.Vector3(dir[0], 0, dir[1]), f + i, 2.6);
-          if (s0 > 0 && i % 2 === 0 && p[2] < S.GUNNER14[2] + 2.5) puff(out, [p[0] - dir[0] * 1.0, 0.15, p[2] - dir[1] * 1.0], ((f + i * 3) % 12) / FPS, 0.7, 0.4, i, DUST);
+    case 13: {
+      if (f < EV.CUT13) { // smoky glide past the burnt hangar frame
+        const [hx, , hz] = S.HANGAR;
+        for (let k = 0; k < 7; k++) smokeCol(out, [hx - 8 + 3 * k, 0.6, hz + (k % 2 ? 4 : -2)], f, 5, 3.5, k % 2 ? SMOKE : SMOKE_D, 7, 1.6, 0.9, k * 3);
+        for (let k = 0; k < 4; k++) flame(out, [hx - 6 + 4 * k, 0.1, hz + 3 - 2 * (k % 2)], 1.2, f, 31 + k, 1.8);
+        smokeCol(out, [S.TANK[0], 1, S.TANK[2]], f, 6, 4, SMOKE_D, 6, 2, 0.7, 5);
+        out.lights.push({ p: [hx, 2, hz + 6], I: 14, col: "#ff8a3a", d: 40 });
+      } else { // the General polishes his shiny car... POOF: a charred shell, his moustache singed and smoking
+        const Cr = S.CAR, gp: V3 = [Cr[0] + 0.25, 0, Cr[2] + 1.45], charred = f >= EV.CHAR13;
+        actor(out, cam, 14, charred ? GENERAL_SINGED : GENERAL, charred ? "generalS" : "general", gp, [
+          { f: EV.CUT13, expr: "smile_closed", lean: 8, look: -1, headTilt: 4 },
+          { f: 1380, expr: "proud", headTilt: -5, lean: 6 },
+          { f: EV.CHAR13, expr: "blank", lean: 0, look: 0, headTilt: 0, dur: 2 },
+          { f: EV.KICK13 + 6, expr: "pained", shrug: 1, headTilt: -6 },
+        ], t, -1, (fo) => ({ ...fo, prop: "cloth", wave: charred ? 0 : q((f / 10) % 1, 8), hatLift: charred ? 0.12 : 0, hatTilt: charred ? -0.1 : 0 }));
+        if (charred) {
+          poof(out, [Cr[0], 1.0, Cr[2] + 0.6], 5.2, f, EV.CHAR13, 16);
+          smokeCol(out, [Cr[0] - 0.8, 1.2, Cr[2]], f, 5, 1.4, SMOKE_D, 5, 1.2, 0.3, 2);
+          smokeCol(out, [gp[0] - 0.12, 1.48, gp[2] + 0.1], f, 4, 0.22, "#bcb4b8", 4, 0.45, 0.05, 6); // the moustache smokes
         }
-        for (let j = 0; j < 6; j++) puff(out, [S.GUNNER14[0] + (j - 2.5) * 0.9, 0.2, S.GUNNER14[2] + (j % 2 - 0.5) * 1.6], t - (EV.SCATTER14 + j) / FPS, 1.2, 0.8, j, DUST);
-      } else { // low angle: the gunner spins after them, dizzy by "once"
-        const spin = EV.SPIN14.filter((g) => f >= g).length % 2 ? 1 : -1, dizzy = f >= EV.DIZZY14;
-        actor(out, cam, 2, GUNNER, "gunner", S.GUNNER14, [
-          { f: EV.CUT14, expr: "nervous", lean: 6 },
-          { f: 1462, expr: "shock", headTilt: 8 },                  // "direction"
-          { f: EV.DIZZY14 + 2, expr: "dazed", lean: -6, headTilt: -10 },
-        ], t, spin as 1 | -1, (fo) => ({ ...fo, prop: "lewis", headTilt: (fo.headTilt ?? 0) + (dizzy ? 8 * Math.sin(f * 0.5) : 0), lean: (fo.lean ?? 0) + (dizzy ? 5 * Math.sin(f * 0.37) : 0), hatTilt: dizzy ? 0.3 : 0, sweat: sweatAt(f, 1456) }));
-        for (let i = 0; i < 14; i++) {
-          const a = (f / FPS) * (1.2 + 0.6 * H(i, 95)) * (i % 2 ? 1 : -1) + H(i, 96) * 6.28, r = 4 + 3 * H(i, 97);
-          const p: V3 = [S.GUNNER14[0] + Math.cos(a) * r, 0, S.GUNNER14[2] + Math.sin(a) * r - 7.5], dir: [number, number] = [-Math.sin(a) * (i % 2 ? 1 : -1), Math.cos(a) * (i % 2 ? 1 : -1)];
-          emu(out, cam, 230 + i, p, { pose: "run", dir, phase: (f / 10 + H(i, 98)) % 1, tint: i % 3 }, t);
-        }
-        if (dizzy) { const k = q((t * 1.6) % 1, 16); out.fx.push({ key: `stars${k}`, cw: 420, ch: 210, draw: (p) => fxStars(p, k), x: S.GUNNER14[0], y: 2.05, z: S.GUNNER14[2] + 0.1, w: 0.8, h: 0.4 }); }
       }
       break;
     }
-    case 15: { // Meredith at the salute; the emu army in helmets behind him
-      actor(out, cam, 4, MAJOR, "major", S.MAJOR15, [
-        { f: 1504, expr: "stern", lean: -3 },
-        { f: 1527, expr: "proud", headTilt: -3, lean: -5 },          // "army"
-        { f: 1578, expr: "smile_closed", headTilt: 4 },             // "birds"
-        { f: 1631, expr: "proud", headTilt: -6, lean: -6 },          // "world"
-      ], t, 1, (fo) => ({ ...fo, salute: true, prop: "stick" }));
-      for (let row = 0; row < 12; row++) for (let c = 0; c < 9; c++) {
-        const i = row * 9 + c, x = S.MAJOR15[0] + (c - 4) * 1.9 + (row % 2) * 0.3, z = S.MAJOR15[2] - 3.2 - row * 2.6;
-        const proud = f >= 1578 - (row % 3);
-        emu(out, cam, 300 + i, [x, 0, z], { pose: proud ? "proud" : "attention", face: c < 4 ? 1 : -1, helmet: true, eye: proud ? "happy" : "open", turn: 0.55, tint: i % 3, scale: 0.95 + 0.1 * H(i, 99) }, t);
+    case 14: { // the office: weighing the folder over the money bags, a sigh, into the wastebasket; a bat asleep in the tray
+      const op = S.OFFICER14, drop = f >= 1484, turned = f >= 1474;
+      const wk = f >= EV.WEIGH14[0] && f < EV.WEIGH14[1] ? 0.5 + 0.5 * Math.sin((f - EV.WEIGH14[0]) * 0.6) : 0.4;
+      actor(out, cam, 15, OFFICER, "officer", op, [
+        { f: 1418, expr: "stern", look: -1, gaze: 1, lean: 5 },
+        { f: 1438, expr: "pained", headTilt: -6 },                        // "million"
+        { f: 1452, expr: "blank", shrug: 1, headTilt: 7, lean: -2 },      // the sigh
+        { f: 1466, expr: "annoyed", shrug: 0, look: 1, headTilt: 0 },     // "project"
+        { f: EV.DROP14, expr: "stern", lean: 6, gaze: 1 },                // "cancelled"
+      ], t, turned ? 1 : -1, (fo) => ({ ...fo, prop: drop ? null : "folder", armL: !turned ? ["hold", "out", q(wk, 10)] as ArmSpec : undefined, armR: turned && !drop ? "out" : undefined, sweat: sweatAt(f, 1440) }));
+      if (drop) { // the folder falls into the basket (thunk), then sticks out of it
+        const u = clamp01((f - 1484) / (EV.DROP14 - 1484)), B = S.BASKET14;
+        const p: V3 = f < EV.DROP14 ? [lerp(op[0] + 0.55, B[0], u), lerp(1.05, 0.45, u * u), lerp(op[2] + 0.2, B[2], u)] : [B[0] - 0.02, 0.44, B[2]];
+        out.places.push({ key: "folderItem", draw: folderItem, x: p[0], y: p[1], z: p[2], scale: 0.42, sq: true, billboard: true, roll: f < EV.DROP14 ? -0.6 * u : 0.15, size: [256, 256, 256 / 600] });
+        if (f >= EV.DROP14) poof(out, [B[0], 0.5, B[2] + 0.1], 0.5, f, EV.DROP14, 10);
       }
+      const tr = S.TRAY14;
+      bat(out, cam, 4, [tr[0], tr[1] + 0.07, tr[2] + 0.02], { pose: "sleep", size: 0.2, expr: "shut", bomb: 0, blink: false, tilt: 0 }, t);
       break;
     }
-    case 16: { // the army goes home: the truck into the sunset, a glum gunner on the tray, two emus watch it go
-      const tk = rig.truck;
-      trail(out, (g) => { const x = 4 + 4 * Math.max(0, (g - 1656) / FPS) + 2.2 * Math.max(0, (g - 1656) / FPS) ** 2; return [x - 1.2, 0.3, (g / 3) % 2 ? 1.6 : -1.6]; }, f, 5, 1.4, DUST_GOLD, 4);
-      sitter(out, cam, 2, GUNNER, "gunner", truckPt(tk, [-2.3, 1.02, 0.2]), [{ f: 1656, expr: "pained", headTilt: -8, lean: 6 }], t, -1, (x) => x, 1, false);
-      break;
-    }
-    case 17: { // the emus are still there: the near one turns to the lens and blinks
-      const [ta, tb] = EV.TURN17, tn = smooth((f - ta) / (tb - ta)), bl = f >= EV.BLINK17 && f < EV.BLINK17 + 4 ? [0.5, 1, 1, 0.5][f - EV.BLINK17] : 0;
-      emu(out, cam, 1, S.EMU17, { pose: "stand", face: -1, turn: tn, eye: "open", blink: bl, scale: 1.12 }, t, false);
-      for (let i = 0; i < 22; i++) {
-        const z = -24 - 40 * H(i, 102), p: V3 = [S.CAM17[0] + (z - S.CAM17[2]) * (0.22 * (H(i, 101) * 2 - 1)) - 0.5, 0, z];
-        const pose: EmuPose = i % 3 === 0 ? "walk" : i % 3 === 1 ? "peck" : "stand";
-        emu(out, cam, 400 + i, pose === "walk" ? [p[0] + 0.7 * t, 0, p[2]] : p, { pose, dir: [1, 0.1], face: H(i, 103) < 0.5 ? -1 : 1, phase: (f / 26 + H(i, 104)) % 1, peck: 0.5 + 0.5 * Math.sin(f * 0.25 + i), tint: i % 3 }, t, false);
+    case 15: { // moonlit cave: the ribbon streams out across the moon; the medal bat on the lip turns, smug, and winks
+      for (let i = 0; i < 380; i++) {
+        const sp = ((f - 1490) / FPS * (0.11 + 0.05 * H(i, 51)) + H(i, 52)) % 1;
+        const c = ribbonAt(15, sp), a = i * 2.39996 + f * 0.14 + sp * 10, r = 0.5 + 5.5 * sp * sp + 0.6 * sp;
+        const p: V3 = [c[0] + r * Math.cos(a), c[1] + 0.5 * r * Math.sin(a), c[2] + r * Math.sin(a) * 0.7];
+        if (cam.pos.distanceTo(_cp.set(p[0], p[1], p[2])) < 2.6) continue;
+        bat(out, cam, 100 + i, p, { pose: "fly", phase: flap(f, i), size: 0.55, roll: 0.4 * Math.cos(a), blink: false }, t);
       }
+      const L = S.LIP15, bp: V3 = [L[0], L[1] - 0.24 * 0.36, L[2]];
+      bat(out, cam, 5, bp, { pose: "hang", size: 0.36, medal: true, bomb: 0,
+        expr: f < EV.TURN15 - 2 ? "happy" : f < EV.WINK15 - 1 ? "smug" : f < EV.WINK15 + 14 ? "wink" : "smug",
+        look: f < EV.TURN15 - 2 ? 0.9 : 0, tilt: f < EV.TURN15 - 2 ? -10 + 3 * Math.sin(f * 0.08) : 4 * smooth((EV.TURN15 + 6 - f) / 6), blink: f < EV.TURN15 - 4 }, t);
       break;
     }
   }
   return out;
 };
-export { FPS };
+/** red ink mark of the approval stamp: a bordered blob with two bars (no letters), slightly smudged */
+const stampMark = (p: Pen) => {
+  const g = p.g;
+  g.globalAlpha = 0.9; g.strokeStyle = "#d42f2f"; g.lineWidth = 12; g.lineJoin = "round";
+  g.beginPath(); g.ellipse(128, 80, 104, 58, -0.08, 0, Math.PI * 2); g.stroke();
+  g.fillStyle = "#d42f2f"; g.fillRect(62, 58, 132, 14); g.fillRect(74, 88, 108, 14);
+  g.globalAlpha = 0.35; g.beginPath(); g.ellipse(128, 80, 84, 40, 0, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1;
+};
+/** the cancelled project's folder as a lit card item (manila, bulging papers, a red tab) */
+const folderItem = (p: Pen) => {
+  const g = p.g;
+  g.save(); g.translate(300, 300); g.rotate(-0.2); g.translate(-300, -300);
+  g.lineJoin = "round"; g.lineWidth = 14; g.strokeStyle = "#241726";
+  g.fillStyle = "#f4efe2"; g.fillRect(150, 196, 300, 190); g.strokeRect(150, 196, 300, 190);
+  g.fillStyle = "#e8c47a"; g.fillRect(130, 220, 340, 200); g.strokeRect(130, 220, 340, 200);
+  g.fillStyle = "#c0353a"; g.fillRect(380, 196, 60, 30); g.strokeRect(380, 196, 60, 30);
+  g.restore();
+};
