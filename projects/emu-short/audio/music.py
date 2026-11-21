@@ -138,15 +138,14 @@ def build():
     b.cue(tl, "'And lost.' @128: one soft muted-trombone 'wah' sliding down a tritone")
 
     # 3 FARM 5.23 - 10.17 (XF 157): the groove settles in (guitar, bass, Rhodes, brushes, shaker, soft kick)
-    groove(b, s(3), 10.17, LOOP_A)
+    groove(b, s(3), 15.0, ["Fmaj7", "Dm7", "Bbmaj7", "Gm7"])
     sparkle(b, fr(229), [76, 81], 0.18)
-    b.cue(s(3), "FARM (XF @157): the laid-back groove starts - guitar, upright bass, Rhodes, brushes + shaker + soft kick (Fmaj7 Dm7 Gm7 C9)")
+    b.cue(s(3), "FARM (XF @157): the laid-back groove starts - guitar, upright bass, Rhodes, brushes + shaker + soft kick (Fmaj7 Dm7 Bbmaj7 Gm7, one bar each, through shot 5)")
 
     # 4-5 EMUS / PHONE 10.17 - 15.0: same groove on the minor loop, the emu figure hops on top
-    groove(b, s(4), 15.0, LOOP_B, vel=0.95)
-    for t in (10.3, 12.75):
+    for t in (10.75, 12.75):
         emu_fig(b, t, 0.42)
-    b.cue(s(4), "EMUS ARRIVE: groove moves to Dm7 Bbmaj7 Gm7 C9, the little muted-banjo emu figure hops in (and again after 'ate it.')")
+    b.cue(s(4), "EMUS ARRIVE: the groove carries on; the little muted-banjo emu figure hops in (and again after 'ate it.')")
 
     # 6-7 ARMY / FIRST DAY 15.0 - 23.17: back to loop A, a bit lighter under the gunfire
     groove(b, s(6), 23.17, LOOP_A, vel=0.9)

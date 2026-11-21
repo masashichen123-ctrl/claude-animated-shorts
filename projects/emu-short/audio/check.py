@@ -23,7 +23,7 @@ def pcm16k(path):
 def norm_words(text):
     t = text.lower().replace("-", " ")
     t = re.sub(r"[^a-z0-9' ]+", " ", t)
-    return [{"km": "kilometres", "kilometers": "kilometres"}.get(x, x) for x in t.split()]
+    return [{"km": "kilometres", "kilometers": "kilometres", "10": "ten"}.get(x, x) for x in t.split()]
 
 
 def transcribe(model, path):

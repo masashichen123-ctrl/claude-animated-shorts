@@ -25,12 +25,12 @@ TARGET_LUFS = -14.0
 CEIL_DBTP = -1.3                 # limiter ceiling (spec: true peak <= -1.0 dBTP)
 DUCK_DB = -3.0                   # gentle music dip while the voice speaks (slow attack / release, no pumping)
 SFX_DUCK_DB = -3.0               # SFX dip while the voice speaks
-MUSIC_UNDER = -17.0              # music vs voice, LU, over the spoken parts of each section (after the duck)
-GAP_BLOOM_DB = 3.0               # extra lift in narration gaps >= GAP_MIN s (with the duck release: ~ -11 LU under the voice)
+MUSIC_UNDER = -18.5              # music vs voice, LU, over the spoken parts of each section (after the duck)
+GAP_BLOOM_DB = 4.0               # extra lift in narration gaps >= GAP_MIN s (with the duck release: ~ -11 LU under the voice)
 GAP_MIN = 0.55
 
 # per-section offsets (dB) on top of MUSIC_UNDER
-SEC_OFFSET = {"unlucky": -1.0}
+SEC_OFFSET = {"unlucky": -1.0, "ending": -4.0, "lost": -1.5}
 # rides on the music only (start, end, dB)
 RIDES = [(40.15, 40.70, -2.0)]   # 'Unluckily,'
 
@@ -145,6 +145,8 @@ def section_curve(m_d, v, mask):
         else:
             Lm, Lv = integrated(m_d[:, seg]), integrated(v[:, seg]) if np.any(v[:, seg]) else -99
         g = (Lv + MUSIC_UNDER + SEC_OFFSET.get(name, 0.0) - Lm) if (np.isfinite(Lm) and Lv > -90) else prev
+        if name == "jam":                       # music is silent here (only the room tail): keep the dam level
+            g = prev
         gains[name] = float(np.clip(g, -30, 30))
         prev = gains[name]
     t = np.arange(N) / SR
@@ -153,7 +155,7 @@ def section_curve(m_d, v, mask):
         curve[t >= a] = gains[name]
     sm = ndimage.uniform_filter1d(curve, ns(0.12), mode="nearest")      # 120 ms crossfade between section levels
     hard = np.zeros(N, bool)
-    for tb in (T.fr(T.FLASH), T.fr(T.JAM)):                              # silent / hit boundaries switch instantly
+    for tb in (T.fr(T.FLASH),):                              # silent / hit boundaries switch instantly
         hard[ns(tb - 0.1): ns(tb + 0.1)] = True
     curve = np.where(hard, curve, sm)
     for a, b, db in RIDES:
@@ -333,12 +335,22 @@ def main():
                     speech_max=float(in_speech.max()), speech_pct_over_0_1=float((in_speech > 0.1).mean() * 100),
                     speech_p90=float(np.percentile(in_speech, 90)), speech_p99=float(np.percentile(in_speech, 99)))
     rows = section_table(gv, gm, gs, spans)
+    # music in the longer gaps vs the voice's integrated loudness
+    Mm_ = momentary(gm)
+    tc_ = np.arange(len(Mm_)) * 0.01 + 0.2
+    lg = np.zeros(len(tc_), bool)
+    for (a0, a1), (b0, b1) in zip(spans[:-1], spans[1:]):
+        if b0 - a1 >= GAP_MIN:
+            lg |= (tc_ >= a1 + 0.2) & (tc_ <= b0 - 0.2)
+    lg |= tc_ >= spans[-1][1] + 0.2
+    gap_under = float(lufs(gv) - np.median(Mm_[lg]))
+    sp_ = np.array([r[7] for r in rows if np.isfinite(r[7])])
     music_cuts = [T.fr(T.FLASH), T.fr(T.JAM), T.fr(1382), T.fr(1201)]
     n_chk, bad = click_check(y, gs, gm, [(e[0], e[1], e[2], e[3] * dbg(G)) for e in events], music_cuts)
     clip = int((np.abs(y) >= 0.9999).sum())
     eb = ffmpeg_ebur(mix_path)
     stats = dict(I=I, TP=TP, LRA=LRA, Mmax=Mmax, Smax=Smax, G=G, gr=gr_stats, v_ref=v_ref, voice_I=lufs(gv), music_I=lufs(gm),
-                 sfx_I=lufs(gs), sec_gains=sec_gains, n_chk=n_chk, bad=bad, clip=clip, samples=y.shape[1],
+                 sfx_I=lufs(gs), sec_gains=sec_gains, gap_under=gap_under, speech_under_med=float(np.median(sp_)), n_chk=n_chk, bad=bad, clip=clip, samples=y.shape[1],
                  voice_peak=float(20 * np.log10(np.abs(gv).max())))
     log(json.dumps({k: (round(v_, 2) if isinstance(v_, float) else v_) for k, v_ in stats.items() if k not in ("sec_gains",)}, default=str))
     for r in rows:
@@ -398,6 +410,9 @@ def write_cues(C, b, st_, rows, eb, spans, v):
     f = lambda x: "-" if (not np.isfinite(x) or x <= -98) else f"{x:.1f}"
     for r in rows:
         w(f"| {r[0]} | {r[1]:.2f}-{r[2]:.2f} | {f(r[3])} | {f(r[4])} | {f(r[5])} | {f(r[7])} | {f(r[8])} | {f(r[9])} | {f(r[10])} |")
+    w("")
+    w(f"Music under the voice: median over the sections' speech windows {st_['speech_under_med']:.1f} LU; in the longer gaps "
+      f"(>= {GAP_MIN} s) the music's median momentary level is {st_['gap_under']:.1f} LU under the voice's integrated loudness.")
     w("")
     w("Applied section gains (dB): " + ", ".join(f"{k} {v_:+.1f}" for k, v_ in st_["sec_gains"].items()) + ". Music rides: " +
       ", ".join(f"{a:.2f}-{b_:.2f} s {db:+.1f} dB" for a, b_, db in RIDES if db) + ".")
