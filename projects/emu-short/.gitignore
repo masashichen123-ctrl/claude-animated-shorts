@@ -4,3 +4,4 @@ out/
 *.wav
 public/emu/
 backup/
+__pycache__/
