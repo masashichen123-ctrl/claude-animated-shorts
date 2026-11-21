@@ -426,3 +426,38 @@ def reed(f, dur, vel=0.6, r=None, rel=0.05, stacc=False):
         y += ak * np.sin(k * ph + r.uniform(0, TAU))
     y += bp(r.standard_normal(n), 800, 3000, 1) * 0.02
     return fades(y * env * vel / 2, 0.002, 0.03)
+
+
+# ================================================================ chill bed (added for the re-score)
+def rhodes(f, dur, vel=0.5, r=None, rel=0.25, trem=0.0):
+    """electric-piano tine: warm fundamental, soft 2nd harmonic, short bell partial, gentle bark on hard hits"""
+    r = r or rng(0)
+    n = ns(dur + rel)
+    t = np.arange(n) / SR
+    tau = 1.6 * (220 / f) ** 0.3
+    y = (np.exp(-t / tau) * np.sin(TAU * f * t)
+         + 0.18 * vel * np.exp(-t / (tau * 0.4)) * np.sin(TAU * 2 * f * t + 0.3)
+         + 0.10 * vel * np.exp(-t / 0.08) * np.sin(TAU * 7.1 * f * t + 1.1) * (f * 7.1 < SR * 0.45))
+    y *= (1 - np.exp(-t / 0.004))
+    e = np.ones(n)
+    d = ns(dur)
+    if d < n:
+        e[d:] = np.linspace(1, 0, n - d) ** 2
+    if trem:
+        e *= 1 - trem * (0.5 + 0.5 * np.sin(TAU * 4.5 * t))
+    return fades(y * e * vel, 0.001, 0.03)
+
+
+def soft_kick(vel=0.5, r=None):
+    r = r or rng(0)
+    t = tt(0.45)
+    y = np.exp(-t / 0.13) * np.sin(phase(52 * (1 + 0.6 * np.exp(-t / 0.02))))
+    y += lp(r.standard_normal(len(t)), 300, 2) * np.exp(-t / 0.01) * 0.2
+    return fades(y * vel, 0.002, 0.05)
+
+
+def shaker(vel=0.3, r=None, dur=0.09):
+    r = r or rng(0)
+    t = tt(dur)
+    e = np.sin(np.pi * np.clip(t / dur, 0, 1)) ** 2
+    return bp(r.standard_normal(len(t)), 4000, 11000, 2) * e * vel

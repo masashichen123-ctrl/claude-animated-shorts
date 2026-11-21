@@ -12,7 +12,7 @@ import sfx_emu as E
 import timeline as T
 
 N = ns(T.DUR)
-SFX_DB = -6.0
+SFX_DB = -8.0                      # re-score: SFX tamed (was -6); the key hits get +2 back via KEY
 fr = T.fr
 
 
@@ -112,6 +112,7 @@ def cues():
          [breeze(0.8, 800), wheat(0.45), birds(0.06, 0.4), flies(0.02, 1)], -29),
     ]
     for i, (a, b, name, desc, parts, lvl) in enumerate(beds):
+        lvl -= 6                                   # re-score: ambience much subtler
         g = _bed(b - a, 0.08 if a > 0 else 0.3, 0.1 if b < T.DUR - 0.01 else 0.6, parts)
         add(Cue(a, name, desc, (lambda g=g, s=100 + i: g(s)), lvl, "bed", send=0.0))
 
@@ -123,7 +124,7 @@ def cues():
     add(Cue(3.30, "emu_boom", "emu leans in on 'emus' @98: low drumming boom from its chest (stare-down)",
             lambda: (E.emu_boom(rng(98), 4, 62, 3.6), 0.0), -10, p=0.1, lpf=900, frame=99))
     add(Cue(fr(T.FLASH), "flash_swell", "reverse swell into the white FLASH @119 (peaks on the frame)",
-            lambda: (G.whoosh(0.58, rng(119), 0.55, 500, 4000, 0.9, 0.04, 0.4), 0.55), -9, frame=T.FLASH))
+            lambda: (G.whoosh(0.58, rng(119), 0.55, 500, 4000, 0.9, 0.04, 0.4), 0.55), -13, frame=T.FLASH))
     add(Cue(fr(T.KICK), "kick_impact", "KICK @126: the Lewis gun goes over - dull thump + metal clatter in the stubble",
             lambda: (E.crate_thud(rng(126), 1.0) + np.pad(lp(G.rattle(0.35, rng(127), 60, np.exp(-np.linspace(0, 1, ns(0.35)) * 3), heavy=True), 3500, 1), (0, ns(0.25))), 0.0),
             -11, p=-0.2, frame=T.KICK))
@@ -140,7 +141,7 @@ def cues():
     d4 = b4 - a4
     add(Cue(a4, "emu_herd", "100+ emus pour over the hill into the wheat: running feet thunder (swells in), booms and grunts",
             lambda: (E.herd(d4 + 0.05, rng(305), 55, [(0, 0.15), (1.0, 0.8), (d4 - 0.4, 1.0), (d4, 0.6)], 0.9, 0.7, 1.6), 0.0),
-            -10, lpf=4500, send=0.15, frame=305))
+            -13, lpf=4500, send=0.15, frame=305))
     def pecks(r):
         y = np.zeros((2, ns(0.8)))
         for k in range(16):
@@ -154,26 +155,26 @@ def cues():
     # ------------------------------------------------ shot 5: wall telephone
     for k, (fa, fb) in enumerate(T.CRANK):
         add(Cue(fr(fa), "phone_crank", f"wall telephone: magneto crank + generator whine + bells ringing (burst {k + 1}/2)",
-                (lambda r=rr(), d=fr(fb - fa): (E.phone_crank(r, d), 0.0)), -8 if k else -9, p=-0.3, send=0.12, frame=fa))
+                (lambda r=rr(), d=fr(fb - fa): (E.phone_crank(r, d), 0.0)), -11 if k else -12, p=-0.3, send=0.12, frame=fa))
 
     # ------------------------------------------------ shot 6: the army arrives
     ts = fr(T.TRUCK_STOP)
     add(Cue(14.55, "truck_arrive", "army truck rushing in (1930s 4-cylinder, off the throttle) into the stop @456",
             lambda: (fades(E.engine(ts - 14.55 + 0.05, rng(450), np.linspace(1900, 900, 8), 0.8), 0.1, 0.03), 0.0), -12, p=-0.3, frame=436))
     add(Cue(ts - 0.56, "truck_skid", "SKID to a stop in red dust, ending exactly on @456 (dirt crunch + scrub, body rock)",
-            lambda: (E.skid(rng(456), 0.6), 0.0), -6, p=-0.2, frame=T.TRUCK_STOP))
+            lambda: (E.skid(rng(456), 0.6), 0.0), -6, extra=2.0, p=-0.2, frame=T.TRUCK_STOP))
     add(Cue(ts, "truck_idle", "engine idling (low putter, under the line) until the cut @527",
             lambda: (fades(E.engine(fr(527) - ts, rng(457), 620, 0.4), 0.05, 0.15), 0.0), -14, p=-0.3, lpf=2500, frame=T.TRUCK_STOP))
     add(Cue(fr(T.SALUTE), "salute", "two soldiers salute @502: heel clicks + hand swish", lambda: (E.salute(rng(502)), 0.0), -12, p=0.2, frame=T.SALUTE))
     add(Cue(fr(T.GUNS), "gun_cock", "Lewis gun on its tripod cocked @543", lambda: (E.cock(rng(543)), 0.0), -13, p=0.1, frame=T.GUNS))
     add(Cue(fr(T.CRATE), "crate_thud", "one more ammo crate on the stack @582: box thud + rounds rattling inside",
-            lambda: (E.crate_thud(rng(582), 1.0), 0.0), -7, p=0.15, lpf=4000, frame=T.CRATE))
+            lambda: (E.crate_thud(rng(582), 1.0), 0.0), -10, p=0.15, lpf=4000, frame=T.CRATE))
 
     # ------------------------------------------------ shot 7: the first day (bursts in the narration gaps, a soft one under it)
     bursts = [(20.075, 2, 0, None), (20.92, 3, 0, None), (21.58, 5, -9, 2500), (22.93, 3, 0, None)]
     for k, (tb, nr, ex, lpf) in enumerate(bursts):
         add(Cue(tb, "lewis_burst", f"Lewis gun burst, {nr} rounds at 9.4/s (cracks + drum rattle + casings){' - soft, under the line' if ex else ''}",
-                (lambda r=rr(), nr=nr: (E.lewis_burst(r, nr), 0.005)), -4, p=-0.1, extra=ex, lpf=lpf, send=0.2, frame=int(round(tb * 30))))
+                (lambda r=rr(), nr=nr: (E.lewis_burst(r, nr), 0.005)), -4, p=-0.1, extra=ex + 2.0, lpf=lpf, send=0.2, frame=int(round(tb * 30))))
         for j in range(nr):
             tp = tb + j / 9.4 + 0.28
             add(Cue(tp, "dust_puff_far", "dust puff falling short, far out in the paddock",
@@ -184,7 +185,7 @@ def cues():
     # ------------------------------------------------ shot 8: the dam and the jam
     tj = fr(T.JAM)
     add(Cue(tj, "jam_clack", "the gun JAMS @801: bolt slams and stops dead (clack) + thunk + smoke puff",
-            lambda: (E.jam_clack(rng(801)), 0.0), -4, p=0.0, send=0.08, frame=T.JAM))
+            lambda: (E.jam_clack(rng(801)), 0.0), -4, extra=2.0, p=0.0, send=0.08, frame=T.JAM))
     add(Cue(tj + 0.02, "spring_boing", "the drum spring pops out @801: 'sproing' + wobbling twang",
             lambda: (E.spring_boing(rng(802)), 0.0), -9, p=0.15, send=0.1, frame=T.JAM))
 
@@ -194,7 +195,7 @@ def cues():
                 (lambda r=rr(), k=k: (E.hammer_metal(r, 1.0 if k < 3 else 1.15), 0.0)), -9, p=0.25, send=0.12, frame=f))
     tc = fr(T.TRUCK_CUT)
     add(Cue(tc + 0.02, "gear_crunch", "crash gearbox: teeth grind then the gear clunks in @875", lambda: (E.gear_crunch(rng(875), 0.3), 0.0),
-            -6, p=-0.1, frame=T.TRUCK_CUT))
+            -9, p=-0.1, frame=T.TRUCK_CUT))
     dch = fr(937) - tc
     add(Cue(tc + 0.15, "truck_engine", "truck engine flat out across the paddock (revs climbing)",
             lambda: (fades(E.engine(dch - 0.1, rng(876), np.linspace(1100, 2300, 10), 1.0), 0.15, 0.1), 0.0), -10, p=-0.1, frame=880))
@@ -248,11 +249,11 @@ def cues():
     # ------------------------------------------------ shot 14: the scatter
     t14 = fr(T.SCATTER)
     add(Cue(t14, "scatter_whoosh", "SCATTER @1382: big outward whoosh as 60+ emus burst from the centre",
-            lambda: (widen(G.whoosh(0.8, rng(1382), 0.12, 300, 3000, 0.9, 0.3, 0.3), rng(1383), 14, 1.0), 0.12), -4, send=0.15, frame=T.SCATTER))
+            lambda: (widen(G.whoosh(0.8, rng(1382), 0.12, 300, 3000, 0.9, 0.3, 0.3), rng(1383), 14, 1.0), 0.12), -9, send=0.15, frame=T.SCATTER))
     d14 = fr(1504) - t14
     add(Cue(t14, "emu_stampede", "running thunder of the herd radiating in every direction (wide stereo)",
             lambda: (E.herd(d14, rng(1384), 80, [(0, 1.0), (0.6, 0.85), (2.2, 0.55), (d14 - 0.3, 0.4), (d14, 0.0)], 1.0, 0.3, 1.2), 0.0),
-            -8, lpf=6000, send=0.12, frame=T.SCATTER))
+            -12, lpf=6000, send=0.12, frame=T.SCATTER))
     for k, tm in enumerate([fr(T.SPIN_CUT), fr(T.SPIN_CUT) + 0.42, fr(T.SPIN_CUT) + 0.84, fr(T.SPIN_CUT) + 1.26]):
         add(Cue(tm, "spin_whoosh", f"the gunner spins on the spot (whoosh {k + 1}/4, panning round)",
                 (lambda r=rr(), k=k: (pan(G.whoosh(0.42, r, 0.2, 500, 2500, 0.8, 0.12, 0.15), [-0.7, 0.7, -0.7, 0.7][k]), 0.2)),
@@ -268,7 +269,7 @@ def cues():
             place(y, pan(E.emu_boom(r, int(r.integers(3, 6)), r.uniform(55, 85)) * r.uniform(0.4, 1.0), r.uniform(-0.8, 0.8)), r.uniform(0, 0.25))
         return y
     add(Cue(54.70, "emu_boom_chorus", "the whole emu army booms back after 'world.' (a chorus of drumming)", lambda: (chorus(rng(1641)), 0.0),
-            -8, lpf=1200, send=0.25, frame=1641))
+            -12, lpf=1200, send=0.25, frame=1641))
 
     # ------------------------------------------------ shot 16: the army goes home
     t16 = fr(1656)

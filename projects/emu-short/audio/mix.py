@@ -23,18 +23,16 @@ CACHE = os.path.join(OUT, "_cache")
 N = ns(T.DUR)                    # 2,832,000 samples = 59.000 s
 TARGET_LUFS = -14.0
 CEIL_DBTP = -1.3                 # limiter ceiling (spec: true peak <= -1.0 dBTP)
-DUCK_DB = -5.0                   # music dip while the voice speaks
-SFX_DUCK_DB = -2.0               # SFX dip while the voice speaks
-MUSIC_UNDER = -9.0               # music vs voice, LU, measured over the spoken parts of each section (after the duck)
+DUCK_DB = -3.0                   # gentle music dip while the voice speaks (slow attack / release, no pumping)
+SFX_DUCK_DB = -3.0               # SFX dip while the voice speaks
+MUSIC_UNDER = -17.0              # music vs voice, LU, over the spoken parts of each section (after the duck)
+GAP_BLOOM_DB = 3.0               # extra lift in narration gaps >= GAP_MIN s (with the duck release: ~ -11 LU under the voice)
+GAP_MIN = 0.55
 
-# per-section offsets (dB) on top of MUSIC_UNDER: quieter where the story is in the SFX, a touch fuller for the big beats
-SEC_OFFSET = {"hook": -1.0, "lost": 0.0, "farm": -0.5, "emus": -0.5, "phone": -1.0, "army": -0.8, "firstday": -1.0, "dam": -0.3,
-              "jam": 0.0, "truck": -0.5, "camp": -0.5, "dump": -1.5, "unlucky": -2.0, "toy": -0.5, "scatter": -0.5, "parade": -1.2,
-              "home": -0.8, "ending": -0.3}
-# rides on the music only (start, end, dB): sentence-final words that are soft in the TTS read
-RIDES = [(4.14, 4.80, -2.0),    # 'And lost.' over the deflate slide's attack
-         (40.15, 40.70, -3.0),  # 'Unluckily,'
-         (26.30, 26.72, 0.0)]   # (hold crescendo under 'the gun' left as composed)
+# per-section offsets (dB) on top of MUSIC_UNDER
+SEC_OFFSET = {"unlucky": -1.0}
+# rides on the music only (start, end, dB)
+RIDES = [(40.15, 40.70, -2.0)]   # 'Unluckily,'
 
 
 def log(*a):
@@ -97,7 +95,11 @@ def key_spans(v):
     return m
 
 
-def duck_curve(spans, depth, pre=0.06, post=0.1, att=0.05, rel=0.25):
+def duck_curve(spans, depth, pre=0.06, post=0.1, att=0.05, rel=0.25):  # noqa
+    return _duck(spans, depth, pre, post, att, rel)
+
+
+def _duck(spans, depth, pre, post, att, rel):
     ctrl = 1000
     nc = int(T.DUR * ctrl) + 2
     va = np.zeros(nc)
@@ -111,6 +113,16 @@ def duck_curve(spans, depth, pre=0.06, post=0.1, att=0.05, rel=0.25):
         e += (tgt - e) * (ka if tgt > e else kr)
         env[i] = e
     return np.interp(np.arange(N) / SR, np.arange(nc) / ctrl, depth * env)
+
+
+def gap_bloom(spans):
+    """+GAP_BLOOM_DB in the longer narration gaps (and before the first / after the last word), 0.3 s ramps"""
+    d = np.zeros(N)
+    edges = [(-1.0, 0.0)] + [tuple(x) for x in spans] + [(T.DUR + 1, T.DUR + 2)]
+    for (a0, a1), (b0, b1) in zip(edges[:-1], edges[1:]):
+        if b0 - a1 >= GAP_MIN:
+            d[max(0, ns(a1 + 0.12)): max(0, ns(b0 - 0.2))] = GAP_BLOOM_DB
+    return ndimage.uniform_filter1d(d, ns(0.3), mode="nearest")
 
 
 def speech_mask(spans):
@@ -268,9 +280,9 @@ def main():
     b = music.build()
     m_raw = cached("music_raw", lambda: music.render(b, ref=-20.0)[0], fresh)
     log("music", f"{lufs(m_raw):.2f} LUFS raw")
-    m_d = m_raw * dbg(duck_curve(spans, DUCK_DB))[None, :]
+    m_d = m_raw * dbg(duck_curve(spans, DUCK_DB, pre=0.25, post=0.15, att=0.25, rel=0.6))[None, :]
     sec, sec_gains = section_curve(m_d, v, mask)
-    m = m_d * dbg(sec)[None, :]
+    m = m_d * dbg(sec + gap_bloom(spans))[None, :]
 
     import sfx
     events = []
@@ -345,7 +357,7 @@ def write_cues(C, b, st_, rows, eb, spans, v):
     w("# The Great Emu War - soundtrack cue sheet")
     w("")
     w("All sound is original and synthesized in numpy/scipy: instruments in `instruments.py` (brass, snare, glock, timpani from the "
-      "shared kit + banjo, accordion, lagerphone, bass drum, woodblock, slide whistle, reed added here), SFX in `sfx_emu.py` / `sfx_gen.py`; "
+      "shared kit + banjo, Rhodes, soft kick, shaker and more added here), SFX in `sfx_emu.py` / `sfx_gen.py`; "
       "placed by `music.py` / `sfx.py` from `timeline.py` (frames from SHOTS.md), mixed by `mix.py`.")
     w("Voice = `voice/voice.wav`, gain only (no EQ, no compression, no pitch, no time change). Rebuild everything + verify: `bash audio/build.sh` (about 1.5 min; mix only: `python3 audio/mix.py --fresh`).")
     w("")
@@ -376,7 +388,7 @@ def write_cues(C, b, st_, rows, eb, spans, v):
     w("")
     w("## Voice on top: per-section loudness")
     w(f"Key: words.json spans, widened by the voice's own measured activity (TTS word times drift by up to 0.25 s). "
-      f"Music: {DUCK_DB:+.0f} dB duck under speech (attack 50 ms, release 250 ms), section gain set so the music sits {MUSIC_UNDER:+.1f} LU "
+      f"Music: {DUCK_DB:+.0f} dB gentle duck under speech (attack 250 ms, release 600 ms) + {GAP_BLOOM_DB:+.0f} dB bloom in gaps >= {GAP_MIN} s; section gain set so the music sits {MUSIC_UNDER:+.1f} LU "
       f"(+ per-section offset) under the voice over the spoken parts. SFX: {SFX_DUCK_DB:+.0f} dB duck under speech.")
     w("Columns: integrated LUFS per stem at mix gain; then over 400 ms windows centred on speech: median voice-music, median and 10th "
       "percentile voice-bed (bed = music + sfx); bloom = median music level in the gaps minus in speech (LU).")
@@ -393,9 +405,10 @@ def write_cues(C, b, st_, rows, eb, spans, v):
     w("Narration gaps (measured on voice.wav), where the loud hits and the music blooms go: " +
       ", ".join(f"{spans[i][1]:.2f}-{spans[i + 1][0]:.2f}" for i in range(len(spans) - 1)) + ".")
     w("")
-    w("## Music map (original: comic 1930s military march with a bush-band flavour, F major, 120 bpm = 15 frames a beat)")
-    w("Themes, both composed here: ARMY theme (pompous dotted march: C-A-F-A-C-F-E | D-C-Bb-D-C ...) and EMU motif (staccato, D minor: "
-      "D-D-F-E-D-C#-D-A ...). No borrowed melodies (no Waltzing Matilda, no anthems, no known marches); the bugle call is a plain C-C-F arpeggio.")
+    w("## Music map (chill re-score: laid-back acoustic / lo-fi bed, F major, 88 bpm, swung eighths)")
+    w("Fingerpicked nylon guitar, warm Rhodes, round upright bass, brushes + shaker + soft kick (no snare, no crashes, no rolls), "
+      "vibes sparkles, and a small playful EMU figure (A-D-C-A..G-A, muted banjo), all composed here; progressions Fmaj7-Dm7-Gm7-C9 "
+      "and Dm7-Bbmaj7-Gm7-C9. The first brass-march score is kept for reference in `music_march.py` (not used).")
     w("")
     w("| time s | frame | music |")
     w("|---|---|---|")
