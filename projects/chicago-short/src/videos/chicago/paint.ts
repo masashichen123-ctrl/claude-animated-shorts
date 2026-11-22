@@ -346,15 +346,15 @@ export const stoneHD = () => ctex("stoneHD", 512, 512, (g, r) => {
 
 // ---------------- Chicago 1861 textures ----------------
 /** wet street mud (1024 px = 4 m): chocolate brown with glossy sky-blue puddle patches, wheel ruts, boot prints */
-export const mudHD = (key = "mudHD", base = "#7a5636", puddle = 0.5) => ctex(key, 1024, 1024, (g, r) => {
+export const mudHD = (key = "mudHD", base = "#6a4a2c", puddle = 0.5) => ctex(key, 1024, 1024, (g, r) => {
   const S = 1024;
   g.fillStyle = base; g.fillRect(0, 0, S, S);
   octaves(g, r, S, S, 200, "190,140,90", "50,30,16", 1.2);
   for (const x of [250, 700]) { g.fillStyle = "rgba(60,36,18,0.3)"; g.fillRect(x - 50, 0, 100, S); g.fillStyle = "rgba(200,150,100,0.22)"; g.fillRect(x - 64, 0, 9, S); g.fillRect(x + 56, 0, 9, S); }
-  for (let i = 0; i < 9 * puddle + 2; i++) wrap2(S, S, U(r, 0, S), U(r, 0, S), 130, (x, y) => { // glossy puddles
+  for (let i = 0; i < 14 * puddle + 3; i++) wrap2(S, S, U(r, 0, S), U(r, 0, S), 150, (x, y) => { // glossy puddles
     g.save(); g.translate(x, y); g.rotate(r() * 3); g.scale(1, U(r, 0.45, 0.8));
-    const rad = U(r, 50, 120), gr = g.createRadialGradient(0, 0, 0, 0, 0, rad);
-    gr.addColorStop(0, "rgba(170,196,214,0.85)"); gr.addColorStop(0.8, "rgba(120,140,150,0.75)"); gr.addColorStop(1, "rgba(90,70,50,0)");
+    const rad = U(r, 70, 150), gr = g.createRadialGradient(0, 0, 0, 0, 0, rad);
+    gr.addColorStop(0, "rgba(190,215,235,0.95)"); gr.addColorStop(0.8, "rgba(130,160,180,0.85)"); gr.addColorStop(1, "rgba(90,70,50,0)");
     g.fillStyle = gr; g.beginPath(); g.arc(0, 0, rad, 0, TAU); g.fill(); g.restore();
   });
   for (let i = 0; i < 50; i++) { const x = U(r, 0, S), y = U(r, 0, S); g.fillStyle = "rgba(50,30,14,0.4)"; g.beginPath(); g.ellipse(x, y, U(r, 8, 16), U(r, 14, 26), U(r, -0.4, 0.4), 0, TAU); g.fill(); g.fillStyle = "rgba(200,160,110,0.3)"; g.beginPath(); g.ellipse(x - 2, y - 2, 4, 8, 0, 0, TAU); g.fill(); }

@@ -9,6 +9,8 @@ import { rng, ctex } from "./paint";
 import { Batch, M4, rbox, rb, col, texM, glow, lam, rod, cached, lathe, quad, tri, V, groundM, terrain, woodM, unlit, buildNoInk, FAR, BRASS, shiny, addVeg, hillRing, SetRig, slab, plate, mats } from "./build";
 import { SPOT, SetName, FOREGROUND, smooth, glide, fillAt, EV, hotelY, screwTurn } from "./story";
 import { buildStreet, buildCutaway, cart } from "./hotel";
+import { twoTone } from "./shade";
+const gloss = (c: string, sh = 45) => { const key = "gloss" + c + sh; let m = mats.get(key) as THREE.MeshPhongMaterial | undefined; if (!m) { m = twoTone(new THREE.MeshPhongMaterial({ color: c, shininess: sh, specular: new THREE.Color("#3a5a4a") })); mats.set(key, m); } return m; };
 
 export { CLOCK } from "./build";
 export const SET_META: Record<SetName, { hazeK: number; indoor?: boolean; ceil?: number }> = {
@@ -122,7 +124,7 @@ const buildTown = (): SetRig => {
   const rig: SetRig = { name: "town", group: new THREE.Group() }; rig.group.name = "town";
   b.build(rig.group, true);
   // the puddle that is the street (shot 3): murky green-brown water over the mud, z -34..-4
-  const pud = new THREE.Mesh(new THREE.PlaneGeometry(9.6, 34).rotateX(-Math.PI / 2), lam("puddleW", () => ({ map: P.waterHD("puddleW", "#857c64") })));
+  const pud = new THREE.Mesh(new THREE.PlaneGeometry(9.6, 34).rotateX(-Math.PI / 2), lam("puddleW", () => ({ map: P.waterHD("puddleW", "#9aa3a6") })));
   pud.position.set(0, 0.04, -20); pud.receiveShadow = true; pud.userData.inkId = 1201; rig.group.add(pud);
   const pud2 = new THREE.Mesh(new THREE.PlaneGeometry(5.5, 5).rotateX(-Math.PI / 2), pud.material); pud2.position.set(1.6, 0.05, 22); pud2.userData.inkId = 1201; rig.group.add(pud2);
   return rig;
@@ -198,22 +200,23 @@ const buildPit = (): SetRig => {
   // old buildings, ground floors in the pit: fronts at z = +-9.6, doors at y = 0
   const WALL = [brickM("#b4513a"), plasterM("#e8d4a0"), brickM("#c8805a"), sidingM("#d8c898"), brickM("#9a4a36"), plasterM("#d8c090")];
   for (const s of [-1] as const) { let x = -60, i = 0; while (x < 60) { const w = 7 + 3 * ((i * 5 + (s > 0 ? 2 : 0)) % 3), h = 8.4 + 2.2 * ((i * 7 + 1) % 3);
-    const zf = s * 9.6, zb = s * 20, mat = WALL[(i + (s > 0 ? 2 : 0)) % 6];
+    const zf = s * 12.6, zb = s * 26, mat = WALL[(i + (s > 0 ? 2 : 0)) % 6];
     rb(b, mat, x, x + w - 0.3, 0, h, Math.min(zf, zb), Math.max(zf, zb), 0.05, 2);
     rb(b, col(CREAM), x - 0.2, x + w - 0.1, h, h + 0.45, Math.min(zf, zb) - 0.2 * s, Math.max(zf, zb) + 0.2 * s, 0.05);
     const nw = Math.max(2, Math.round((w - 0.3) / 2.5));
     for (let k = 0; k < nw; k++) {
       const xc = x + ((w - 0.3) * (k + 0.5)) / nw;
       for (let fl = 0; fl < 3; fl++) { const y = 0.9 + fl * 2.8, th = fl === 0 && k === 1 ? 0 : 1; if (!th) continue; rb(b, col("#f2ece0"), xc - 0.62, xc + 0.62, y - 0.1, y + 1.8, zf - s * 0.02 - 0.06, zf - s * 0.12 + 0.06, 0.03); rb(b, col(r() > 0.3 ? "#3a4a6e" : "#e8d8a8"), xc - 0.5, xc + 0.5, y + 0.05, y + 1.7, zf - s * 0.1 - 0.05, zf - s * 0.16 + 0.05, 0.01); }
-      if (k === 1) { rb(b, col("#3a2a1a"), xc - 0.55, xc + 0.55, 0, 2.2, zf - s * 0.1 - 0.05, zf - s * 0.18 + 0.05, 0.02); rb(b, col(CREAM), xc - 0.7, xc + 0.7, 2.2, 2.4, zf - s * 0.2 - 0.1, zf - s * 0.2 + 0.1, 0.02); rb(b, col("#8a8478"), xc - 0.8, xc + 0.8, 0, 0.18, zf - s * 0.3 - 0.4, zf - s * 0.3 + 0.4, 0.02); }
+      if (k === 1) { rb(b, col(["#2f7a4a", "#c8282e", "#3a6ab0"][i % 3]), xc - 1.2, xc + 1.2, 2.55, 2.7, zf + 0.0, zf + 1.4, 0.02); rb(b, woodM("#a8845c"), xc - 1.3, xc + 1.3, 0, 0.12, zf + 0.0, zf + 1.5, 0.02); rb(b, col("#3a2a1a"), xc - 0.55, xc + 0.55, 0, 2.2, zf - s * 0.1 - 0.05, zf - s * 0.18 + 0.05, 0.02); rb(b, col(CREAM), xc - 0.7, xc + 0.7, 2.2, 2.4, zf - s * 0.2 - 0.1, zf - s * 0.2 + 0.1, 0.02); rb(b, col("#8a8478"), xc - 0.8, xc + 0.8, 0, 0.18, zf - s * 0.3 - 0.4, zf - s * 0.3 + 0.4, 0.02); }
     }
-    rb(b, brickM("#9a3f2a"), x + 1.5, x + 2.3, h, h + 2.2, s * 12, s * 12.8, 0.03);
+    rb(b, brickM("#9a3f2a"), x + 1.5, x + 2.3, h, h + 2.2, s * 16, s * 16.8, 0.03);
     x += w; i++; } }
+  rb(b, woodM("#a8845c"), 2.5, 9.5, 0, 0.1, -12.6, -9.0, 0.02, 2);
   // low window with a wooden shop sign beam over the stair (bonk): hangs at head height above the stairs
   rb(b, woodM("#8a5a34"), SPOT.PIT_STAIR_X - 1.4, SPOT.PIT_STAIR_X + 1.4, 2.05, 2.6, -8.05, -7.7, 0.03);
   b.add(new THREE.PlaneGeometry(1.4, 0.5), texM("bonkSign", () => ctex("bonkSign", 128, 64, (g) => { g.fillStyle = "#e8c890"; g.fillRect(0, 0, 128, 64); g.fillStyle = "#5a3a1e"; g.fillRect(34, 14, 18, 30); g.fillRect(34, 34, 40, 14); })), M4(SPOT.PIT_STAIR_X, 2.33, -7.67, 0));
   rb(b, woodM("#6a4626"), SPOT.PIT_STAIR_X - 1.5, SPOT.PIT_STAIR_X - 1.4, 1.2, 2.8, -9.6, -8.0, 0.02); rb(b, woodM("#6a4626"), SPOT.PIT_STAIR_X + 1.4, SPOT.PIT_STAIR_X + 1.5, 1.2, 2.8, -9.6, -8.0, 0.02);
-  gasLampPit(b, -12, -6.4); gasLampPit(b, 14, -6.4);
+  gasLampPit(b, -12, -6.4); gasLampPit(b, 14, -6.4); gasLampPit(b, 1, -11.8); gasLampPit(b, 11, -11.8);
   for (let i = 0; i < 10; i++) addVeg(b, "round", -50 + 11 * i, 0, 28 + 4 * r(), 6 + 2 * r(), i * 9, 1);
   for (let i = 0; i < 8; i++) { rb(b, WALL[(i + 1) % 6], -48 + 13 * i, -40 + 13 * i, 0, 7 + (i % 3) * 1.5, 38, 46, 0.05, 2); }
   hillRing(b, 0, 0, 800, 8, 20, 12, "#8a9a78");
@@ -302,8 +305,8 @@ const bandOf = (b: Batch, x0: number, x1: number, y: number, r: number, z = 0, c
 /** a Pullman sleeping car (side seen from +z), body emerald, gold lining, windows glowing warm */
 const pullmanCar = (b: Batch, x0: number, x1: number, zc: number) => {
   const L = x1 - x0, cx = (x0 + x1) / 2, W = 3.0, y0 = 1.0;
-  rb(b, col("#1f6a4a"), x0, x1, y0, y0 + 3.2, zc - W / 2, zc + W / 2, 0.12);
-  rb(b, col("#1a5a40"), x0 + 0.3, x1 - 0.3, y0 + 3.2, y0 + 3.8, zc - 0.9, zc + 0.9, 0.12);                        // clerestory
+  rb(b, gloss("#12583a"), x0, x1, y0, y0 + 3.2, zc - W / 2, zc + W / 2, 0.12);
+  rb(b, gloss("#0e4a30"), x0 + 0.3, x1 - 0.3, y0 + 3.2, y0 + 3.8, zc - 0.9, zc + 0.9, 0.12);                        // clerestory
   rb(b, col("#3a3a42"), x0 - 0.1, x1 + 0.1, y0 + 3.8, y0 + 4.05, zc - 1.0, zc + 1.0, 0.06);
   for (const dz of [-1, 1]) { rb(b, col("#e8c040"), x0 + 0.02, x1 - 0.02, y0 + 2.9, y0 + 3.0, zc + dz * (W / 2 + 0.005) - 0.01, zc + dz * (W / 2 + 0.01) + 0.01, 0.005); rb(b, col("#e8c040"), x0 + 0.02, x1 - 0.02, y0 + 0.25, y0 + 0.33, zc + dz * (W / 2 + 0.005) - 0.01, zc + dz * (W / 2 + 0.01) + 0.01, 0.005); }
   const n = Math.floor((L - 2) / 1.6);
@@ -356,7 +359,7 @@ const buildPlatform = (): SetRig => {
   rb(b, col("#efe4c8"), -40, 40, -0.1, 0.0, -2.62, -2.5, 0.01);
   for (let x = -36; x < 36; x += 6) { if (x > -16 && x < 4) continue; b.add(rod(V(x, 0, 4.6), V(x, 4.4, 4.6), 0.1, 0.08, 6), col("#2f7a4a")); }
   rb(b, col("#c8282e"), -36, 36, 4.4, 4.8, 3.6, 6.6, 0.05); b.add(plate([[0, 0], [72, 0], [72, 0.5]], 3.0, 0.02), col("#a82228"), M4(-36, 4.8, 5.1, 0, 0, 0));
-  for (const x of [-9, 6, 15]) { b.add(rod(V(x, 0, 2.8), V(x, 3.0, 2.8), 0.06, 0.05, 6), col("#2a3a32")); b.add(cached("lampGlobe", () => new THREE.SphereGeometry(0.24, 12, 10)), glow("#ffe0a0", 1.4), M4(x, 3.2, 2.8)); }
+  for (const x of [-9, -2, 6, 15]) { b.add(rod(V(x, 0, 2.8), V(x, 3.0, 2.8), 0.06, 0.05, 6), col("#2a3a32")); b.add(cached("lampGlobe", () => new THREE.SphereGeometry(0.24, 12, 10)), glow("#ffd890", 2.4), M4(x, 3.2, 2.8)); }
   for (let k = 0; k < 4; k++) rb(b, woodM(["#8a4a2a", "#5a3a22", "#9a6a3a", "#6a4a2a"][k]), 5 + k * 0.9, 5.8 + k * 0.9, 0, 0.5 + 0.2 * (k % 2), 1.6, 2.4, 0.04);
   rb(b, woodM("#6a4626"), 9, 12, 0, 0.5, 5.6, 6.2, 0.03); rb(b, woodM("#6a4626"), 9, 12, 0.5, 1.2, 6.1, 6.2, 0.03);
   rb(b, sidingM("#d8c898"), 18, 30, 0, 4.4, 3.5, 6.4, 0.05, 2); rb(b, col("#6a4a46"), 17.6, 30.4, 4.4, 4.8, 3.3, 6.6, 0.04); archGlow(b, 22, 1.2, 3.52, 0.6, 1.2, "#ffd890", 1.4); archGlow(b, 26, 1.2, 3.52, 0.6, 1.2, "#ffd890", 1.4);

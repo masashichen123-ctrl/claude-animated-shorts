@@ -123,7 +123,7 @@ const workers = (out: Stage, cam: CamInfo, f: number, t: number, mode: "cheer" |
     const k = j * 11 + i, base = workerBase(i, j), w = W_(200 + k % 40, wk(k % 12), "wk" + (k % 12));
     let p: V3 = base, fo: FrontOpts = {};
     const d = cam.pos.distanceTo(new THREE.Vector3(base[0], 1, base[2]));
-    if (d > 62 && j > 5) continue;
+    if ((d > 62 && j > 5) || d < 6.5) continue;
     switch (mode) {
       case "cheer": fo = { expr: (["laugh", "grin", "proud"] as Expr[])[k % 3], armR: "wave", armL: k % 3 ? "raise" : undefined, wave: pulse(f, k, 12), facing: k % 2 ? 1 : -1 }; break;
       case "idle": fo = { expr: (["smile", "grin", "smile_closed"] as Expr[])[k % 3], facing: k % 2 ? 1 : -1, look: 0.4 * Math.sin(k), sweat: SW(f, k) }; break;
@@ -196,11 +196,11 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
       POP.forEach((pf, k) => {
         const u = (F - (pf - 16)) / 16; if (u < 0 || u > 1.15) return;
         const g = q(Math.min(1, u), 12), bx = P0[0] + BPOS[k][0], bz = P0[2] + BPOS[k][1];
-        if (u <= 1) fxc(out, "bub" + g, 400, 400, (p) => fxBubble(p, g), [bx, 0.15 + 0.3 * g, bz], 0.6 + 1.3 * g, 0.6 + 1.3 * g, { glow: 1.05 });
-        if (F >= pf && F < pf + 8) poof(out, [bx, 0.6, bz], 1.6, F, pf, 8);
+        if (u <= 1) fxc(out, "bub" + g, 400, 400, (p) => fxBubble(p, g), [bx, 0.2 + 0.4 * g, bz], 0.8 + 1.6 * g, 0.8 + 1.6 * g, { glow: 1.05 });
+        if (F >= pf && F < pf + 8) poof(out, [bx, 0.6, bz], 2.4, F, pf, 8);
       });
       for (let k = 0; k < 5; k++) { const per = 30 + 4 * k, u = (((F - 300 - k * 7) % per) + per) % per / per; if (F < 305) continue; const g = q(u, 8); fxc(out, "bubs" + g, 400, 400, (p) => fxBubble(p, g), [P0[0] + [-1.8, 1.7, -0.4, 1.1, -1.2][k], 0.1 + 0.2 * g, P0[2] + [-0.6, 0.7, -1.4, 0.2, 1.3][k]], 0.2 + 0.35 * g, 0.2 + 0.35 * g, { glow: 1.0 }); }
-      if (F >= EV.STINK3 - 2) for (let k = 0; k < 3; k++) stink(out, [P0[0] - 1.6 + 1.6 * k, 0.6, P0[2] + 0.6 * (k % 2)], 1.6, F, k);
+      if (F >= EV.STINK3 - 2) for (let k = 0; k < 3; k++) stink(out, [P0[0] - 2.4 + 1.6 * k, 0.9, P0[2] + 0.6 * (k % 2)], 2.8, F, k);
       const dz = lerp(-4.5, -9, smooth((F - 300) / 70)), nose = F >= EV.STINK3 - 2;
       dogAt(out, cam, [-4.2, 0.38, dz - 2.0 * (nose ? 0 : 0)], [0, 0, -1], F, { nose, k: 1, bark: false }, 1.35);
       stand(out, cam, 520, bonnetLady(3), "lad3", [4.9, 0.38, -16.5], { expr: F > EV.STINK3 ? "sick" : "annoyed", armR: F > EV.STINK3 ? "pinch" : undefined, facing: -1 }, t);
@@ -267,8 +267,8 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
         walkerDraw(out, cam, W_(650, m, "bonk"), [SPOT.PIT_STAIR_X, Math.max(0, hitN ? Fy * (1 - ((-zz - 6) / 3) * 0.923 - 0.077) : yy), hitN ? zz : zs], [0, 0, -1], -zs * 1.6, t, hitN ? { expr: "dazed", armR: "palm", headTilt: 8 * Math.sin((F - EV.BONK6) * 0.8) * Math.exp(-(F - EV.BONK6) / 18), facing: -1 } : { expr: "smile_closed", look: 0.3 }, hitN ? "walk" : "walk");
         if (hitN) { stars(out, [SPOT.PIT_STAIR_X, Math.max(0, Fy * (1 - ((-zz - 6) / 3) * 0.923 - 0.077)) + 2.1, zz + 0.3], 1.2, F); if (F < EV.BONK6 + 12) sparkle(out, [SPOT.PIT_STAIR_X, 2.5, -7.5], F, EV.BONK6, 1.0, 1.5); }
         for (let k = 0; k < 3; k++) { const u2 = clamp01((F - (EV.PULL6 + 6 + 14 * k)) / 40); if (u2 > 0 && u2 < 1) walkerDraw(out, cam, W_(655 + k, k === 1 ? bonnetLady(k) : manTown(k + 1), "sd" + k), [SPOT.PIT_STAIR_X - 0.3 + 0.3 * k, Fy * (1 - u2 * 0.92) + 0.0, -6.0 - 3.0 * u2], [0, 0, -1], u2 * 8, t, { expr: "smile" }, "walk"); }
-        walkerDraw(out, cam, W_(660, manTown(0), "pit0"), [1.4, 0, -8.6], [1, 0, 0], F * 0.05, t, { expr: "neutral" }, "walk");
-        walkerDraw(out, cam, W_(661, bonnetLady(2), "pit1"), [-6, 0, -8.6], [1, 0, 0], F * 0.05 + 1, t, { expr: "smile", prop: "parasol" }, "walk");
+        walkerDraw(out, cam, W_(660, manTown(0), "pit0"), [1.4, 0, -11.2], [1, 0, 0], F * 0.05, t, { expr: "neutral" }, "walk");
+        walkerDraw(out, cam, W_(661, bonnetLady(2), "pit1"), [-6, 0, -11.2], [1, 0, 0], F * 0.05 + 1, t, { expr: "smile", prop: "parasol" }, "walk");
       }
       break;
     }
@@ -303,9 +303,9 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
     }
     case 9: { // under the hotel: the hero jackscrew @974; pull back to the forest; the workers march in
       const H = hotelY(9, F), hp = SPOT.HERO_SCREW;
-      if (F < EV.PULLBACK9 + 6) {
+      if (F < EV.PULLBACK9 - 6) {
         const placing = F < EV.SCREW9 - 2, hit = F >= EV.SCREW9 - 2;
-        stand(out, cam, 900, wk(1), "wk1", [hp[0] - 1.3, 0, hp[2] - 0.55], { expr: hit ? "grin" : "pained", armR: placing ? "hold" : "pull", armL: placing ? "hold" : "pull", prop: placing ? "bar" : null, lean: hit ? 8 : 4, facing: 1, sweat: SW(F, 3), look: 0.4 }, t, 1.0);
+        stand(out, cam, 900, wk(1), "wk1", [hp[0] - 1.15, 0, hp[2] - 1.0], { expr: hit ? "grin" : "pained", armR: placing ? "hold" : "pull", armL: placing ? "hold" : "pull", prop: placing ? "bar" : null, lean: hit ? 8 : 4, facing: 1, sweat: SW(F, 3), look: 0.4 }, t, 1.0);
         if (hit && F < EV.SCREW9 + 16) { sparkle(out, [hp[0] - 0.45, 1.6, hp[2] + 0.4], F, EV.SCREW9 - 2, 1.2, 1.5); for (let k = 0; k < 3; k++) puff(out, [hp[0] + (k - 1) * 0.4, 0.15, hp[2] + 0.4], (F - EV.SCREW9 + 2 + k * 2) / FPS, 0.8, 0.5, k, "#d8a86a"); }
       }
       workers(out, cam, F, t, F < EV.MARCH9 - 40 ? "idle" : "march", 14, F < 1012 ? 2 : 0);
@@ -385,7 +385,7 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
         for (let k = 0; k < 7; k++) { const x = -14.5 + 2.1 * k + 0.2 * Math.sin(k), pf = passenger(k); stand(out, cam, 1410 + k, pf, "ps" + k, [x, 0, 1.6 + 0.9 * (k % 2)], { expr: "smile", armR: k % 3 === 0 ? "wave" : undefined, wave: pulse(f, k, 18), prop: k % 3 === 1 ? "parasol" : null, facing: k % 2 ? 1 : -1 }, t); }
         steam(out, [10.6, 7.5, -5.0], 3.0, F); steam(out, [10.6, 9.6, -5.0], 3.4, F + 8); steam(out, [10.9, 11.6, -5.0], 3.6, F + 16);
         for (let k = 0; k < 4; k++) mist(out, [-12 + 5 * k, 1.2, -7.0], 7, k, f);
-        out.lights.push({ p: [-3.0, 3.2, 3], I: 3, col: "#ffc070", d: 8 });
+        out.lights.push({ p: [-3.0, 3.2, 3], I: 3, col: "#ffc070", d: 8 }, { p: [-6.5, 3.0, 2.8], I: 8, col: "#ffc878", d: 9 });
       } else { // inside the sleeping car: sleepers in the lower berths, zzz, the countryside slides by in the windows
         const bays = [-6.0, -3.0, 0.0, 3.0, 6.0];
         bays.forEach((x, k) => {

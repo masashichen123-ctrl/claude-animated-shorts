@@ -164,7 +164,7 @@ export const LOOK: Record<LightName, WorldLook> = {
   },
   golden: {
     // amber horizon, peach band, then straight into clean blue (no rose / lilac stop)
-    sky: { c: ["#ffb256", "#ffbc6c", "#ffc888", "#d8b8a0", "#5b78b8"], e: [0, 4, 12, 26, 52] },
+    sky: { c: ["#ffc27c", "#f4a878", "#a88ab8", "#4a5aa0", "#1f2f78"], e: [0, 5, 14, 28, 55] },
     cloud: { lit: "#ffd49a", mid: "#e8a874", shade: "#6f7eae" },
     bounce: [0.05, 0.025, 0.0],
     sat: 1.06,

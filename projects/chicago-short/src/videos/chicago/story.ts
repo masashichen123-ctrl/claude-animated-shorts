@@ -215,11 +215,11 @@ const S1 = (f: number): Shot => {
   return P({ pos: [1.6, 1.3, 70], look: [0, 12.8 + 0.5 * H, 0], fov: 40, roll: 0.012 - 0.0002 * f }, f, 0, 0.0012, 0);
 };
 // 2a (198-267): the lake edge: cattails, frogs, mist, the puddle. 2b (268-299): the river of mud
-const S2a = (f: number): Shot => P({ pos: [2.2, 0.75, 33.5], look: [-0.6, 0.55, 18], fov: 44, roll: 0.02 }, f, 198, 0.0035, 0.007, 12, EV.FROG2 - 3);
+const S2a = (f: number): Shot => P({ pos: [2.4, 1.45, 34], look: [-0.6, 0.8, 17], fov: 44, roll: 0.02 }, f, 198, 0.0035, 0.007, 12, EV.FROG2 - 3);
 const S2b = (f: number): Shot => P({ pos: [5.0, 1.6, 28.0], look: [0.0, 1.2, 10.0], fov: 46, roll: -0.02 }, f, EV.CUT2, 0.002, 0.006, 12, EV.SCHLORP2 - 3);
 // 3 (300-388): low over the puddle that is the whole street; bubbles, the circling flow, the stink; the dog
 const S3 = (f: number): Shot => {
-  const a = C([1.8, 0.55, -2.0], [0.0, 0.3, -12.5], 46, 0.025), b = C([-1.0, 0.8, -3.0], [0.9, 0.9, -12], 44, -0.02);
+  const a = C([2.0, 1.5, -1.0], [0.0, 0.3, -13], 48, 0.025), b = C([-1.0, 1.3, -2.0], [0.9, 0.4, -13], 46, -0.02);
   return P(between(a, b, gl(f, EV.STINK3 - 20, 26)), f, 300, 0.0022, 0.006, 12, EV.BUBBLE3 - 3);
 };
 // 4 (389-468): the clinic porch: a bench of green-faced townsfolk, the doctor with his bag
@@ -236,7 +236,7 @@ const S5b = (f: number): Shot => {
 };
 // 6a (618-659): MS on the fill, the shovellers and the dumping wagon; 6b (660+): pulls back and up: the buildings in the pit
 const S6 = (f: number): Shot => {
-  const a = C([-15.0, 2.9, 4.6], [-5.5, 2.2, 0.0], 46, 0.02), b = C([-27.0, 10.5, 18.0], [5.0, 1.0, -4.0], 46, -0.015);
+  const a = C([-15.0, 2.9, 4.6], [-5.5, 2.2, 0.0], 46, 0.02), b = C([-24.0, 11.0, 17.0], [4.0, 0.5, -9.0], 48, -0.015);
   return P(between(a, b, gl(f, EV.PULL6 - 8, 36)), f, 618, 0.0014, 0.006, 12, EV.BONK6 - 3);
 };
 // 7 (715-816): low hero crane up the front of the hotel to the roof flag
@@ -252,9 +252,9 @@ const S8 = (f: number): Shot => {
 // 9a (937-999): CU of the iron jackscrew under the timber beam; 9b (1000-1071): pull back: the forest, the march
 const S9 = (f: number): Shot => {
   const H = SPOT.HERO_SCREW;
-  const a = C([H[0] + 1.05, 1.3, H[2] + 3.0], [H[0] - 0.3, 1.4, H[2]], 40, 0.03), b = C([0.0, 1.35, 6.0], [0.0, 1.9, -16], 48, -0.02);
+  const a = C([H[0] + 1.3, 1.35, H[2] + 3.6], [H[0] - 0.2, 1.5, H[2]], 40, 0.03), b = C([0.0, 1.35, 6.0], [0.0, 1.9, -16], 48, -0.02);
   const c = C([-9.0, 2.4, 24], [1.0, 3.0, -6], 46, 0.0);
-  const u1 = gl(f, EV.PULLBACK9 - 6, 34), u2 = gl(f, 1048, 22);
+  const u1 = gl(f, EV.PULLBACK9 - 10, 34), u2 = gl(f, 1048, 22);
   return P(between(between(a, b, u1) as Cam, c, u2), f, 937, 0.0014, 0.007, 12, EV.SCREW9 - 3);
 };
 // 10a (1072-1117): the foreman raises the flag and blows the whistle; 10b (1118+): low down the line of workers
@@ -353,9 +353,9 @@ export const FOREGROUND: Fg[] = [
 export type Dof = { f: number; dur?: number; cInf: number; focus?: (f: number) => V3 };
 export const DOF: Dof[] = [
   { f: 0, cInf: 0 },
-  { f: 198, cInf: 12, focus: () => [-0.2, 0.55, 16.5] },
-  { f: EV.CUT2, cInf: 8, focus: () => [0.2, 1.1, 10.5] },
-  { f: 300, cInf: 10, focus: () => [0.3, 0.4, -9] },
+  { f: 198, cInf: 4, focus: () => [-0.2, 0.6, 17] },
+  { f: EV.CUT2, cInf: 3, focus: () => [0.2, 1.1, 11] },
+  { f: 300, cInf: 3, focus: () => [0.3, 0.3, -11] },
   { f: 389, cInf: 8, focus: () => [SPOT.CLINIC[0] + 2.2, 1.3, SPOT.CLINIC[2]] },
   { f: 469, cInf: 6, focus: () => [0, 1.6, -7.2] },
   { f: EV.CUTIN5, cInf: 10, focus: () => [SPOT.EASEL[0] + 0.1, 1.9, SPOT.EASEL[2]] },
@@ -363,10 +363,10 @@ export const DOF: Dof[] = [
   { f: EV.PULL6 - 8, dur: 36, cInf: 0 },
   { f: 715, cInf: 0 },
   { f: 817, cInf: 8, focus: () => [0.2, 1.3, -0.4] },
-  { f: 937, cInf: 14, focus: () => [SPOT.HERO_SCREW[0], 1.3, SPOT.HERO_SCREW[2]] },
+  { f: 937, cInf: 9, focus: () => [SPOT.HERO_SCREW[0], 1.3, SPOT.HERO_SCREW[2]] },
   { f: EV.PULLBACK9 - 6, dur: 34, cInf: 4, focus: () => [0, 1.6, -8] },
-  { f: 1072, cInf: 11, focus: () => [SPOT.FOREMAN[0], 1.6, SPOT.FOREMAN[2]] },
-  { f: 1100, dur: 26, cInf: 5, focus: () => [1.5, 1.4, -6] },
+  { f: 1072, cInf: 7, focus: () => [SPOT.FOREMAN[0], 1.6, SPOT.FOREMAN[2]] },
+  { f: 1100, dur: 26, cInf: 2, focus: () => [1.5, 1.4, -9] },
   { f: 1223, cInf: 0 },
   { f: 1301, cInf: 3, focus: () => [-2.2, 3.6, -2] },
   { f: EV.DINER12 - 4, cInf: 12, focus: (f) => [-1.0, cutY(f) + SPOT.ROOM_H[1] + 1.4, -3.4] },
