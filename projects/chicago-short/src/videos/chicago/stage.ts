@@ -303,12 +303,12 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
     }
     case 9: { // under the hotel: the hero jackscrew @974; pull back to the forest; the workers march in
       const H = hotelY(9, F), hp = SPOT.HERO_SCREW;
-      if (F < EV.PULLBACK9 + 36) {
+      if (F < EV.PULLBACK9 + 6) {
         const placing = F < EV.SCREW9 - 2, hit = F >= EV.SCREW9 - 2;
-        stand(out, cam, 900, wk(1), "wk1", [hp[0] - 1.0, 0, hp[2] - 0.15], { expr: hit ? "grin" : "pained", armR: placing ? "hold" : "pull", armL: placing ? "hold" : "pull", prop: placing ? "bar" : null, lean: hit ? 8 : 4, facing: 1, sweat: SW(F, 3), look: 0.4 }, t, 1.0);
+        stand(out, cam, 900, wk(1), "wk1", [hp[0] - 1.3, 0, hp[2] - 0.55], { expr: hit ? "grin" : "pained", armR: placing ? "hold" : "pull", armL: placing ? "hold" : "pull", prop: placing ? "bar" : null, lean: hit ? 8 : 4, facing: 1, sweat: SW(F, 3), look: 0.4 }, t, 1.0);
         if (hit && F < EV.SCREW9 + 16) { sparkle(out, [hp[0] - 0.45, 1.6, hp[2] + 0.4], F, EV.SCREW9 - 2, 1.2, 1.5); for (let k = 0; k < 3; k++) puff(out, [hp[0] + (k - 1) * 0.4, 0.15, hp[2] + 0.4], (F - EV.SCREW9 + 2 + k * 2) / FPS, 0.8, 0.5, k, "#d8a86a"); }
       }
-      workers(out, cam, F, t, F < EV.MARCH9 - 40 ? "idle" : "march", 14);
+      workers(out, cam, F, t, F < EV.MARCH9 - 40 ? "idle" : "march", 14, F < 1012 ? 2 : 0);
       void H;
       break;
     }

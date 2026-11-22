@@ -84,9 +84,9 @@ const buildTown = (): SetRig => {
   const b = new Batch(), r = rng(5);
   const plainG = (key: string, mk: () => THREE.Texture) => { const m = texM(key, mk); m.userData.inkId = 1100; return m; };
   const mud = plainG("townMud", () => P.mudHD("mudStreet", "#76624a", 1.0)), marsh = plainG("marsh", () => P.mudHD("marshMud", "#665e44", 0.3));
-  terrain(b, marsh, -FAR, FAR, -FAR, FAR, 4, undefined, 4, -0.02);
+  terrain(b, marsh, -FAR, FAR, -FAR, FAR, 4, undefined, 4, -0.06);
   terrain(b, mud, -4.8, 4.8, -90, 90, 4, undefined, 4, 0.0);
-  for (const s of [-1, 1]) terrain(b, groundM("pastureM", () => P.pastureHD("pastureMarsh", "#6a9a46")), s * 20, s * FAR, -FAR, FAR, 4, undefined, 4, 0.01);
+  for (const s of [-1, 1]) terrain(b, groundM("pastureM", () => P.pastureHD("pastureMarsh", "#6a9a46")), s * 20, s * FAR, -FAR, FAR, 4, undefined, 4, 0.03);
   // the lake past the end of the street + shore
   const water = lam("lakeW", () => ({ map: P.waterHD("lakeW", "#4f8aa0"), transparent: false })); water.userData.inkId = 1200;
   b.add(new THREE.PlaneGeometry(1600, 600).rotateX(-Math.PI / 2).translate(0, -0.05, -420), water);
@@ -220,7 +220,7 @@ const buildPit = (): SetRig => {
   const rig: SetRig = { name: "pit", group: new THREE.Group() }; const G = rig.group; G.name = "pit"; b.build(G, true);
   // the raised street: a slab whose height follows fillAt; retaining wall faces, plank sidewalk, a stair into the trench
   const fill = new THREE.Group(); const fb = new Batch(), unit = 1;
-  rb(fb, groundM("fillGravel", () => P.dirtRoadHD()), -64, 64, 0, unit, -6, 6, 0.02, 4);
+  rb(fb, groundM("fillGravel", () => P.cobbleHD()), -64, 64, 0, unit, -6, 6, 0.02, 4);
   for (const s of [-1, 1]) { rb(fb, woodM("#7a5230"), -64, 64, 0, unit, s * 6 - (s > 0 ? 0 : 0.35), s * 6 + (s > 0 ? 0.35 : 0), 0.03, 2); for (let x = -62; x < 62; x += 3) rb(fb, woodM("#5a3a22"), x - 0.15, x + 0.15, 0, unit, s * 6 - (s > 0 ? 0.4 : 0.1), s * 6 + (s > 0 ? 0.1 : 0.4), 0.02); }
   fb.build(fill, true); G.add(fill);
   const top = new THREE.Group(); const tb = new Batch();
@@ -354,7 +354,7 @@ const buildPlatform = (): SetRig => {
   // the platform: raised plank deck, edge, canopy posts, lamps, trunks, a bench, a little depot
   rb(b, woodM("#b08a5a"), -40, 40, -1.0, 0.0, -2.6, 6.5, 0.03, 2);
   rb(b, col("#efe4c8"), -40, 40, -0.1, 0.0, -2.62, -2.5, 0.01);
-  for (let x = -36; x < 36; x += 6) { b.add(rod(V(x, 0, 4.6), V(x, 4.4, 4.6), 0.1, 0.08, 6), col("#2f7a4a")); }
+  for (let x = -36; x < 36; x += 6) { if (x > -16 && x < 4) continue; b.add(rod(V(x, 0, 4.6), V(x, 4.4, 4.6), 0.1, 0.08, 6), col("#2f7a4a")); }
   rb(b, col("#c8282e"), -36, 36, 4.4, 4.8, 3.6, 6.6, 0.05); b.add(plate([[0, 0], [72, 0], [72, 0.5]], 3.0, 0.02), col("#a82228"), M4(-36, 4.8, 5.1, 0, 0, 0));
   for (const x of [-9, 6, 15]) { b.add(rod(V(x, 0, 2.8), V(x, 3.0, 2.8), 0.06, 0.05, 6), col("#2a3a32")); b.add(cached("lampGlobe", () => new THREE.SphereGeometry(0.24, 12, 10)), glow("#ffe0a0", 1.4), M4(x, 3.2, 2.8)); }
   for (let k = 0; k < 4; k++) rb(b, woodM(["#8a4a2a", "#5a3a22", "#9a6a3a", "#6a4a2a"][k]), 5 + k * 0.9, 5.8 + k * 0.9, 0, 0.5 + 0.2 * (k % 2), 1.6, 2.4, 0.04);

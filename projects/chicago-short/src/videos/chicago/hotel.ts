@@ -352,7 +352,7 @@ const window13 = (): THREE.Group => {
 export const buildStreet = (): SetRig & { hero: HeroRig; hotel: HotelRig } => {
   const b = new Batch(), r = rng(31);
   const dirt = groundM("streetDirt", () => P.dirtRoadHD());
-  terrain(b, dirt, -FAR, FAR, -FAR, FAR, 4, undefined, 4, -0.01);
+  terrain(b, dirt, -FAR, FAR, -FAR, FAR, 4, undefined, 4, -0.06);
   terrain(b, texPlaza(), -34, 34, -40, 110, 4, undefined, 4, 0.0);
   terrain(b, groundM("verdant", () => P.pastureHD("pastureS", "#7ab24e")), -FAR, -45, -FAR, FAR, 4, undefined, 4, 0.0);
   terrain(b, groundM("verdant", () => P.pastureHD("pastureS", "#7ab24e")), 45, FAR, -FAR, FAR, 4, undefined, 4, 0.0);
@@ -390,7 +390,7 @@ export const buildStreet = (): SetRig & { hero: HeroRig; hotel: HotelRig } => {
   const hotel = buildHotel(); G.add(hotel.group);
   // timber cribbing among the screws (static)
   const cb = new Batch();
-  for (let j = 0; j < SCREWS.ROWS; j++) for (let i = 0; i < SCREWS.COLS; i += 3) if ((i + j) % 2 === 0) cribStack(cb, screwX(i) + 0.5, screwZ(j) + 0.3, 3 + ((i + j) % 3 === 0 ? 1 : 0));
+  for (let j = 0; j < SCREWS.ROWS; j++) for (let i = 0; i < SCREWS.COLS; i += 3) if ((i + j) % 2 === 0) cribStack(cb, screwX(i), screwZ(j) - 0.6, 3 + ((i + j) % 3 === 0 ? 1 : 0), 0.7);
   const crib = new THREE.Group(); cb.build(crib, true); G.add(crib);
   // instanced jackscrews
   const N = SCREWS.COLS * SCREWS.ROWS;
@@ -456,7 +456,7 @@ export const buildCutaway = (): SetRig & CutRig => {
   const rig: SetRig = { name: "cutaway", group: new THREE.Group() }, G = rig.group, r = rng(77);
   // ---- the ground, the street, the neighbours ----
   const gb = new Batch();
-  terrain(gb, groundM("cutDirt", () => P.stubbleHD("cutStub", "#c8a064")), -FAR, FAR, -FAR, FAR, 4, undefined, 4, -0.01);
+  terrain(gb, groundM("cutDirt", () => P.stubbleHD("cutStub", "#c8a064")), -FAR, FAR, -FAR, FAR, 4, undefined, 4, -0.06);
   terrain(gb, groundM("verdant", () => P.pastureHD("pastureS", "#7ab24e")), -FAR, -60, -FAR, FAR, 4, undefined, 4, 0.0);
   terrain(gb, groundM("verdant", () => P.pastureHD("pastureS", "#7ab24e")), 60, FAR, -FAR, FAR, 4, undefined, 4, 0.0);
   const WALL = [brickM("#b4513a"), brickM("#c8805a"), plasterM("#e8d4a0"), brickM("#9a4a36"), plasterM("#d8c090")];

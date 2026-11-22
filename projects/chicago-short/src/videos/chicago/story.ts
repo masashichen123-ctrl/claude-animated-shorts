@@ -260,7 +260,7 @@ const S9 = (f: number): Shot => {
 // 10a (1072-1117): the foreman raises the flag and blows the whistle; 10b (1118+): low down the line of workers
 const S10 = (f: number): Shot => {
   const F = SPOT.FOREMAN;
-  const a = C([F[0] + 1.6, 1.45, F[2] + 5.4], [F[0] + 0.3, 2.0, F[2]], 44, 0.02), b = C([0.8, 1.25, 4.8], [1.5, 1.45, -16], 48, -0.025);
+  const a = C([F[0] + 1.6, 1.45, F[2] + 5.4], [F[0] + 0.3, 2.0, F[2]], 44, 0.02), b = C([1.85, 1.3, 7.4], [1.5, 1.5, -16], 48, -0.025);
   return P(between(a, b, gl(f, 1100, 26)), f, 1072, 0.0016, 0.006, 12, EV.TURN10 - 3);
 };
 // 11 (1223-1300): the hotel wide from the right with the measuring board; slow push
@@ -344,7 +344,6 @@ export const FOREGROUND: Fg[] = [
   { a: 198, b: 268, kit: "cattail", pos: [1.45, -0.55, 3.4], space: "cam", yaw: 0.2, s: 1.0 },
   { a: 198, b: 268, kit: "cattail", pos: [-1.6, -0.5, 4.2], space: "cam", yaw: -0.3, s: 1.1 },
   { a: 300, b: 389, kit: "cattail", pos: [1.5, -0.35, 2.4], space: "cam", yaw: 0.2, s: 0.9 },
-  { a: 1072, b: 1117, kit: "crib", pos: [1.55, -1.1, 4.2], space: "cam", yaw: -0.4, s: 1.0 },
 ];
 
 // ---------------- lens: depth of field ----------------
@@ -367,7 +366,7 @@ export const DOF: Dof[] = [
   { f: 937, cInf: 14, focus: () => [SPOT.HERO_SCREW[0], 1.3, SPOT.HERO_SCREW[2]] },
   { f: EV.PULLBACK9 - 6, dur: 34, cInf: 4, focus: () => [0, 1.6, -8] },
   { f: 1072, cInf: 11, focus: () => [SPOT.FOREMAN[0], 1.6, SPOT.FOREMAN[2]] },
-  { f: 1100, dur: 26, cInf: 5, focus: () => [1.5, 1.4, -5] },
+  { f: 1100, dur: 26, cInf: 5, focus: () => [1.5, 1.4, -6] },
   { f: 1223, cInf: 0 },
   { f: 1301, cInf: 3, focus: () => [-2.2, 3.6, -2] },
   { f: EV.DINER12 - 4, cInf: 12, focus: (f) => [-1.0, cutY(f) + SPOT.ROOM_H[1] + 1.4, -3.4] },
