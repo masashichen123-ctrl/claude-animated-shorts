@@ -1,27 +1,25 @@
-// The whole film as one three.js scene graph (owner: world, with lights.ts): sky dome, clouds, the light rig, the sea
-// (shader water from the missile short: depression-angle gradient + drifting painted crests, one big plane raised /
-// lowered per set), the three sets (build.ts, one visible at a time; their ticks pose the whale, dynamite, crates,
-// truck, bulldozer, mound), the cast cards (people: tall cards; seagulls + items: square cards), the effect cards and
-// the practical lights (the blast's glow). update(id, f, camera, scene) poses everything for shot `id` at frame f (a
+// The whole film as one three.js scene graph (owner: world, with lights.ts): sky dome, clouds, the light rig, the three
+// sets (build.ts, one visible at a time, switched per shot and at in-shot cuts by story.ts setOf; their ticks pose the
+// 1904 cars, the finish tapes, the well bucket, the sign arrow, the hay wagon), the cast cards (people: tall cards; dogs
+// + items: square cards), the effect cards and the practical lights. update(id, f, camera, scene) poses everything for shot `id` at frame f (a
 // pure function of id + f) and returns the camera's look point.
 import * as THREE from "three";
 import { ctex, cloudHD } from "./paint";
-import * as PAINT from "./paint";
 import { buildSets, SET_META, SetRig, CLOCK } from "./build";
 import * as B from "./build";
 import { LIGHTS, LOOK, LightPreset, LightName, lightOf, SHOT_SUN, SHOT_SUN_FROM, SHOT_SUN_DIR, SHOT_SKY, CUR } from "./lights";
-import { TONE, CHAR, HAZE, untone, LFB, hazeShader } from "./shade";
+import { TONE, CHAR, HAZE, untone } from "./shade";
 import { NOINK } from "./ink";
 import { Pool, Actor, Fx, stage } from "./cast";
 import { CARD_K } from "./cardshade";
 import { cardShade } from "./cardshade";
-import { FPS, SHOTS, ShotDef, SetName, camAt } from "./story";
+import { FPS, SHOTS, ShotDef, SetName, camAt, setOf } from "./story";
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
-/** square card geometry (seagulls, small lit items): 1 x 1 m, centred */
+/** square card geometry (dogs, small lit items): 1 x 1 m, centred */
 const SQ = new THREE.PlaneGeometry(1, 1);
 /** shots whose sky gets the 4 view-placed hero clouds, and their [azimuth offset, elevation (rad), width m, aspect] */
-const HERO_CLOUD_SHOTS = new Set([1, 3, 5, 8, 10, 11, 13, 14, 15, 16]);
+const HERO_CLOUD_SHOTS = new Set([1, 2, 3, 4, 5, 6, 8, 10, 11, 13, 14, 15]);
 const HERO_CLOUDS: [number, number, number, number][] = [[-0.14, 0.075, 220, 3.2], [0.13, 0.11, 250, 2.8], [0.0, 0.045, 320, 6], [-0.3, 0.05, 200, 5]];
 /** camera-relative sun azimuth actually used for a shot (sun disc only when it is roughly ahead of the lens) */
 const o2 = (id: number) => Math.abs(SHOT_SUN[id]?.az ?? 90);
@@ -60,8 +58,6 @@ export class World {
   private clouds: THREE.Mesh[] = [];
   private fg = new THREE.Group();
   private sets: Record<SetName, SetRig>;
-  private water: THREE.Mesh;
-  private WU: Record<string, THREE.IUniform>;
   private discMap: THREE.Texture;
   private frustum = new THREE.Frustum();
   private m4 = new THREE.Matrix4(); private v = new THREE.Vector3(); private sph = new THREE.Sphere();
@@ -161,39 +157,7 @@ export class World {
     // ---- sets + rigs ----
     this.sets = buildSets();
     for (const k of Object.keys(this.sets) as SetName[]) { this.sets[k].group.visible = false; R.add(this.sets[k].group); }
-    // ---- the sea: depression-angle gradient + drifting painted marks (one big plane, raised / lowered per set) ----
-    this.WU = {
-      wNearC: { value: new THREE.Color() }, wMidC: { value: new THREE.Color() }, wFarC: { value: new THREE.Color() },
-      wCrest: { value: new THREE.Color() }, wTrough: { value: new THREE.Color() }, wGlint: { value: new THREE.Color() },
-      wShade: { value: new THREE.Vector3(0.5, 0.56, 0.72) }, wNearTex: { value: null }, wFarTex: { value: null }, wTime: { value: 0 },
-    };
-    this.water = this.makeWater();
-    R.add(this.water);
     this.fg.name = "foreground"; R.add(this.fg);
-  }
-
-  private makeWater() {
-    const wNear = PAINT.waterNear(), wFar = PAINT.waterFar();
-    for (const t of [wNear, wFar]) { t.colorSpace = THREE.NoColorSpace; t.anisotropy = 16; t.needsUpdate = true; }
-    this.WU.wNearTex.value = wNear; this.WU.wFarTex.value = wFar;
-    const waterM = new THREE.MeshLambertMaterial({ color: 0xffffff });
-    waterM.onBeforeCompile = (sh) => {
-      Object.assign(sh.uniforms, this.WU);
-      sh.vertexShader = sh.vertexShader
-        .replace("#include <common>", "#include <common>\nvarying vec3 vWP;")
-        .replace("#include <project_vertex>", "#include <project_vertex>\nvWP = (modelMatrix * vec4(transformed, 1.0)).xyz;");
-      sh.fragmentShader = sh.fragmentShader
-        .replace("#include <common>", WATER_DECL)
-        .replace("#include <map_fragment>", WATER_COL)
-        .replace("#include <lights_fragment_begin>", "float sunVis = 1.0;\n" + LFB)
-        .replace("#include <lights_fragment_end>", "#include <lights_fragment_end>\n  reflectedLight.directDiffuse = diffuseColor.rgb * mix(wShade, vec3(1.0), mix(1.0, sunVis, 0.25)) + pracD * 0.6;\n  reflectedLight.indirectDiffuse = vec3(0.0);");
-      hazeShader(sh);
-    };
-    waterM.customProgramCacheKey = () => "sea3";
-    const wm = new THREE.Mesh(new THREE.PlaneGeometry(5000, 5000).rotateX(-Math.PI / 2), waterM);
-    wm.receiveShadow = false; // verify_r2 #5: no shadow slabs on the sea
-    wm.userData.inkId = 1100;
-    return wm;
   }
 
   /** camera-relative sun, frozen per shot: the shot's mean view direction turned by az toward screen right, lifted by el */
@@ -239,7 +203,7 @@ export class World {
   }
 
   update(id: number, f: number, cam: THREE.PerspectiveCamera, scene: THREE.Scene) {
-    const t = f / FPS, s = SHOTS[id - 1], ln = lightOf(id), L = LIGHTS[ln], K = LOOK[ln], meta = SET_META[s.set];
+    const t = f / FPS, s = SHOTS[id - 1], ln = lightOf(id), L = LIGHTS[ln], K = LOOK[ln], setName = setOf(id, f), meta = SET_META[setName];
     CLOCK.uTime.value = t;
     CUR.id = id;
     // ---- camera ----
@@ -316,16 +280,9 @@ export class World {
       skyAt(m.userData.el as number, mat.uniforms.mixCol.value);
     }
     this.sky.visible = outdoors;
-    // ---- sea: colours (on-screen targets, tone-map-inverted), height per set ----
-    const W = this.WU, wc = K.water;
-    untone(wc.near, W.wNearC.value); untone(wc.mid, W.wMidC.value); untone(wc.far, W.wFarC.value);
-    untone(wc.crest, W.wCrest.value); untone(wc.trough, W.wTrough.value); untone(wc.glint, W.wGlint.value);
-    W.wShade.value.set(...wc.shade); W.wTime.value = t;
-    this.water.visible = meta.water !== null;
-    this.water.position.set(cam.position.x, meta.water ?? 0, cam.position.z);
     // ---- sets: only the active one ----
-    for (const k of Object.keys(this.sets) as SetName[]) this.sets[k].group.visible = k === s.set;
-    this.sets[s.set].tick?.(t, id);
+    for (const k of Object.keys(this.sets) as SetName[]) this.sets[k].group.visible = k === setName;
+    this.sets[setName].tick?.(t, id);
     // ---- cast + effects ----
     const right = V(0, 0, 0).setFromMatrixColumn(cam.matrixWorld, 0), up = V(0, 0, 0).setFromMatrixColumn(cam.matrixWorld, 1);
     const st = stage(id, t, { pos: cam.position, right, up, sun: sunDir });
@@ -376,22 +333,3 @@ export class World {
     return focus;
   }
 }
-
-
-const WATER_DECL = `#include <common>
-varying vec3 vWP;
-uniform vec3 wNearC, wMidC, wFarC, wCrest, wTrough, wGlint, wShade;
-uniform sampler2D wNearTex, wFarTex;
-uniform float wTime;`;
-const WATER_COL = `
-  vec3 wV = vWP - cameraPosition;
-  float wd = length(wV);
-  float wDep = asin(clamp(-wV.y / wd, 0.0, 1.0));       // depression angle of the view ray
-  float wf = 1.0 - smoothstep(0.0, 0.42, wDep);         // 1 at the horizon .. 0 at 24 deg down
-  vec3 wc = mix(mix(wNearC, wMidC, smoothstep(0.0, 0.55, wf)), wFarC, smoothstep(0.55, 1.0, wf));
-  vec2 wp = vWP.xz + vec2(0.12 * wTime, 0.35 * wTime);   // swell drifting in toward the shore (+z)
-  vec4 mk = mix(texture2D(wNearTex, wp / 8.0), texture2D(wFarTex, wp / 40.0 + 0.37), smoothstep(25.0, 90.0, wd));
-  wc = mix(wc, wTrough, mk.g * 0.55);
-  wc = mix(wc, wCrest, mk.r * 0.75);
-  wc = mix(wc, wGlint, mk.b * (0.3 + 0.5 * wf));
-  diffuseColor.rgb = wc;`;

@@ -1,13 +1,14 @@
-# Picture timeline of "The Exploding Whale", mirrored (read-only) from SHOTS.md: 30 fps, TOTAL = 1590 f = 53.000 s.
+# Picture timeline of "The 1904 Olympic Marathon", mirrored (read-only) from SHOTS.md: 30 fps, TOTAL = 1680 f = 56.000 s.
 # Every frame number below is a locked picture event from the shot list; times are frame / 30.
-# Events SHOTS.md does not pin to a frame (the tumble thuds, gull calls, the truck doors, the oops, the hubcap...)
-# are chosen here (mostly inside measured narration gaps) and listed in cues.md so the picture can follow them.
+# Where a locked event sits on a key narration word, the bright / voice-like part of its sound is moved into the
+# nearest measured narration gap (the frame stays the visual sync point); those choices are marked "gap" here and
+# listed in cues.md.
 import json
 import os
 
 FPS = 30
-TOTAL = 1590
-DUR = TOTAL / FPS            # 53.0 s exactly
+TOTAL = 1680
+DUR = TOTAL / FPS            # 56.0 s exactly
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 
@@ -18,53 +19,65 @@ def fr(f):
 
 # id: (first frame, end frame, set, light)
 SHOTS = {
-    1: (0, 136, "Oregon beach", "overcast"), 2: (136, 198, "beach after", "overcast"), 3: (198, 334, "coast wide", "day"),
-    4: (334, 422, "beach rope", "day"), 5: (422, 496, "car park", "day"), 6: (496, 648, "beach plan", "day"),
-    7: (648, 768, "easel / gulls", "day"), 8: (768, 890, "dunes crowd", "day"), 9: (890, 938, "plunger CU", "day"),
-    10: (938, 988, "beach BOOM", "day"), 11: (988, 1062, "dunes panic", "day"), 12: (1062, 1140, "dunes reporter", "day"),
-    13: (1140, 1228, "far parking lot", "day"), 14: (1228, 1322, "beach smoke", "day"), 15: (1322, 1458, "beach buried", "day"),
-    16: (1458, TOTAL, "beach park", "sunny"),
+    1: (0, 133, "dusty road", "hot"), 2: (133, 204, "road, car", "hot"), 3: (204, 340, "stadium start / road", "hot"),
+    4: (340, 449, "dirt road, cars + dust", "hot"), 5: (449, 553, "roadside well", "hot"), 6: (553, 686, "stadium finish", "hot"),
+    7: (686, 768, "road flashback", "hot"), 8: (768, 886, "apple orchard", "hot"), 9: (886, 988, "orchard / finish", "hot"),
+    10: (988, 1078, "cornfield, dogs", "hot"), 11: (1078, 1273, "road, trainers' car", "hot"), 12: (1273, 1331, "finish, long lens", "hot"),
+    13: (1331, 1415, "finish, carried", "hot"), 14: (1415, 1507, "high 3/4 course", "hot"), 15: (1507, TOTAL, "Boston 1905", "spring"),
 }
-XF = [198, 1458]                     # 5-frame anchored dissolves
+XF = [204, 1507]                     # 5-frame anchored dissolves
 
-# locked picture events (frames)
-DYNAMITE = 114             # dynamite sticks pop up along the whale's back, lit-fuse sparkles
-FLASH = 134
-PLOP = 169                 # blubber chunk plops onto the Engineer's hat
-KICKS = [171, 960, 1160]
-ROPE_SNAP = 366            # rope snaps, the locals tumble
-SMELL = 403                # stink wobble lines, a seagull faints off a post
-TRUCK = 440                # orange 1970s highway truck pulls up
-BLOOP = 558                # thought bubble: whale -> boulder
-CRATES = (580, 625)        # crate after crate of dynamite stacked
-EASEL = 655
-GULL_LICK = 744            # seagulls in bibs licking their beaks
-CROWD = 790                # crowd murmur on the dunes from here
-CAMERA = 845               # TV film camera whirr
-HOLD = (898, 910)          # tense hold, crowd holds its breath
-PLUNGER = 914
-BOOM = 960
-WHISTLE_DOWN = 1020        # blubber chunks coming DOWN
-PANIC = 1034
-SPLATS = [1090, 1105, 1118]
-CAR_CRUNCH = 1158
-GULLS_FLEE = 1255
-BLINK = 1300
-FACEPALM = 1406
-DOZER = (1424, 1444)
-PARK = 1458
-GULL_LAND = 1547
-WINK = 1556
+# locked picture events (frames, SHOTS.md)
+BOTTLE = 99                # trainer holds up the skull bottle
+GULP = 110                 # Hicks gulps it, eyes go swirly
+FLASH = 131
+CAR1 = 133                 # the open 1904 car putters past (shot 2)
+WAVE = 162                 # Lorz waves cheerfully from the back seat (horn honk near here)
+DOUBLE_TAKE = 176
+PISTOL = 210               # starter's pistol puff
+HEAT = 262                 # CUT to blazing sun: heat buzz / cicadas from here
+CARS = 344                 # two cars drive ahead
+DUST = (398, 427)          # dust clouds roll back over the runners
+TONGUES = 495
+DRIP = 529                 # the bucket comes up with a single drop
+TAPE1 = 607                # Lorz breaks the tape
+HATS = 661                 # crowd leaps up, boaters fly
+CAR_PASS = (740, 750)      # flashback: Lorz's car passes
+STOP_DEAD = 752            # the cheering stops dead (boaters freeze mid-air)
+APPLE_PICK = 822
+APPLE_BITE = 830
+SOUR = (867, 871)          # face turns green, worms, stink lines
+SNORE = 926                # Z bubbles
+FINISH4 = 965              # cheerful finish, four fingers
+DOGS = (1013, 1055)
+EGG = 1204
+FLASK = 1235
+BOTTLE2 = 1246
+HELD_BREATH = 1304
+LIFT = 1378
+TAPE2 = 1399               # carried through the tape, medal plonk
+DROPOUTS = (1440, 1477)
+BOSTON = 1507
+TAPE3 = 1604               # Lorz wins Boston
+LOOK_DOWN = 1637
+HONK = 1650
+WINK = 1660
 
-# chosen here (not pinned in SHOTS.md), mostly inside the measured narration gaps
-TUMBLE = [376, 380, 384]               # the locals land on the sand after the snap (gap after 'move it,' 12.47-12.74)
-FAINT_THUD = 419                       # the fainted gull hits the sand (gap 13.83-14.27)
-TRUCK_DOORS = [486, 492]               # crew hop out (gap after 'Department.' 16.05-16.66)
-CRATE_TIMES = [580, 589, 598, 605, 613, 619, 625]
-OOPS = 1050                            # the music's gentle 'oops' (gap after 'everyone.' 34.96-35.51)
-HUBCAP = (1216, 1226)                  # a hubcap rolls away and settles (gap after 'away.' 40.5-41.12)
-GULL_CALLS = [45, 232, 327, 1321]           # far gull calls, each inside a gap (1.43-1.77, 7.62-8.01, 10.84-11.25, 43.8-44.38)
-
+# chosen here (not pinned in SHOTS.md, or moved off a key word into a narration gap measured on voice.wav at -40 dB;
+# words.json is up to 0.15 s early at some line ends, so the gaps below are the measured ones)
+SWIRL = 4.17               # the swirly 'boing' after 'poison.' ends (4.13-4.17), before the flash @131 (4.37)
+COUGHS = [12.64, 14.59]                 # runners coughing in the dust (gaps 12.62-12.90 and 14.58-14.75: a very soft "And" starts at 15.0)
+DRIP_LAND = 18.21          # the single drop lands in the tin bucket (gap after 'course.' 18.12-18.70)
+HATS_FWIP = [22.56, 22.61, 22.67]       # boaters fly (gap after 'cheered,' 22.55-22.87)
+SCRATCH = 25.34            # the soft record-scratch tail of the stop (gap after 'car.' 25.26-25.69); the cheer itself stops dead @752
+BLERGH = 29.55             # the sour 'blergh' (gap after 'rotten,' 29.50-29.82)
+SNORE_OUT = 31.34          # the audible snore (gap after 'nap.' 31.28-31.58); a dark inhale starts @926
+BARKS_GAP = [35.67, 35.74, 35.80, 35.86]   # the clear bark volley (gap after 'dogs.' 35.66-36.07)
+MEDAL = 46.97              # the medal 'plonk' (gap after 'it.' 46.86-47.42)
+SIGHS = [48.46, 50.08]     # drop-out sighs (gaps 48.45-48.62 and 49.77-50.41)
+SPLASH = 49.90             # a runner sits down in the creek (gap 49.77-50.41)
+BOTTLE2_TINK = 42.04      # the bright glass tink of the skull bottle waits for the gap after 'strychnine.' (42.01-42.41): its 6 kHz sits on the word's 's'
+HONK_T = 55.08             # the honk @1650 starts as the final 't' of 'foot.' ends (55.07)
 
 def shot_t(i):
     a, b = SHOTS[i][:2]
@@ -76,7 +89,7 @@ def shot_at(t):
     for i, (a, b, *_r) in SHOTS.items():
         if a <= f < b:
             return i
-    return 16
+    return 15
 
 
 def words():

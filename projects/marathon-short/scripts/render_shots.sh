@@ -3,7 +3,7 @@
 # usage: scripts/render_shots.sh [shot numbers...]   (default: all missing)
 cd "$(dirname "$0")/.."
 export REMOTION_TMP=$PWD/.rtmp TMPDIR=$PWD/.rtmp
-R=(0 136 198 334 422 496 648 768 890 938 988 1062 1140 1228 1322 1458 1590)
+R=(0 133 204 340 449 553 686 768 886 988 1078 1273 1331 1415 1507 1680)
 mkdir -p out/marathon/final
 SHOTS=${@:-$(seq 1 15)}
 for s in $SHOTS; do

@@ -15,7 +15,7 @@ process.env.REMOTION_TMP = tmp; process.env.TMPDIR = tmp;
 const [prefix = "out/marathon/s_", framesArg = "shots", scaleArg = "0.5", comp = "MarathonShort"] = process.argv.slice(2);
 const scale = Number(scaleArg);
 // mid-frame of each shot (story.ts SHOTS / SHOTS.md)
-const SHOT_RANGES = [[0, 136], [136, 198], [198, 334], [334, 422], [422, 496], [496, 648], [648, 768], [768, 890], [890, 938], [938, 988], [988, 1062], [1062, 1140], [1140, 1228], [1228, 1322], [1322, 1458], [1458, 1590]];
+const SHOT_RANGES = [[0, 133], [133, 204], [204, 340], [340, 449], [449, 553], [553, 686], [686, 768], [768, 886], [886, 988], [988, 1078], [1078, 1273], [1273, 1331], [1331, 1415], [1415, 1507], [1507, 1680]];
 const frames = framesArg === "shots" ? SHOT_RANGES.map(([a, b]) => Math.floor((a + b) / 2)) : framesArg.split(",").map(Number);
 const inputProps = process.env.STILLS_PROPS ? JSON.parse(process.env.STILLS_PROPS) : { post: { dpr: scale } };
 const browserExecutable = process.env.STILLS_BROWSER ?? "/opt/pw-browsers/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell";

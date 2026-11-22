@@ -193,8 +193,8 @@ export const GRADE_DAY2: GradeParams = {
   hueSat: HUE_DAY,
 };
 export type GradeName = LightName;
-export const GRADES: Record<GradeName, GradeParams> = { day: GRADE_DAY2, sunny: { ...GRADE_DAY2, sat: [0.92, 1.15, 1.12], vig: [0.18, 0.45] } };
-export const GRADE_STRENGTH: Record<GradeName, number> = { day: 1, sunny: 1 };
+export const GRADES: Record<GradeName, GradeParams> = { day: GRADE_DAY2, spring: { ...GRADE_DAY2, sat: [0.92, 1.15, 1.12], vig: [0.18, 0.45] } };
+export const GRADE_STRENGTH: Record<GradeName, number> = { day: 1, spring: 1 };
 /** Apply the preset of a light to the effect (only touches uniforms when the light changes). */
 export function gradeFor(fx: GradeEffect, light0: GradeName) {
   // the caller passes story.ts SHOTS[].light; lights.ts SHOT_LIGHT may refine it (world.update just ran for this layer)

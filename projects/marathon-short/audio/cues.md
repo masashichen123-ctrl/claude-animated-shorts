@@ -1,20 +1,20 @@
-# The Exploding Whale - soundtrack cue sheet
+# The 1904 Olympic Marathon - soundtrack cue sheet
 
-All sound is original and synthesized in numpy/scipy: instruments in `instruments.py` (guitar pluck, Rhodes, upright bass, brushes, shaker, soft kick, vibes, celesta, pizzicato, whistle from the shared kit + a ukulele added in `music.py`), SFX in `sfx_whale.py` (surf, gulls, dynamite, rope, truck, crates, camera, plunger, BOOM, splats, car crunch, bulldozer, park...) with helpers from `sfx_gen.py` / `sfx_emu.py` / `sfx_bat.py`; placed by `music.py` / `sfx.py` from `timeline.py` (frames from SHOTS.md), mixed by `mix.py`.
-Voice = `voice/voice.wav`, gain only (no EQ, no compression, no pitch, no time change). Rebuild everything + verify: `bash audio/build.sh` (about 1.5 min; mix only: `python3 audio/mix.py --fresh`).
+All sound is original and synthesized in numpy/scipy: instruments in `instruments.py` (guitar pluck, upright bass, brushes, shaker, soft kick, vibes, celesta, pizzicato from the shared kit) + a soft honky-tonk upright piano added in `music.py`; SFX in `sfx_marathon.py` (heat buzz / cicadas, the bottle + gulp + swirl boing, a 1904 one-cylinder car + bulb horn, the pistol pop, stadium crowd murmur / cheers / held breath, dust, coughs, well winch + drip, tape snaps, boaters, record scratch, apple pick + crunch, blergh, snores, dogs + frantic feet, egg, glug, clink, lift, medal plonk, drop-out thuds / sighs / wagon / splash, Boston spring birds, the wink ting) with helpers from `sfx_gen.py` / `sfx_emu.py` / `sfx_bat.py` (`sfx_whale.py` stays for reference, unused); placed by `music.py` / `sfx.py` from `timeline.py` (frames from SHOTS.md), mixed by `mix.py`.
+Voice = `voice/voice.wav`, gain only (no EQ, no compression, no pitch, no time change). Rebuild everything + verify: `bash audio/build.sh` (about 3 min with the whisper checks; mix only: `python3 audio/mix.py --fresh`, about 1 min).
 
 ## Files
 | file | content |
 |---|---|
-| `public/whale/mix.wav` = `voice/mix_final.wav` | final mix, 48 kHz, stereo, 24-bit, 2,544,000 samples = 53.000 s |
+| `public/marathon/mix.wav` = `voice/mix_final.wav` | final mix, 48 kHz, stereo, 24-bit, 2,688,000 samples = 56.000 s |
 | `audio/out/stem_voice.wav` / `stem_music.wav` / `stem_sfx.wav` | stems at mix gain, after the master limiter's gain curve: voice + music + sfx = mix.wav |
 | `audio/check.py` | verification: whisper transcription of voice.wav vs the mix (faster-whisper small.en), sample count |
 
 ## Master loudness (own BS.1770-4 meter)
-- Integrated **-14.02 LUFS**, true peak **-1.30 dBTP**, LRA 1.6 LU, max momentary -9.3 LUFS, max short-term -13.2 LUFS; 0 samples at full scale
-- Stems at mix gain: voice -14.0 LUFS (peak -0.9 dBFS, max momentary -9.3 LUFS), music -30.1 LUFS, sfx -31.9 LUFS (master gain +7.68 dB and the limiter gain curve, the same on every stem)
-- Master limiter (4x oversampled look-ahead, ceiling -1.3 dBTP): max gain reduction 7.02 dB, active (>0.1 dB) on 27.78 % of samples; inside speech: max 7.02 dB, 90th / 99th percentile 1.08 / 3.55 dB, active on 33.0 % of speech samples. This peak limiting is the only processing besides gain that reaches the narration (same approach as the emu and bat mixes): the TTS voice's true-peak-to-loudness ratio is too high to reach -14 LUFS at <= -1 dBTP with gain alone.
-- Discontinuity check: 181 boundaries (start + end of every placed SFX event, every music cut / re-entry) checked on the SFX and music stems, 0 suspicious.
+- Integrated **-14.01 LUFS**, true peak **-1.30 dBTP**, LRA 1.4 LU, max momentary -9.3 LUFS, max short-term -12.9 LUFS; 0 samples at full scale
+- Stems at mix gain: voice -14.0 LUFS (peak -0.8 dBFS, max momentary -9.3 LUFS), music -30.9 LUFS, sfx -38.2 LUFS (master gain +7.65 dB and the limiter gain curve, the same on every stem)
+- Master limiter (4x oversampled look-ahead, ceiling -1.3 dBTP): max gain reduction 9.06 dB, active (>0.1 dB) on 30.72 % of samples; inside speech: max 9.06 dB, 90th / 99th percentile 1.10 / 3.51 dB, active on 35.6 % of speech samples. This peak limiting is the only processing besides gain that reaches the narration (same approach as the emu and bat mixes): the TTS voice's true-peak-to-loudness ratio is too high to reach -14 LUFS at <= -1 dBTP with gain alone.
+- Discontinuity check: 152 boundaries (start + end of every placed SFX event, every music cut / re-entry) checked on the SFX and music stems, 0 suspicious.
 
 ffmpeg ebur128 cross-check:
 ```
@@ -23,268 +23,251 @@ Summary:
     I:         -14.0 LUFS
     Threshold: -24.4 LUFS
   Loudness range:
-    LRA:         1.6 LU
+    LRA:         1.4 LU
     Threshold: -34.4 LUFS
-    LRA low:   -15.1 LUFS
-    LRA high:  -13.5 LUFS
+    LRA low:   -15.0 LUFS
+    LRA high:  -13.6 LUFS
   True peak:
     Peak:       -1.3 dBFS
 ```
 
 ## Voice on top: per-section loudness
-Key: words.json spans, widened by the voice's own measured activity. Music: -3 dB gentle duck under speech (attack 250 ms, release 600 ms) + +6 dB bloom in gaps >= 0.55 s; section gain set so the music sits -18.0 LU (+ per-section offset) under the voice over the spoken parts. SFX: -3 dB duck under speech (attack 30 ms, release 250 ms).
+Key: words.json spans, widened by the voice's own measured activity. Music: -3 dB gentle duck under speech (attack 250 ms, release 600 ms) + +4 dB bloom in gaps >= 0.55 s; section gain set so the music sits -18.0 LU (+ per-section offset) under the voice over the spoken parts. SFX: -3 dB duck under speech (attack 30 ms, release 250 ms).
 Columns: integrated LUFS per stem at mix gain; then over 400 ms windows centred on speech: median voice-music, median and 10th percentile voice-bed (bed = music + sfx); bloom = median music level in the gaps minus in speech (LU).
 
 | section | time s | voice | music | sfx | voice-music (speech, med) | voice-bed med | voice-bed p10 | bloom |
 |---|---|---|---|---|---|---|---|---|
-| hook | 0.00-4.47 | -14.0 | -30.7 | -39.9 | 16.1 | 15.8 | 13.5 | 0.0 |
-| after | 4.47-6.60 | -13.2 | -28.0 | -29.4 | 17.5 | 15.5 | 10.0 | 5.5 |
-| coast | 6.60-11.13 | -13.7 | -30.9 | -46.2 | 17.4 | 17.3 | 13.5 | 0.3 |
-| rope | 11.13-14.07 | -13.2 | -30.6 | -34.4 | 17.9 | 17.4 | 9.3 | 1.6 |
-| highway | 14.07-16.53 | -14.0 | -29.5 | -34.8 | 16.9 | 16.5 | 11.7 | 5.3 |
-| plan | 16.53-21.60 | -13.7 | -31.2 | -37.6 | 16.0 | 15.5 | 13.4 | -3.4 |
-| easel | 21.60-25.60 | -13.9 | -30.2 | -48.8 | 16.0 | 16.0 | 11.0 | 0.1 |
-| dunes | 25.60-29.30 | -13.8 | -31.0 | -46.6 | 17.6 | 17.5 | 9.9 | -1.1 |
-| thin | 29.30-29.93 | -17.1 | -34.1 | -47.2 | 17.7 | 17.6 | 16.2 | -3.1 |
-| hold | 29.93-35.00 | -13.5 | -55.9 | -25.4 | - | 19.2 | 12.1 | - |
-| rain | 35.00-38.00 | -13.5 | -30.4 | -35.0 | 17.6 | 17.1 | 13.9 | -1.6 |
-| car | 38.00-41.00 | -14.4 | -31.1 | -29.5 | 16.7 | 15.6 | 11.7 | 1.4 |
-| still | 41.00-44.07 | -13.8 | -31.4 | -44.5 | 17.9 | 17.8 | 13.6 | 4.3 |
-| buried | 44.07-48.50 | -14.1 | -30.6 | -37.5 | 17.5 | 17.3 | 11.4 | 2.4 |
-| park | 48.50-53.00 | -14.3 | -28.4 | -34.0 | 17.4 | 17.3 | 13.3 | 6.1 |
+| hook | 0.00-4.37 | -14.2 | -31.3 | -36.3 | 16.4 | 16.2 | 13.7 | 1.4 |
+| car | 4.37-6.80 | -13.6 | -29.4 | -38.0 | 16.7 | 15.6 | 13.8 | 4.5 |
+| start | 6.80-11.33 | -14.1 | -30.8 | -43.7 | 17.0 | 16.8 | 11.5 | 1.3 |
+| dust | 11.33-14.97 | -14.1 | -31.1 | -39.3 | 17.1 | 16.5 | 13.9 | 0.2 |
+| well | 14.97-18.43 | -14.9 | -32.2 | -40.6 | 16.0 | 15.9 | 13.2 | -5.0 |
+| finish | 18.43-22.87 | -13.2 | -30.1 | -39.7 | 16.8 | 16.7 | 12.1 | -0.1 |
+| flashback | 22.87-25.07 | -14.2 | -31.9 | -45.3 | 17.3 | 17.2 | 13.3 | - |
+| dropout | 25.07-25.50 | -19.5 | -38.2 | -37.3 | 15.6 | 14.8 | 14.4 | -1.2 |
+| orchard | 25.50-29.53 | -14.0 | -31.2 | -42.0 | 16.6 | 16.2 | 13.4 | 0.6 |
+| nap | 29.53-31.57 | -13.5 | -33.1 | -38.4 | 22.5 | 22.2 | 13.9 | 2.0 |
+| fourth | 31.57-32.93 | -12.3 | -29.2 | -57.4 | 17.0 | 16.9 | 12.9 | 0.5 |
+| dogs | 32.93-35.93 | -13.8 | -31.4 | -39.3 | 17.2 | 16.7 | 15.2 | -0.5 |
+| hicks | 35.93-42.43 | -13.7 | -32.0 | -45.2 | 18.0 | 18.0 | 15.8 | -3.3 |
+| breath | 42.43-44.40 | -13.6 | -37.1 | -48.0 | 23.4 | 23.0 | 19.2 | -3.4 |
+| carried | 44.40-47.17 | -14.4 | -31.0 | -40.0 | 17.1 | 17.1 | 12.6 | 4.8 |
+| dropouts | 47.17-50.23 | -14.2 | -30.6 | -37.7 | 17.1 | 16.9 | 14.5 | 3.1 |
+| boston | 50.23-56.00 | -13.6 | -29.5 | -33.3 | 17.8 | 17.6 | 13.8 | 1.8 |
 
-Music under the voice: median over the sections' speech windows **17.5 LU**; in the longer gaps (>= 0.55 s) the music's median momentary level is **10.7 LU** under the voice's integrated loudness.
+Music under the voice: median over the sections' speech windows **17.1 LU**; in the longer gaps (>= 0.55 s) the music's median momentary level is **11.1 LU** under the voice's integrated loudness.
 
-Applied section gains (dB): hook -16.1, after -12.8, coast -19.8, rope -19.5, highway -18.3, plan -19.1, easel -18.0, dunes -19.0, thin -21.4, hold -21.4, rain -17.5, car -18.4, still -18.0, buried -17.9, park -19.8. Music rides: 21.42-22.24 s -24.0 dB, 40.86-41.24 s -24.0 dB SFX rides: 21.60-21.80 s -6.0 dB, 33.02-33.60 s -6.0 dB, 40.80-41.24 s -15.0 dB (60 ms ramps): the BOOM tail steps back for 'Unluckily,', and the beds dip for the soft 'And'.
+Applied section gains (dB): hook -18.6, car -14.9, start -19.8, dust -18.2, well -18.1, finish -18.7, flashback -19.4, dropout -19.4, orchard -17.4, nap -16.0, fourth -18.9, dogs -19.2, hicks -17.0, breath -17.0, carried -17.6, dropouts -19.1, boston -18.3. Music rides: 6.12-6.38 s -14.0 dB, 14.80-15.15 s -10.0 dB, 22.70-23.05 s -10.0 dB, 41.40-42.05 s -9.0 dB, 50.22-50.55 s -8.0 dB SFX rides: 6.12-6.38 s -10.0 dB, 14.80-15.15 s -10.0 dB, 22.70-23.05 s -10.0 dB, 50.25-50.55 s -6.0 dB (60 ms ramps).
 
-Narration gaps (measured on voice.wav), where the louder hits and the music blooms go: 1.43-1.77, 4.40-4.66, 6.03-6.68, 7.62-8.01, 10.84-11.25, 13.83-14.20, 16.05-16.66, 21.42-21.74, 22.23-22.55, 27.76-28.06, 29.57-29.94, 31.01-31.41, 32.75-33.06, 34.96-35.51, 37.68-38.08, 40.50-41.10, 43.80-44.24, 47.25-47.54, 48.34-48.88.
+Narration gaps (measured on voice.wav), where the louder hits and the music blooms go: 1.77-2.09, 4.13-4.50, 6.26-6.89, 8.09-8.30, 10.84-11.24, 12.62-12.84, 14.58-15.02, 18.12-18.56, 21.39-21.68, 22.52-22.74, 25.24-25.68, 29.50-29.72, 31.20-31.56, 32.58-33.06, 35.66-36.06, 38.40-38.84, 40.73-41.02, 42.01-42.41, 44.05-44.36, 46.96-47.38, 49.77-50.38, 51.72-52.10, 54.20-54.56.
 
-## Music map (chill seaside score: laid-back acoustic bed, 84 bpm, swung eighths, G major)
-Fingerpicked nylon guitar, warm Rhodes, round upright bass, brushes + shaker + soft kick (no snare, no crashes, no rolls), vibes sparkles; seaside colour: a light ukulele chopping the & of 2 and 4, and a soft whistled WHALE motif (D5 E5 A5 . G5 E5 D5, swung; only ever inside narration gaps). Loops: day Gmaj7 Em9 Cmaj9 D9sus, dunes Cmaj9 Bm7 Em9 D9sus, soft Am7 Fmaj7 Cadd9; held D7 before the hold; resolve on Gmaj9 at the wink. All composed here (no existing melodies). The emu short's brass march stays in `music_march.py` for reference (not used).
+## Music map (chill score with a ragtime-period wink: laid-back acoustic bed, 92 bpm, swung eighths, F major)
+A soft honky-tonk upright piano (own additive model: two strings per note detuned a few cents, felt-soft hammer, damper) comping lazy after-beats on 2 and 4 and playing a little syncopated RAG motif (A4 C5 . D5 . F5 E5 D5 C5) and its 3-note answer only inside narration gaps; fingerpicked nylon guitar, round upright bass in two (walking for the dogs), brushes + shaker + soft kick (no snare, no crashes, no rolls), celesta / vibes / pizz for the soft comedy beats. Loops: the ragtime circle F6 D7 G7 C7, lazy F6 Bb6 F6 C7, sunny F6 Dm7 Gm7 C9sus, woozy Gm7 C7 F6 Abdim7 (piano further out of tune, slow pitch sway, half-time), Boston Bb6 Bdim7 F6 D7 G7 C7; resolve on F6/9 at the wink. All composed here (no existing melodies: not Maple Leaf Rag, not The Entertainer). The emu short's brass march stays in `music_march.py` for reference (not used).
 
 | time s | frame | music |
 |---|---|---|
-| 0.00 | 0 | HOOK: fingerpicked nylon guitar + Rhodes + a soft ukulele chop (Gmaj7 - Cmaj9), no drums |
-| 3.80 | 114 | DYNAMITE POPS UP @114: four short damped vibes pops climbing left to right, one per stick |
-| 4.47 | 134 | FLASH @134: a soft reversed-vibes shimmer swells into the frame; the band stops on it |
-| 4.70 | 141 | AFTER: a soft held Am7 colour on 'It did not' (the Engineer, soot-black) |
-| 6.08 | 182 | a flat two-note pizz 'hmph' (G - F#) in the gap after 'whale.' |
-| 6.60 | 198 | COAST (XF @198): the groove starts - guitar, upright bass, Rhodes, brushes + shaker + soft kick, uke offbeats (Gmaj7 Em9 Cmaj9 D9sus) |
-| 12.20 | 366 | ROPE SNAP @366: a pizz tumble down (D B G D G) in the gap after 'move it,' |
-| 13.43 | 403 | SMELL @403: a queasy wobbling Rhodes cluster, the band thins to bass + Rhodes (Am7) |
-| 14.07 | 422 | HIGHWAY DEPARTMENT: full groove again (Cmaj9 - D9sus) as the truck pulls up |
-| 16.08 | 482 | whistled D-E-A in the gap after 'Department.' (the Engineer steps forward) |
-| 18.60 | 558 | THOUGHT BUBBLE @558: a soft two-note vibes bubble (B - F#) |
-| 19.33 | 580 | CRATES @580-625: a soft pizz note climbs the G major arpeggio with each crate stacked |
-| 21.83 | 655 | EASEL TAP @655: one high vibes glint just after 'plan?' |
-| 22.27 | 668 | THE PLAN: the previous groove rings out under 'The plan?', the band comes back in the gap after it - guitar, bass, Rhodes, shaker, uke (no drums) - Cmaj9 D9sus Bm7 Em9 |
-| 25.60 | 768 | DUNES: full groove (Cmaj9 Bm7 Em9 D9sus) under the gathering crowd |
-| 25.82 | 775 | GULLS IN BIBS: a cheeky little ukulele lick (D E G . E G) in the gap after 'rest.' |
-| 29.30 | 879 | the band thins to bass + Rhodes (D7) after 'filming.' |
-| 29.93 | 898 | TENSE HOLD @898: the music stops (120 ms fade) and stays silent through the plunger @914 and the BOOM @960 |
-| 35.00 | 1050 | OOPS: soft vibes E - C falling third + a low pizz F#, in the gap after 'everyone.' (34.96-35.51) |
-| 35.45 | 1064 | BLUBBER RAIN: the groove creeps back in on 'Huge' - guitar, bass, Rhodes, shaker, uke (Am7 - D9sus), no drums |
-| 38.00 | 1140 | CAR: Cmaj9 - D9sus with brushes; the band lifts off at 40.45 for... |
-| 40.52 | 1216 | ...a little descending pizz 'deflate' (D C# C B, low G) in the gap after 'away.' |
-| 40.95 | 1228 | STILL THERE: the day groove returns, faded up under 'most' (it stays out of the soft 'And'), unbothered |
-| 44.07 | 1322 | BURIED: guitar, bass, Rhodes, no drums (Am7 Fmaj7 Cadd9) |
-| 47.30 | 1419 | FACE-PALM: a low pizz 'plunk' in the gap after 'avoid.' |
-| 48.33 | 1450 | whistled D-E-A through the dissolve to the park, in the gap after 'buried it.' (48.30-48.93) |
-| 48.60 | 1458 | PARK (XF @1458): bright, full groove (Cmaj9 D9sus Em9 D9sus), uke and shaker sunny |
-| 51.87 | 1556 | WINK @1556: warm resolve on Gmaj9 (rolled guitar, Rhodes, low G) with a celesta 'ting' (D7 - G7) |
-| 52.02 | 1561 | the whole WHALE motif, whistled softly over the resolve after the last word; rings out to 53.0 |
+| 0.00 | 0 | HOOK: fingerpicked guitar + soft upright piano after-beats + upright bass (F6 - D7), no drums |
+| 1.80 | 54 | a tiny 3-note piano answer (F E-flat... F D C) in the gap after 'Olympics,' (1.77-2.09) |
+| 3.30 | 99 | BOTTLE @99: a soft 'uh-oh' (A-flat - G) on the piano, high and quiet |
+| 4.37 | 131 | FLASH @131: a soft reversed-vibes shimmer swells into the frame; the band stops on it |
+| 4.43 | 133 | THE CAR @133: a lazy vamp (F6 - C7) under 'And that wasn't even the strangest part.' |
+| 6.38 | 191 | the 3-note piano answer in the gap after 'part.' (6.22-6.89) |
+| 6.80 | 204 | STADIUM START (XF @204): the groove starts - guitar, upright bass, piano after-beats, brushes + shaker + soft kick (F6 D7 G7 C7) |
+| 10.86 | 326 | the RAG motif's first half (A C D F) in the gap after 'roads.' (10.84-11.24) |
+| 11.33 | 340 | CARS + DUST: the groove carries on (F6 Dm7 Gm7 C9sus) |
+| 17.63 | 529 | THE DROP @529: the band lets go (250 ms), one low bass C holds... |
+| 18.21 | 546 | ...and a lone high piano plink (C7) after the drop lands (gap after 'course.') |
+| 18.43 | 553 | FINISH LINE: full groove on the ragtime circle |
+| 20.31 | 609 | TAPE @607: a two-note piano lift (C F) in the small gap after 'line' (20.31-20.50) |
+| 22.56 | 677 | CROWD CHEERS: a little piano 'ta-da' (C E A, octaves) in the gap after 'cheered,' (22.55-22.87) |
+| 25.07 | 752 | CHEERING STOPS DEAD @752: soft drop-out (150 ms fade), silence under the end of 'car.' |
+| 25.36 | 761 | a flat two-note pizz 'hmph' (F - E) in the gap after 'car.' (25.26-25.69) |
+| 25.60 | 768 | ORCHARD: the band comes back gently - guitar, bass, piano, shaker (F6 Bb6 F6 C7) |
+| 27.40 | 822 | APPLE PICK @822: a tiny two-note celesta glint |
+| 28.90 | 867 | ROTTEN @867: the band stops, a soured, badly out-of-tune piano cluster wobbles (E bass) |
+| 29.84 | 895 | NAP: a half-time lullaby - guitar + bass (F6 - Bb6) |
+| 31.35 | 940 | Z bubbles (@926): three soft descending celesta notes (C A F) in the gap after 'nap.' |
+| 31.57 | 947 | CUT @947 to the finish: the groove pops back in |
+| 32.17 | 965 | FOURTH @965: a cheerful soft F6/9 chord on the four fingers; the motif's tail (E D C) after 'fourth.' |
+| 32.93 | 988 | DOGS: the bass walks, triplet shaker, piano after-beats - skittering but soft (D7 G7 C7) |
+| 35.62 | 1069 | the band lets go after 'dogs' so the bark volley has the gap (35.66-36.07) |
+| 36.25 | 1088 | HICKS: woozy half-time - piano more out of tune with a slow pitch sway, brushes swish (Gm7 C7 F6 Abdim7) |
+| 40.13 | 1204 | EGG @1204 / FLASK @1235: a soft pizz blip on each hand-off, climbing (G A); the bottle @1246 gets none (keeps 'strychnine' clear) |
+| 42.09 | 1263 | a woozy chromatic slide down (F E Eb D) in the gap after 'strychnine.' (42.01-42.41) |
+| 42.43 | 1273 | THE LONG LENS: bass pedal on C + a soft repeated piano C, slowly growing |
+| 43.47 | 1304 | HELD BREATH @1304: the band stops, one quiet held C7 shell on the piano, then near-silence to 'Unluckily' |
+| 44.40 | 1332 | CARRIED: a lumbering half-time (F6 - C7), guitar, bass, piano, brushes |
+| 45.93 | 1378 | LIFT @1378: a little piano step up (F A C) |
+| 46.63 | 1399 | TAPE @1399: a warm F6/9 chord; MEDAL: a low piano octave 'plonk' (C2+C3) + a celesta glint in the gap after 'it.' |
+| 47.25 | 1418 | DROP-OUTS: thin band (F6 E7 Bbm6 F6 C7), a deflating line |
+| 48.45 | 1454 | piano 'deflate' C B Bb (gap after 'runners,'), then A Ab G F after 'finished.' (49.90-50.33) |
+| 50.23 | 1507 | BOSTON (XF @1507): bright, full groove (Bb6 Bdim7 F6 D7 G7 C7) |
+| 51.78 | 1553 | the RAG motif's opening in the gap after 'car?' (51.76-52.15); the answer after 'Marathon.' (54.20-54.58) |
+| 55.33 | 1660 | WINK @1660: warm resolve on F6/9 (rolled guitar, piano, low F) with a celesta 'ting' (A7 - C8) |
 
 ## SFX events
-naive = the event's level vs the voice stem (max momentary, LU); applied = naive - 8 dB + offsets; beds are integrated loudness. 'mix LUFS' = the event's max momentary at mix gain, before the -3 dB speech duck (compare: voice max momentary -9.3 LUFS, integrated -14.0 LUFS). Frames not pinned in SHOTS.md, chosen here (mostly inside measured gaps): tumble [376, 380, 384], gull thud 419, truck doors [486, 492], crates [580, 589, 598, 605, 613, 619, 625], oops 1050, hubcap (1216, 1226), far gull calls [45, 232, 327, 1321], plus the shovels, whoas and squishes listed below.
+naive = the event's level vs the voice stem (max momentary, LU); applied = naive - 8 dB + offsets; beds are integrated loudness. 'mix LUFS' = the event's max momentary at mix gain, before the -3 dB speech duck (compare: voice max momentary -9.3 LUFS, integrated -14.0 LUFS). Frames not pinned in SHOTS.md, chosen here (mostly inside measured gaps): swirl boing 4.17 s, coughs [12.64, 14.59], drip lands 18.21, boater fwips [22.56, 22.61, 22.67], record scratch 25.34, blergh 29.55, snore 31.34, bark volley [35.67, 35.74, 35.8, 35.86], medal 46.97, sighs [48.46, 50.08], splash 49.9, final honk 55.08 s (each moved off a key word into the measured gap next to its locked frame; the frame stays the visual sync point and a dark or above-band part of the sound - or the cut itself, for the cheer @752 - sits on the frame).
 
 ## Speech-band masking check (key words)
 For every word of words.json (window = word start .. end + 0.10 s): voice level minus SFX / music / bed (music + sfx) level, both band-passed 300-5000 Hz (the consonant / formant band), at mix gain after duck and limiter. 'worst 50 ms' = the smallest voice-minus-SFX margin over 50 ms frames inside the word. Rule from the bat short: SFX >= 12 dB under the voice in this band on every word (low sub content below 300 Hz is allowed, it does not mask consonants).
 
 | word | time s | voice-SFX dB | worst 50 ms | voice-music dB | voice-bed dB |
 |---|---|---|---|---|---|
-| whale | 3.28-3.58 | 47.6 | 37.6 | 16.4 | 16.4 |
-| dynamite | 3.86-4.40 | 17.3 | 11.7 | 11.4 | 10.4 |
-| whale | 5.70-6.00 | 27.2 | 21.7 | 18.0 | 17.5 |
-| whale | 8.68-8.94 | 45.2 | 38.7 | 19.4 | 19.4 |
-| beach | 9.78-9.98 | 44.7 | 36.7 | 17.6 | 17.6 |
-| move | 12.10-12.28 | 22.7 | 13.3 | 17.2 | 16.0 |
-| smell | 13.50-13.78 | 21.8 | 12.3 | 16.6 | 16.3 |
-| boulder | 18.66-18.96 | 26.9 | 13.9 | 23.0 | 21.8 |
-| dynamite | 20.84-21.42 | 30.2 | 18.3 | 18.0 | 17.7 |
-| plan | 21.84-22.14 | 30.6 | 16.2 | 53.7 | 30.6 |
-| whale | 22.94-23.12 | 51.3 | 45.1 | 20.2 | 20.2 |
-| seagulls | 24.86-25.28 | 27.6 | 14.6 | 13.4 | 13.3 |
-| crowd | 26.32-26.64 | 43.3 | 32.5 | 21.9 | 21.9 |
-| filming | 29.08-29.44 | 35.3 | 27.3 | 20.2 | 20.2 |
-| plunger | 30.54-30.96 | 35.8 | 27.5 | 83.5 | 35.8 |
-| whale | 31.96-32.10 | 30.1 | 25.0 | 182.3 | 30.1 |
-| exploded | 32.10-32.64 | 43.7 | 35.7 | 179.7 | 43.7 |
-| exploded | 33.78-34.16 | 26.2 | 15.2 | 183.3 | 26.2 |
-| everyone | 34.46-34.88 | 23.5 | 16.7 | 176.3 | 23.5 |
-| blubber | 36.24-36.56 | 30.3 | 17.8 | 23.5 | 22.8 |
-| crowd | 37.38-37.68 | 28.6 | 32.2 | 18.7 | 18.2 |
-| car | 38.66-38.88 | 23.5 | 12.4 | 18.9 | 17.6 |
-| whale | 41.62-41.82 | 47.2 | 33.0 | 21.6 | 21.6 |
-| beach | 43.44-43.70 | 40.3 | 33.1 | 14.0 | 14.0 |
-| avoid | 46.88-47.24 | 33.4 | 20.4 | 16.3 | 16.2 |
-| buried | 47.80-48.12 | 29.7 | 19.2 | 24.8 | 23.6 |
-| beach | 49.56-49.80 | 44.1 | 35.6 | 18.8 | 18.8 |
-| park | 50.16-50.38 | 50.8 | 40.0 | 27.2 | 27.2 |
-| whale | 51.56-51.90 | 19.5 | 7.2 | 13.3 | 12.4 |
+| poison | 3.68-4.08 | 23.7 | 39.9 | 17.1 | 16.2 |
+| race | 6.96-7.16 | 28.5 | 16.2 | 30.4 | 26.5 |
+| heat | 8.98-9.34 | 36.3 | 27.7 | 10.6 | 10.6 |
+| dust | 14.24-14.50 | 28.4 | 33.9 | 24.5 | 23.1 |
+| course | 17.64-17.96 | 33.5 | 29.5 | 20.0 | 19.8 |
+| finish | 19.76-19.94 | 40.5 | 28.8 | 19.6 | 19.6 |
+| Lorz | 20.90-21.36 | 37.0 | 30.9 | 21.7 | 21.6 |
+| cheered | 22.02-22.38 | 34.3 | 21.2 | 19.6 | 19.5 |
+| car | 25.00-25.24 | 33.4 | 25.0 | 22.2 | 22.0 |
+| apples | 27.46-27.80 | 33.4 | 24.1 | 18.3 | 18.1 |
+| rotten | 29.04-29.36 | 53.2 | 44.1 | 23.4 | 23.4 |
+| nap | 31.00-31.20 | 21.0 | 13.0 | 13.7 | 13.0 |
+| fourth | 32.16-32.54 | 45.4 | 35.9 | 13.9 | 13.8 |
+| course | 34.68-34.90 | 25.4 | 14.7 | 19.0 | 18.3 |
+| dogs | 35.16-35.46 | 28.6 | 20.2 | 22.0 | 21.2 |
+| egg | 40.12-40.32 | 23.9 | 11.9 | 16.5 | 15.6 |
+| brandy | 41.16-41.40 | 23.5 | 12.3 | 18.8 | 17.6 |
+| strychnine | 41.52-42.00 | 25.5 | 17.6 | 26.2 | 22.9 |
+| finish | 43.48-43.66 | 48.7 | 35.2 | 20.5 | 20.5 |
+| Unluckily | 44.38-44.82 | 45.6 | 37.7 | 22.6 | 22.6 |
+| carry | 46.02-46.22 | 29.0 | 14.6 | 18.3 | 17.8 |
+| 14 | 48.82-49.22 | 28.2 | 15.8 | 23.3 | 22.0 |
+| car | 51.44-51.72 | 44.7 | 36.4 | 19.9 | 19.9 |
+| Boston | 53.34-53.64 | 30.5 | 18.0 | 19.3 | 18.9 |
+| foot | 54.74-54.96 | 45.8 | 34.0 | 22.2 | 22.2 |
 
-All 174 words: minimum voice-SFX margin 14.6 dB ('it' @ 48.12 s); minimum voice-bed margin 6.0 dB ('A' @ 25.74 s). No word has the SFX within 12 dB.
+All 179 words: minimum voice-SFX margin 11.3 dB ('it' @ 46.64 s); minimum voice-bed margin 6.0 dB ('it' @ 46.64 s). Words with voice-SFX < 12 dB: 'it' 46.64 s (11.3 dB).
 
 | # | time s | frame | cue | what | naive | applied | mix LUFS | pan |
 |---|---|---|---|---|---|---|---|---|
-| 1 | 0.000 | 0 | amb_beach_overcast (bed) | Oregon beach, overcast: Pacific surf + a steady sea wind (shot 1) | -40 | -40.0 | -54.0 | +0.00 |
-| 2 | 1.500 | 45 | gull_far | a far seagull call in the gap (@45) | -15 | -23.0 | -37.0 | -0.60 |
-| 3 | 3.800 | 114 | dynamite_pops | @114 sticks of dynamite pop up along the whale's back (five soft cork 'thup's, L to R) | -13 | -21.0 | -35.0 | +0.00 |
-| 4 | 3.850 | 114 | fuse_sparkle | the lit fuses fizz and sparkle until the flash (kept low under 'dynamite') | -23 | -31.0 | -45.0 | +0.00 |
-| 5 | 4.400 | 132 | amb_beach_after (bed) | the same beach after the flash: surf, wind, the whale smoking (soft sizzle) (shot 2) | -41 | -41.0 | -55.0 | +0.00 |
-| 6 | 4.467 | 134 | flash_swell | reverse air swell into the white FLASH @134 (peaks on the frame, in the gap) | -9 | -17.0 | -31.0 | +0.00 |
-| 7 | 4.487 | 134 | flash_pff | on the flash: a soft muffled 'pfoomf' (sub + dark air), not a bang | -6 | -14.0 | -28.0 | +0.00 |
-| 8 | 5.633 | 169 | blubber_plop | @169 a blubber chunk plops onto the Engineer's hat (wet round 'blop', dark - under 'whale.') | -9 | -17.0 | -31.0 | +0.05 |
-| 9 | 5.700 | 171 | kick | KICK @171: soft round low thump under the picture kick | -2 | -10.0 | -24.0 | +0.00 |
-| 10 | 6.100 | 183 | hat_crack | the cracked hard hat gives a little creak in the gap after 'whale.' | -16 | -24.0 | -38.0 | +0.05 |
-| 11 | 6.550 | 196 | amb_coast_wide (bed) | the coast wide: bigger grey-green surf, wind over the dunes and beach grass (shot 3) | -38 | -38.0 | -52.0 | +0.00 |
-| 12 | 6.600 | 198 | xf_air | soft sea-air swell through the dissolve @198 | -18 | -26.0 | -40.0 | +0.00 |
-| 13 | 7.733 | 232 | gull_far | a far seagull call in the gap (@232) | -15 | -23.0 | -37.0 | +0.50 |
-| 14 | 10.900 | 327 | gull_far | a far seagull call in the gap (@327) | -15 | -23.0 | -37.0 | -0.30 |
-| 15 | 11.100 | 333 | amb_beach_rope (bed) | on the beach by the tail: surf, wind (shot 4) | -40 | -40.0 | -54.0 | +0.00 |
-| 16 | 12.200 | 366 | rope_snap | @366 the rope strains and SNAPS (dark thwack + whip; the strain creak leads in) - under 'move' | -11 | -19.0 | -33.0 | +0.15 |
-| 17 | 12.533 | 376 | tumble | the locals tumble onto the sand (1/3, gap after 'move it,') | -9 | -17.0 | -31.0 | -0.40 |
-| 18 | 12.667 | 380 | tumble | the locals tumble onto the sand (2/3, gap after 'move it,') | -9 | -17.0 | -31.0 | +0.30 |
-| 19 | 12.800 | 384 | tumble | the locals tumble onto the sand (3/3, gap after 'move it,') | -14 | -22.0 | -36.0 | -0.10 |
-| 20 | 13.433 | 403 | stink_wobble | @403 green stink lines rise: a queasy low 'wah-wah' wobble (dark, under 'smell') | -14 | -22.0 | -36.0 | +0.00 |
-| 21 | 13.840 | 403 | gull_faint | a seagull faints off its post: weak falling 'kyo-oww' + feathers (gap after 'smell.') | -13 | -21.0 | -35.0 | +0.45 |
-| 22 | 13.867 | 440 | truck_arrive | @440 the orange 1970s highway truck pulls up: V8 coming down, brakes + gravel at the stop, idle (dark) | -10 | -18.0 | -32.0 | +0.00 |
-| 23 | 13.967 | 419 | gull_thud | ...and lands softly on the sand | -15 | -23.0 | -37.0 | +0.45 |
-| 24 | 14.020 | 421 | amb_car_park (bed) | beach car park: wind, the surf further off (shot 5) | -42 | -42.0 | -56.0 | +0.00 |
-| 25 | 16.200 | 486 | truck_door | the crew hop out: truck door slams (1/2, gap after 'Department.') | -10 | -18.0 | -32.0 | +0.35 |
-| 26 | 16.400 | 492 | truck_door | the crew hop out: truck door slams (2/2, gap after 'Department.') | -13 | -21.0 | -35.0 | -0.25 |
-| 27 | 16.480 | 494 | amb_beach_plan (bed) | beach: surf + wind (shot 6) | -41 | -41.0 | -55.0 | +0.00 |
-| 28 | 18.600 | 558 | bubble_bloop | @558 the thought bubble appears: a short round 'bloop' | -16 | -24.0 | -38.0 | +0.30 |
-| 29 | 19.080 | 572 | boulder_clonk | the whale in the bubble turns to stone: a dry stone 'clonk' (gap after 'boulder') | -11 | -19.0 | -33.0 | +0.30 |
-| 30 | 19.333 | 580 | crate | a dynamite crate stacked on the pile (1/7, @580-625) | -11 | -19.0 | -33.0 | -0.30 |
-| 31 | 19.633 | 589 | crate | a dynamite crate stacked on the pile (2/7, @580-625) | -17 | -25.0 | -39.0 | +0.20 |
-| 32 | 19.933 | 598 | crate | a dynamite crate stacked on the pile (3/7, @580-625) | -17 | -25.0 | -39.0 | -0.10 |
-| 33 | 20.167 | 605 | crate | a dynamite crate stacked on the pile (4/7, @580-625) | -17 | -25.0 | -39.0 | +0.30 |
-| 34 | 20.433 | 613 | crate | a dynamite crate stacked on the pile (5/7, @580-625) | -17 | -25.0 | -39.0 | -0.25 |
-| 35 | 20.633 | 619 | crate | a dynamite crate stacked on the pile (6/7, @580-625) | -17 | -25.0 | -39.0 | +0.10 |
-| 36 | 20.833 | 625 | crate | a dynamite crate stacked on the pile (7/7, @580-625) | -17 | -25.0 | -39.0 | +0.00 |
-| 37 | 21.550 | 646 | amb_beach_easel (bed) | beach: surf + wind (shot 7) | -41 | -41.0 | -55.0 | +0.00 |
-| 38 | 21.833 | 655 | easel_tap | @655 the Engineer taps the easel (dry wooden tok-tok, dark, the 2nd one after 'plan?') | -20 | -28.0 | -42.0 | -0.15 |
-| 39 | 24.800 | 744 | beak_lick | @744 the gulls in bibs lick their beaks (tiny wet smacks, kept low under 'seagulls') | -19 | -27.0 | -41.0 | +0.00 |
-| 40 | 25.550 | 766 | amb_dunes (bed) | dune top: wind in the beach grass, the surf below (shot 8) | -40 | -40.0 | -54.0 | +0.00 |
-| 41 | 25.860 | 776 | fork_clink | forks tapped on the log, eager (gap after 'rest.') | -15 | -23.0 | -37.0 | +0.00 |
-| 42 | 26.033 | 781 | crowd_chatter (bed) | @790 a cheerful crowd chatting on the dune top (far, dark); hushes for the hold @898 | -39 | -39.0 | -53.0 | +0.00 |
-| 43 | 28.167 | 845 | film_camera | @845 the 16 mm news camera starts whirring (motor + 24 fps claw), runs through the hold until the BOOM | -25 | -33.0 | -47.0 | +0.35 |
-| 44 | 28.517 | 856 | lens_glint | the camera lens catches a glint (tiny high shimmer) | -24 | -32.0 | -46.0 | +0.35 |
-| 45 | 29.650 | 890 | amb_plunger_hush (bed) | plunger close-up: a hushed wind, the sea far off - the held breath (shot 9) | -46 | -46.0 | -60.0 | +0.00 |
-| 46 | 30.467 | 914 | plunger | @914 the plunger is pushed down: short rod slide into a solid box clunk (dark) | -14 | -22.0 | -36.0 | +0.00 |
-| 47 | 31.220 | 937 | amb_beach_wide (bed) | beach wide before the blast: surf, wind (shot 10) | -43 | -43.0 | -57.0 | +0.00 |
-| 48 | 32.000 | 960 | boom_hit | @960 BOOM transient: a short low-passed sub punch only (under 'whale exploded') | -4 | -12.0 | -26.0 | +0.00 |
-| 49 | 32.000 | 960 | kick | KICK @960: soft round low thump under the picture kick | -6 | -14.0 | -28.0 | +0.00 |
-| 50 | 32.760 | 983 | boom_tail | ...the big BOOM body after 'exploded' ends (32.75 s): blast 'whoomph', sand + debris roar, rolling rumble decaying dark | +6 | -2.0 | -16.0 | +0.00 |
-| 51 | 32.950 | 989 | amb_dunes_panic (bed) | dunes: wind, grass (shot 11) | -42 | -42.0 | -56.0 | +0.00 |
-| 52 | 33.100 | 1020 | fall_whistle | @1020 blubber chunks whistle down (1/3) | -19 | -27.0 | -41.0 | -0.30 |
-| 53 | 33.220 | 1020 | fall_whistle | @1020 blubber chunks whistle down (2/3) | -19 | -27.0 | -41.0 | +0.35 |
-| 54 | 33.350 | 1020 | fall_whistle | @1020 blubber chunks whistle down (3/3) | -19 | -27.0 | -41.0 | +0.00 |
-| 55 | 34.467 | 1034 | panic_scatter | @1034 the crowd scatters in panic: running feet in soft sand in all directions (dark) | -17 | -25.0 | -39.0 | +0.00 |
-| 56 | 34.487 | 1035 | umbrella_pop | an umbrella pops open (1/3; the 2nd and 3rd in the gap after 'everyone.') | -19 | -27.0 | -41.0 | -0.50 |
-| 57 | 34.987 | 1050 | umbrella_pop | an umbrella pops open (2/3; the 2nd and 3rd in the gap after 'everyone.') | -14 | -22.0 | -36.0 | +0.45 |
-| 58 | 35.050 | 1051 | whoa_far | a couple of far 'whoa!'s from the fleeing crowd (gap after 'everyone.') | -19 | -27.0 | -41.0 | +0.00 |
-| 59 | 35.107 | 1053 | umbrella_pop | an umbrella pops open (3/3; the 2nd and 3rd in the gap after 'everyone.') | -15 | -23.0 | -37.0 | +0.10 |
-| 60 | 35.220 | 1057 | basket_splat | the picnic basket gets splatted (gap after 'everyone.') | -8 | -16.0 | -30.0 | +0.25 |
-| 61 | 35.300 | 1059 | amb_dunes_reporter (bed) | dunes: wind (shot 12) | -43 | -43.0 | -57.0 | +0.00 |
-| 62 | 36.333 | 1090 | splat | @1090 a blubber chunk splats beside the reporter (dark, under the words) | -9 | -17.0 | -31.0 | -0.45 |
-| 63 | 36.833 | 1105 | splat | @1105 a blubber chunk splats behind him (dark, under the words) | -15 | -23.0 | -37.0 | +0.40 |
-| 64 | 37.267 | 1118 | splat | @1118 a blubber chunk splats on his head (dark, under the words) | -12 | -20.0 | -34.0 | +0.00 |
-| 65 | 37.720 | 1132 | head_squish | the chunk on the reporter's head settles: a slow wet squish (gap after 'crowd.') | -14 | -22.0 | -36.0 | +0.00 |
-| 66 | 37.950 | 1138 | amb_far_lot (bed) | the distant parking lot: open wind, a faint far sea (shot 13) | -43 | -43.0 | -57.0 | +0.00 |
-| 67 | 38.600 | 1158 | car_crunch | @1158 the sedan is flattened: deep dark body crunch (lp 700 Hz) - kept low under 'car' | -11 | -19.0 | -33.0 | +0.10 |
-| 68 | 38.667 | 1160 | kick | KICK @1160: soft round low thump under the picture kick | -2 | -10.0 | -24.0 | +0.00 |
-| 69 | 40.503 | 1216 | glass_tinkle | a little glass tinkles down (gap after 'away.') | -24 | -32.0 | -46.0 | +0.20 |
-| 70 | 40.533 | 1216 | hubcap_roll | @1216 a hubcap rolls away wobbling and settles (gap after 'away.') | -19 | -27.0 | -41.0 | -0.20 |
-| 71 | 40.880 | 1226 | amb_beach_smoke (bed) | beach, smoke clearing: surf, wind, a little smoulder (shot 14) | -40 | -40.0 | -54.0 | +0.00 |
-| 72 | 41.733 | 1255 | gulls_flee | @1255 the seagulls flee in the background (heavy wingbeats, dark, far) | -16 | -24.0 | -38.0 | +0.00 |
-| 73 | 43.333 | 1300 | blink | @1300 the sooty Engineer blinks (tiny plip-plip) | -22 | -30.0 | -44.0 | +0.10 |
-| 74 | 44.020 | 1321 | amb_beach_buried (bed) | beach: surf + wind (shot 15) | -41 | -41.0 | -55.0 | +0.00 |
-| 75 | 44.033 | 1321 | gull_far | a far seagull call in the gap (@1321) | -15 | -23.0 | -37.0 | +0.60 |
-| 76 | 46.867 | 1406 | face_palm | @1406 the Engineer face-palms (soft dark slap, under 'avoid') | -12 | -20.0 | -34.0 | +0.05 |
-| 77 | 47.330 | 1420 | shovel | a shovel of sand thrown on the mound (1/3, in the gaps) | -14 | -22.0 | -36.0 | -0.40 |
-| 78 | 47.347 | 1424 | bulldozer | @1424-1444 a bulldozer pushes sand over the whale (low diesel chug, track clank; dark under 'buried') | -13 | -21.0 | -35.0 | +0.00 |
-| 79 | 48.383 | 1451 | flag_pop | the little sand-castle flag pops up on the mound (tiny fwip) | -18 | -26.0 | -40.0 | +0.20 |
-| 80 | 48.420 | 1453 | shovel | a shovel of sand thrown on the mound (2/3, in the gaps) | -14 | -22.0 | -36.0 | +0.35 |
-| 81 | 48.500 | 1455 | amb_park_sunny (bed) | the sunny beach park today: birds, soft breeze, far surf, kids playing far off (shot 16) | -38 | -38.0 | -52.0 | +0.00 |
-| 82 | 48.600 | 1458 | xf_air | soft sea-air swell through the dissolve @1458 | -18 | -26.0 | -40.0 | +0.00 |
-| 83 | 48.660 | 1460 | shovel | a shovel of sand thrown on the mound (3/3, in the gaps) | -14 | -22.0 | -36.0 | -0.20 |
-| 84 | 51.567 | 1547 | gull_land | @1547 a seagull lands on the park sign (wingbeats braking + claw tap, dark) | -20 | -28.0 | -42.0 | +0.30 |
-| 85 | 51.867 | 1556 | wink_ting | @1556 the seagull WINKS: a small, very high 'ting' (E8 over a soft E7: above the speech band, it sits on the final Gmaj9 as the 13th) | -6 | -14.0 | -28.0 | +0.30 |
-| 86 | 52.350 | 1571 | gull_happy | a happy little gull 'kyow' after the wink | -17 | -25.0 | -39.0 | +0.35 |
+| 1 | 0.000 | 0 | amb_road_hook (bed) | dusty country road, hot: a dry breeze, Hicks' exhausted shuffle, a faint far heat buzz (shot 1) | -40 | -40.0 | -54.0 | +0.00 |
+| 2 | 3.300 | 99 | bottle_tink | @99 the skull bottle held up: a tiny high glass 'tink' (6 kHz, above the speech band) | -12 | -20.0 | -34.0 | +0.25 |
+| 3 | 3.667 | 110 | gulp | @110 Hicks gulps it: a low round 'glunk' (dark, under 'poison') | -14 | -22.0 | -36.0 | +0.00 |
+| 4 | 4.170 | 125 | swirl_boing | the swirly-eyes 'boing' (wobbly spring sliding down) in the gap after 'poison.' (4.17-4.50) | -9 | -17.0 | -31.0 | -0.10 |
+| 5 | 4.367 | 131 | flash_pff | @131 the white FLASH: a soft muffled 'pfoomf' (sub + dark air), not a bang (in the gap) | -8 | -16.0 | -30.0 | +0.00 |
+| 6 | 4.380 | 131 | amb_road_car (bed) | the same road after the flash: dry breeze, faint heat buzz (shot 2) | -42 | -42.0 | -56.0 | +0.00 |
+| 7 | 4.433 | 133 | car_putter | @133+ the open 1904 car putters past the runners (one-cylinder putt-putt, body rattle; dark, L to R, closest @162) | -13 | -21.0 | -35.0 | +0.00 |
+| 8 | 5.340 | 162 | honk_soft | near @162 Lorz waves: a soft rubber-bulb 'parp-parp' (low B-flat, dark: under 'strangest') | -15 | -23.0 | -37.0 | +0.10 |
+| 9 | 6.760 | 203 | amb_stadium_start (bed) | 1904 stadium at the start: a crowd murmuring in the stands (dark), a breeze in the bunting (shot 3a) | -40 | -40.0 | -54.0 | +0.00 |
+| 10 | 6.800 | 204 | xf_air | soft warm-air swell through the dissolve @204 | -20 | -28.0 | -42.0 | +0.00 |
+| 11 | 7.000 | 210 | cheer_start (bed) | @210 the crowd cheers the start (dark, under 'race was in Saint Louis'), cut with the picture @262 | -37 | -37.0 | -51.0 | +0.00 |
+| 12 | 7.000 | 210 | pistol_pop | @210 the starter's pistol, softened: a dark 'pok' + smoke puff (under 'race') | -10 | -18.0 | -32.0 | -0.30 |
+| 13 | 7.250 | 218 | start_feet | 32 runners set off: a soft patter of feet on the cinder track (dark) | -22 | -30.0 | -44.0 | +0.00 |
+| 14 | 8.690 | 261 | amb_heat (bed) | @262 the blazing road: HEAT BUZZ - cicada choruses swelling (above the speech band), a dry breeze (shot 3b) | -37 | -37.0 | -51.0 | +0.00 |
+| 15 | 11.167 | 344 | cars_ahead | @344 two open cars drive ahead of the runners (two putters, dark), into the dust | -14 | -22.0 | -36.0 | +0.00 |
+| 16 | 11.280 | 338 | amb_road_cars (bed) | dirt road: breeze, cicadas (shot 4) | -40 | -40.0 | -54.0 | +0.00 |
+| 17 | 12.640 | 379 | cough | a runner coughs in the dust (1/2, in the gaps 12.62-12.90 / 14.58-14.75) | -16 | -24.0 | -38.0 | -0.50 |
+| 18 | 12.817 | 398 | dust_roll | @398-427 huge brown dust clouds roll back over the runners (dark swell of grit and air) | -15 | -23.0 | -37.0 | +0.00 |
+| 19 | 14.590 | 438 | cough | a runner coughs in the dust (2/2, in the gaps 12.62-12.90 / 14.58-14.75) | -12 | -20.0 | -34.0 | +0.35 |
+| 20 | 14.920 | 448 | amb_well (bed) | the roadside well: cicadas, a dry breeze (shot 5) | -40 | -40.0 | -54.0 | +0.00 |
+| 21 | 16.950 | 509 | well_winch | the bucket is wound up: the well's wooden winch + rope creak (dark, low) | -16 | -24.0 | -38.0 | -0.20 |
+| 22 | 18.210 | 546 | drip | @529 the bucket comes up with a single drop - it lands in the tin with a tiny 'plip' (gap after 'course.' 18.12-18.70) | -12 | -20.0 | -34.0 | -0.15 |
+| 23 | 18.380 | 551 | amb_stadium_finish (bed) | stadium finish: the crowd murmuring, expectant (dark) (shot 6) | -39 | -39.0 | -53.0 | +0.00 |
+| 24 | 20.233 | 607 | tape_snap | @607 Lorz breaks the tape: a soft dark 'thwip' (under 'line was') | -12 | -20.0 | -34.0 | +0.00 |
+| 25 | 21.983 | 660 | cheer_finish (bed) | @661 the crowd leaps up and CHEERS (dark under 'cheered, then they found out...'), and STOPS DEAD @752 | -36 | -36.0 | -50.0 | +0.00 |
+| 26 | 22.560 | 677 | hat_fwip | straw boaters fly into the air (1/3, gap after 'cheered,' 22.55-22.87) | -15 | -23.0 | -37.0 | -0.50 |
+| 27 | 22.610 | 678 | hat_fwip | straw boaters fly into the air (2/3, gap after 'cheered,' 22.55-22.87) | -15 | -23.0 | -37.0 | +0.40 |
+| 28 | 22.670 | 680 | hat_fwip | straw boaters fly into the air (3/3, gap after 'cheered,' 22.55-22.87) | -15 | -23.0 | -37.0 | -0.05 |
+| 29 | 22.800 | 684 | amb_road_flash (bed) | flashback road: breeze, cicadas (shot 7, under the cheer) | -43 | -43.0 | -57.0 | +0.00 |
+| 30 | 23.950 | 740 | car_pass | @740-750 flashback: Lorz's car putters past (dark, R to L) | -15 | -23.0 | -37.0 | +0.00 |
+| 31 | 25.340 | 760 | record_scratch | @752 the cheer stops dead (the crowd bed is cut on the frame); the soft record-scratch 'zzwip' lands in the gap after 'car.' (25.26-25.69) | -12 | -20.0 | -34.0 | +0.00 |
+| 32 | 25.550 | 766 | amb_orchard (bed) | apple orchard: leaves rustling, softer cicadas, a far bird (shot 8) | -40 | -40.0 | -54.0 | +0.00 |
+| 33 | 27.400 | 822 | apple_pick | @822 he picks a shiny apple: twig snap + leaf rustle (dark) | -16 | -24.0 | -38.0 | +0.30 |
+| 34 | 27.667 | 830 | apple_crunch | @830 he bites it: a crunchy bite kept below 1.8 kHz (under 'apples') | -13 | -21.0 | -35.0 | +0.10 |
+| 35 | 29.480 | 884 | amb_orchard_nap (bed) | orchard, the nap: leaves, soft cicadas (shot 9a) | -42 | -42.0 | -56.0 | +0.00 |
+| 36 | 29.550 | 886 | blergh | @867-871 his face turns green; the sour 'bleh-uh' lands in the gap after 'rotten,' (29.50-29.82) | -11 | -19.0 | -33.0 | +0.10 |
+| 37 | 30.867 | 926 | snore_in | @926 Z bubbles: a dark fluttering snore inhale (lp 600 Hz, under 'a nap') | -18 | -26.0 | -40.0 | -0.10 |
+| 38 | 31.340 | 940 | snore_out | ...and the snore proper with a whistly exhale in the gap after 'nap.' (31.28-31.58) | -12 | -20.0 | -34.0 | -0.10 |
+| 39 | 31.520 | 946 | amb_finish4 (bed) | @947 the finish: a small crowd murmur (shot 9b) | -42 | -42.0 | -56.0 | +0.00 |
+| 40 | 32.580 | 977 | cheer_fourth (bed) | the small finish crowd cheers him in after 'fourth.' (gap 32.65-33.10) | -39 | -39.0 | -53.0 | +0.00 |
+| 41 | 32.880 | 986 | amb_cornfield (bed) | cornfield: dry stalks rustling in gusts, cicadas (shot 10) | -40 | -40.0 | -54.0 | +0.00 |
+| 42 | 33.767 | 1013 | frantic_feet | @1013 the runner sprints flat out (quick scuffy steps on dirt, dark) through the cornfield | -16 | -24.0 | -38.0 | +0.00 |
+| 43 | 33.867 | 1013 | barks_far | @1013-1055 the dogs barking at his heels, far and dark (lp 900 Hz) under the words | -18 | -26.0 | -40.0 | +0.00 |
+| 44 | 35.670 | 1070 | barks | @1055 the bark volley: 3 scrappy dogs, clear, in the gap after 'dogs.' (35.66-36.07) | -11 | -19.0 | -33.0 | +0.00 |
+| 45 | 35.880 | 1076 | amb_road_hicks (bed) | the road with the trainers' car: breeze, cicadas, the car idling along beside him (dark), Hicks' shuffle (shot 11) | -38 | -38.0 | -52.0 | +0.00 |
+| 46 | 40.133 | 1204 | egg_crack | @1204 an egg cracked into a cup: small dull crack + the white slipping in (dark, under 'egg') | -18 | -26.0 | -40.0 | +0.30 |
+| 47 | 41.167 | 1235 | flask_glug | @1235 the brandy flask: three low hollow glugs (dark, under 'brandy') | -16 | -24.0 | -38.0 | +0.25 |
+| 48 | 41.533 | 1246 | bottle_tok | @1246 the little skull bottle handed over: a dull glass 'tok' in the palm (dark, under 'strychnine') | -20 | -28.0 | -42.0 | +0.30 |
+| 49 | 42.040 | 1261 | bottle_clink | ...and its bright glass 'tink' (6.6 kHz) in the gap after 'strychnine.' (it would sit on the word's 's') | -14 | -22.0 | -36.0 | +0.30 |
+| 50 | 42.380 | 1271 | amb_stadium_hush (bed) | stadium, long lens: the crowd murmur thins and goes quiet for the held breath @1304 (shot 12) | -40 | -40.0 | -53.5 | +0.00 |
+| 51 | 43.047 | 1304 | held_breath | @1304 the crowd's collective sharp intake of breath (far, dark), then hush | -20 | -28.0 | -42.0 | +0.00 |
+| 52 | 44.320 | 1330 | amb_stadium_carry (bed) | stadium: the crowd murmur creeps back, anxious (shot 13) | -42 | -42.0 | -56.0 | +0.00 |
+| 53 | 45.933 | 1378 | lift | @1378 two trainers hoist him: a dark cloth swish + shoe scuff (under 'to carry') | -20 | -28.0 | -42.0 | +0.00 |
+| 54 | 46.633 | 1399 | tape_snap | @1399 carried through the tape: a soft dark 'thwip' (end of 'across') | -19 | -27.0 | -41.0 | +0.10 |
+| 55 | 46.900 | 1407 | cheer_carried (bed) | the crowd cheers as he's carried through @1399 - held for the gap after 'it.' (46.90-47.40) | -38 | -38.0 | -52.0 | +0.00 |
+| 56 | 46.970 | 1409 | medal_plonk | the gold medal 'plonks' onto his limp neck (gap after 'it.' 46.86-47.42) | -10 | -18.0 | -32.0 | +0.05 |
+| 57 | 47.120 | 1414 | amb_course_high (bed) | high over the course: breeze, cicadas, a far crowd (shot 14) | -40 | -40.0 | -54.0 | +0.00 |
+| 58 | 48.000 | 1440 | flop | @1440 a runner flops into the shade (soft dark thud) | -12 | -20.0 | -34.0 | -0.40 |
+| 59 | 48.460 | 1454 | sigh | an exhausted 'haaah' as he lies there (gap after 'runners,' 48.45-48.62) | -18 | -26.0 | -40.0 | -0.40 |
+| 60 | 48.500 | 1455 | wagon_creak | @1455 a runner rides off on a hay wagon: wooden axle creaks + clops far off (dark) | -17 | -25.0 | -39.0 | +0.45 |
+| 61 | 48.933 | 1468 | flop | @1468 another drops onto a fence rail to sleep (soft dark thud) | -15 | -23.0 | -37.0 | +0.25 |
+| 62 | 49.900 | 1497 | creek_splash | a runner sits down in the creek: a small round splash (gap after 'finished.' 49.77-50.41) | -12 | -20.0 | -34.0 | -0.30 |
+| 63 | 50.080 | 1502 | sigh | ...and a contented sigh from the creek (same gap, dark) | -20 | -28.0 | -42.0 | -0.30 |
+| 64 | 50.150 | 1504 | amb_boston_spring (bed) | @1507 Boston, spring 1905: sparrows + blackbirds, a soft breeze, a far street crowd (shot 15) | -37 | -37.0 | -51.0 | +0.00 |
+| 65 | 50.233 | 1507 | xf_air | soft warm-air swell through the dissolve @1507 | -20 | -28.0 | -42.0 | +0.00 |
+| 66 | 53.467 | 1604 | cheer_boston (bed) | @1604 the Boston street crowd cheers Lorz in (dark under 'Boston Marathon') | -39 | -39.0 | -53.0 | +0.00 |
+| 67 | 53.467 | 1604 | tape_snap | @1604 Lorz breaks the Boston tape: a soft dark 'thwip' (under 'Boston') | -14 | -22.0 | -36.0 | +0.00 |
+| 68 | 55.080 | 1650 | honk | @1650 the old car behind him honks: one rubber-bulb 'parp' (B-flat), right after 'foot.' ends | -9 | -17.0 | -31.0 | +0.40 |
+| 69 | 55.333 | 1660 | wink_ting | @1660 the WINK: a small bright 'ting' on A7 (the 3rd of the final F6/9) | -9 | -17.0 | -31.0 | +0.25 |
 
 ## Verification
-- Mix stream: `stream|sample_rate=48000|channels=2|bits_per_sample=24|duration_ts=2544000`
-- exact length 2,544,000 samples, stereo: OK; voice/mix_final.wav identical to public/whale/mix.wav: OK
-- whisper small.en (int8, cpu) on voice.wav: "In 1970, Oregon tried to get rid of a dead whale with dynamite. It did not get rid of the whale. A 45 -foot, 8 -ton sperm whale had washed up on a beach near Florence. Nobody knew how to move it, and it was starting to smell. So the job went to the highway department. Their engineer decided to treat it like a boulder and blow it up with half a ton of dynamite. The plan? Blast the whale into tiny pieces and let the seagulls eat the rest. A crowd gathered on the dunes. A TV crew started filming. Then they pushed the plunger. Luckily the whale exploded. Unluckily it exploded on everyone. Huge chunks of blubber rained down on the crowd. One crushed a car parked nearly a quarter mile away. And most of the whale was still lying right there on the beach. So the highway crew did the one thing they'd been trying to avoid. They buried it. Today, that beach is a park named after the exploding whale."
-- whisper small.en on the mix: "In 1970, Oregon tried to get rid of a dead whale with dynamite. It did not get rid of the whale. A 45 -foot, 8 -ton sperm whale had washed up on a beach near Florence. Nobody knew how to move it, and it was starting to smell. So the job went to the highway department. Their engineer decided to treat it like a boulder and blow it up with half a ton of dynamite. The plan? Blast the whale into tiny pieces and let the seagulls eat the rest. A crowd gathered on the dunes. A TV crew starred filming. Then they pushed the plunger. Luckily, the whale exploded. Unluckily, it exploded on everyone. Huge chunks of blubber rained down on the crowd. One crushed a car parked nearly a quarter mile away. And most of the whale was still lying right there on the beach. So the highway crew did the one thing they'd been trying to avoid. They buried it. Today, that beach is a park named after the exploding whale."
-- word-level diff voice.wav -> mix: - started + starred
-- word-level diff voice.wav -> voice stem alone (same voice, +master gain and limiter, no music / SFX): - started + starred
+- Mix stream: `stream|sample_rate=48000|channels=2|bits_per_sample=24|duration_ts=2688000`
+- exact length 2,688,000 samples, stereo: OK; voice/mix_final.wav identical to public/marathon/mix.wav: OK
+- whisper small.en (int8, cpu) on voice.wav: "At the 1904 Olympics, the marathon winner was given rat poison, and that wasn't even the strangest part. The race was in St. Louis, in 90 -degree heat, on dusty dirt roads. Cars drove ahead of the runners, kicking up huge clouds of dust, and there were only two places to get water on the entire course. The first man across the finish line was Fred Lors. The crowd cheered, then they found out he'd ridden 10 miles of it in a car. One runner from Cuba stopped to eat apples from an orchard. They were rotten, so he lay down and took a nap. He still finished fourth. Another runner was chased a mile off course by dogs, and the real winner, Thomas Hicks, was barely alive. His trainers kept him going with egg whites, brandy and strictening. Luckily, he made it to the finish line. Unluckily, his trainers had to carry him across it. Of 32 runners, only 14 finished, and the man who rode in the car. The next year he won the Boston Marathon on foot."
+- whisper small.en on the mix: "At the 1904 Olympics, the marathon winner was given rat poison, and that wasn't even the strangest part. The race was in St. Louis, in 90 degree heat, on dusty dirt roads. Cars drove ahead of the runners, kicking up huge clouds of dust. There were only two places to get water on the entire course. The first man across the finish line was Fred Lors. The crowd cheered, then they found out he'd ridden 10 miles of it in a car. One runner from Cuba stopped to eat apples from an orchard. They were rotten, so he lay down and took a nap. He still finished fourth. Another runner was chased a mile off course by dogs, and the real winner Thomas Hicks was barely alive. His trainers kept him going with egg whites, brandy and strictening. Luckily he made it to the finish line. Unluckily, his trainers had to carry him across it. Of 32 runners, only 14 finished, and the man who rode in the car. The next year he won the Boston Marathon, on foot."
+- word-level diff voice.wav -> mix: - and
+- word-level diff voice.wav -> voice stem alone (same voice, +master gain and limiter, no music / SFX): - and
 - word-level diff voice stem alone -> mix (what the music + SFX change): IDENTICAL
-- SCRIPT.md words not literally in the voice-only transcript (whisper writes numbers as digits): ['forty', 'five']
-- SCRIPT.md words not literally in the mix transcript: ['forty', 'five', 'started']
-- 'dynamite': voice-only probs [1.0, 1.0], mix probs [1.0, 1.0]
-- 'whale': voice-only probs [1.0, 1.0, 1.0, 1.0, 0.99, 1.0, 1.0], mix probs [1.0, 1.0, 1.0, 1.0, 0.99, 1.0, 1.0]
-- 'move': voice-only probs [1.0], mix probs [1.0]
-- 'smell': voice-only probs [1.0], mix probs [1.0]
-- 'highway': voice-only probs [0.94, 0.98], mix probs [0.95, 0.99]
-- 'boulder': voice-only probs [1.0], mix probs [1.0]
-- 'plan': voice-only probs [1.0], mix probs [1.0]
-- 'seagulls': voice-only probs [0.99], mix probs [0.99]
-- 'filming': voice-only probs [1.0], mix probs [1.0]
-- 'plunger': voice-only probs [1.0], mix probs [1.0]
-- 'exploded': voice-only probs [1.0, 1.0], mix probs [1.0, 1.0]
-- 'everyone': voice-only probs [1.0], mix probs [1.0]
-- 'blubber': voice-only probs [1.0], mix probs [1.0]
-- 'crowd': voice-only probs [0.99, 1.0], mix probs [1.0, 0.98]
-- 'car': voice-only probs [1.0], mix probs [1.0]
-- 'beach': voice-only probs [1.0, 1.0, 0.99], mix probs [1.0, 1.0, 0.99]
-- 'avoid': voice-only probs [1.0], mix probs [1.0]
-- 'buried': voice-only probs [1.0], mix probs [1.0]
-- 'park': voice-only probs [1.0], mix probs [1.0]
+- SCRIPT.md words not literally in the voice-only transcript (whisper writes numbers as digits): ['saint', 'lorz', 'strychnine']
+- SCRIPT.md words not literally in the mix transcript: ['saint', 'lorz', 'strychnine']
+- 'poison': voice-only probs [1.0], mix probs [1.0]
+- 'lorz': voice-only probs [], mix probs []
+- 'car': voice-only probs [1.0, 1.0], mix probs [1.0, 1.0]
+- 'rotten': voice-only probs [0.94], mix probs [0.92]
+- 'nap': voice-only probs [1.0], mix probs [1.0]
+- 'fourth': voice-only probs [0.81], mix probs [0.76]
+- 'dogs': voice-only probs [0.98], mix probs [0.98]
+- 'strychnine': voice-only probs [], mix probs []
+- 'unluckily': voice-only probs [0.98], mix probs [0.98]
+- 'carry': voice-only probs [1.0], mix probs [1.0]
+- 'fourteen': voice-only probs [0.99], mix probs [0.99]
+- 'foot': voice-only probs [0.98], mix probs [0.99]
+- 'race': voice-only probs [1.0], mix probs [1.0]
+- 'heat': voice-only probs [1.0], mix probs [1.0]
+- 'dust': voice-only probs [1.0], mix probs [1.0]
+- 'water': voice-only probs [1.0], mix probs [1.0]
+- 'cheered': voice-only probs [1.0], mix probs [1.0]
+- 'apples': voice-only probs [1.0], mix probs [1.0]
+- 'egg': voice-only probs [0.74], mix probs [0.77]
+- 'brandy': voice-only probs [0.98], mix probs [0.97]
+- 'boston': voice-only probs [0.99], mix probs [0.99]
 
 Key-word windows (~3.5 s around each word, voice.wav vs the voice stem alone vs the mix, same cut; edges snapped to the quietest 10 ms of the voice within +-0.8 s, whisper on voice.wav vs on the mix, same cut):
 
 | word | window s | voice.wav | voice stem (mix gain + limiter) | mix | mix vs voice stem | key-word prob voice / stem / mix |
 |---|---|---|---|---|---|---|
-| whale | 1.74-4.42 | Oregon tried to get rid of a dead whale with dynamite. | Oregon tried to get rid of a dead whale with dynamite. | Oregon tried to get rid of a dead whale with dynamite. | IDENTICAL | [1.0] / [1.0] / [1.0] |
-| dynamite | 1.74-6.11 | Oregon tried to get rid of a dead whale with dynamite. It did not get rid of the whale. | Oregon tried to get rid of a dead whale with dynamite. It did not get rid of the whale. | Oregon tried to get rid of a dead whale with dynamite. It did not get rid of the whale. | IDENTICAL | [1.0] / [1.0] / [0.99] |
-| whale | 4.42-7.99 | It did not get rid of the whale. A 45 -foot... | It did not get rid of the whale. A 45 -foot... | It did not get rid of the whale. A 45 foot... | IDENTICAL | [0.99] / [0.99] / [0.99] |
-| whale | 6.25-10.91 | A 45 -foot, 8 -ton sperm whale had washed up on a beach near Florence. | A 45 -foot, 8 -ton sperm whale had washed up on a beach near Florence. | A 45 -foot, 8 -ton sperm whale had washed up on a beach near Florence. | IDENTICAL | [1.0] / [1.0] / [1.0] |
-| beach | 7.99-10.91 | Eight -ton sperm whale had washed up on a beach near Florence. | Eight -ton sperm whale had washed up on a beach near Florence. | Eight -ton sperm whale had washed up on a beach near Florence. | IDENTICAL | [1.0] / [1.0] / [1.0] |
-| move | 10.91-13.93 | Nobody knew how to move it, and it was starting to smell. | Nobody knew how to move it, and it was starting to smell. | Nobody knew how to move it, and it was starting to smell. | IDENTICAL | [1.0] / [1.0] / [1.0] |
-| smell | 11.09-16.15 | Nobody knew how to move it, and it was starting to smell, so the job went to the highway department. | Nobody knew how to move it, and it was starting to smell, so the job went to the highway department. | Nobody knew how to move it and it was starting to smell so the job went to the highway department | IDENTICAL | [1.0] / [1.0] / [1.0] |
-| highway | 13.93-16.34 | So the job went to the highway department. | So the job went to the highway department. | So the job went to the highway department. | IDENTICAL | [0.85] / [0.86] / [0.89] |
-| boulder | 16.26-20.02 | Their engineer decided to treat it like a boulder and blow it up | Their engineer decided to treat it like a boulder and blow it up | Their engineer decided to treat it like a boulder and blow it up | IDENTICAL | [0.99] / [0.99] / [0.99] |
-| dynamite | 20.02-22.26 | with half a ton of dynamite. The plan. | with half a ton of dynamite. The plan. | with half a ton of dynamite. The plan. | IDENTICAL | [1.0] / [1.0] / [1.0] |
-| plan | 20.02-23.77 | with half a ton of dynamite. The plan, blast the whale into tiny... | with half a ton of dynamite. | with half a ton of dynamite. | IDENTICAL | [0.99] / [] / [] |
-| whale | 21.43-25.28 | The plan, blast the whale into tiny pieces, and let the seagulls e - | The plan, blast the whale into tiny pieces, and let the seagulls eat. | The plan. Blast the whale into tiny pieces and let the seagulls eat. | IDENTICAL | [0.95] / [0.95] / [0.95] |
-| seagulls | 22.53-26.02 | Blast the whale into tiny pieces and let the seagulls eat the rest. | Blast the whale into tiny pieces and let the seagulls eat the rest. | Blast the whale into tiny pieces and let the seagulls eat the rest. | IDENTICAL | [0.98] / [0.98] / [0.97] |
-| crowd | 25.28-27.83 | eat the rest. A crowd gathered on the dunes. | eat the rest. A crowd gathered on the dunes. | eat the rest. A crowd gathered on the dunes. | IDENTICAL | [1.0] / [1.0] / [1.0] |
-| filming | 27.83-31.08 | A TV crew started filming, then they pushed the plunger. | A TV crew starred filming, then they pushed the plunger. | A TV crew started filming, then they pushed the plunger. | word OK, context differs | [1.0] / [0.99] / [1.0] |
-| plunger | 29.63-32.83 | Then they pushed the plunger. Luckily the whale exploded. | Then they pushed the plunger. Luckily the whale exploded. | Then they pushed the plunger, luckily the whale exploded. | IDENTICAL | [1.0] / [1.0] / [1.0] |
-| whale | 29.63-32.98 | Then they pushed the plunger. Luckily the whale exploded. | Then they pushed the plunger. Luckily the whale exploded. | Then they pushed the plunger, luckily the whale exploded. | IDENTICAL | [0.98] / [0.98] / [0.98] |
-| exploded | 29.82-33.62 | Then they pushed the plunger. Luckily, the whale exploded. Unluckily? | then they pushed the plunger. Luckily the whale exploded. Unluckily? | then they pushed the plunger. Luckily, the whale exploded. Unluckily? | IDENTICAL | [1.0] / [1.0] / [0.99] |
-| exploded | 32.83-35.03 | Unluckily, it exploded on everyone. | Unluckily, it exploded on everyone. | Unluckily, it exploded on everyone. | IDENTICAL | [1.0] / [1.0] / [1.0] |
-| everyone | 32.83-35.82 | Unluckily, it exploded on everyone. | Unluckily, it exploded on everyone. | Unluckily, it exploded on everyone. | IDENTICAL | [0.99] / [0.99] / [0.99] |
-| blubber | 35.03-37.86 | Huge chunks of blubber rained down on the crowd. | Huge chunks of blubber rained down on the crowd. | Huge chunks of blubber rained down on the crowd. | IDENTICAL | [0.99] / [0.99] / [0.99] |
-| crowd | 35.03-39.25 | Huge chunks of blubber rained down on the crowd. One crushed a car parked | Huge chunks of blubber rained down on the crowd. One crushed a car parked | Huge chunks of blubber rained down on the crowd, one crushed a car parked | IDENTICAL | [1.0] / [1.0] / [0.98] |
-| car | 37.38-40.61 | crowd. One crushed a car parked nearly a quarter mile away. | crowd. One crushed a car parked nearly a quarter mile away. | crowd. One crushed a car parked nearly a quarter mile away. | IDENTICAL | [1.0] / [1.0] / [1.0] |
-| whale | 40.61-43.87 | And most of the whale was still lying right there on the beach. | And most of the whale was still lying right there on the beach. | And most of the whale was still lying right there on the beach. | IDENTICAL | [0.99] / [0.98] / [0.98] |
-| beach | 41.02-45.51 | and most of the whale was still lying right there on the beach. So the highway crew | and most of the whale was still lying right there on the beach, so the highway crew | Most of the whale was still lying right there on the beach, so the highway crew | word OK, context differs | [1.0] / [1.0] / [1.0] |
-| highway | 43.03-47.29 | there on the beach, so the highway crew did the one thing they'd been trying to avoid. | there on the beach, so the highway crew did the one thing they had been trying to avoid. | there on the beach, so the highway crew did the one thing they'd been trying to avoid. | word OK, context differs | [0.98] / [0.98] / [0.98] |
-| avoid | 45.51-48.42 | did the one thing they'd been trying to avoid. They buried it. | did the one thing they'd been trying to avoid. They buried it. | did the one thing they'd been trying to avoid. They buried it. | IDENTICAL | [1.0] / [1.0] / [1.0] |
-| buried | 45.51-48.91 | did the one thing they'd been trying to avoid. They buried it. | did the one thing they'd been trying to avoid. They buried it. | did the one thing they'd been trying to avoid. They buried it. | IDENTICAL | [0.99] / [0.99] / [0.99] |
-| beach | 47.45-52.09 | They buried it. Today, that beach is a park named after the exploding whale. | They buried it. Today, that beach is a park named after the exploding whale. | They buried it. Today, that beach is a park named after the exploding whale. | IDENTICAL | [0.99] / [0.99] / [0.99] |
-| park | 48.42-52.09 | Today, that beach is a park named after the exploding whale. | Today, that beach is a park named after the exploding whale. | Today, that beach is a park named after the exploding whale. | IDENTICAL | [1.0] / [1.0] / [1.0] |
-| whale | 49.97-52.68 | is a park named after the exploding whale. | is a park named after the exploding whale. | is a park named after the exploding whale. | IDENTICAL | [1.0] / [1.0] / [1.0] |
+| poison | 2.07-6.33 | The marathon winner was given rat poison, and that wasn't even the strangest part. | The marathon winner was given rat poison, and that wasn't even the strangest part. | The marathon winner was given rat poison, and that wasn't even the strangest part. | IDENTICAL | [1.0] / [1.0] / [1.0] |
+| race | 5.96-9.60 | part. The race was in St. Louis, in 90 degree heat. | part. The race was in St. Louis, in 90 degree heat. | park. The race was in St. Louis in 90 degree heat. | word OK, context differs | [1.0] / [0.99] / [1.0] |
+| heat | 6.61-10.91 | The race was in St. Louis in 90 -degree heat on dusty dirt roads. | The race was in St. Louis in 90 degree heat on dusty dirt roads. | The race was in St. Louis in 90 degree heat on dusty dirt roads. | IDENTICAL | [1.0] / [1.0] / [0.99] |
+| dust | 12.88-16.27 | kicking up huge clouds of dust. There were only two places | kicking up huge clouds of dust. There were only two places | kicking up huge clouds of dust. There were only two places | IDENTICAL | [1.0] / [1.0] / [1.0] |
+| water | 14.70-18.19 | There were only two places to get water on the entire cores. | There were only two places to get water on the entire course. | There were only two places to get water on the entire course. | IDENTICAL | [1.0] / [1.0] / [1.0] |
+| lorz | 18.57-22.64 | The first man across the finish line was Fred Lors. The crowd cheered. | The first man across the finish line was Fred Lors. The crowd cheered. | The first man across the finish line was Fred Lorz. The crowd cheered. | word OK, context differs | [] / [] / [0.56] |
+| cheered | 20.45-23.97 | was Fred Lors. The crowd cheered, then they found out he'd written | was Fred Lors. The crowd cheered. Then they found out he'd written | was Fred Lorz. The crowd cheered, then they found out he'd written | word OK, context differs | [1.0] / [1.0] / [1.0] |
+| car | 22.64-27.19 | Then they found out he'd ridden 10 miles of it in a car. One runner from Cuba stopped... | Then they found out he'd ridden 10 miles of it in a car. One runner from Cuba stopped... | Then they found out he'd ridden 10 miles of it in a car. One runner from Cuba stopped | IDENTICAL | [1.0] / [1.0] / [1.0] |
+| apples | 25.36-28.59 | One runner from Cuba stopped to eat apples from an orchard. | One runner from Cuba stopped to eat apples from an orchard. | One runner from Cuba stopped to eat apples from an orchard. | IDENTICAL | [1.0] / [0.99] / [1.0] |
+| rotten | 27.19-31.34 | to eat apples from an orchard. They were rotten, so he lay down and took a nap. | to eat apples from an orchard. They were rotten, so he laid down and took a nap. | to eat apples from an orchard. They were rotten, so he laid down and took a nap. | IDENTICAL | [0.99] / [0.99] / [0.98] |
+| nap | 28.59-32.76 | They were rotten, so he laid down and took a nap. He still finished fourth. | They were rotten, so he lay down and took a nap. He still finished fourth. | They were rotten, so he laid down and took a nap. He still finished fourth. | word OK, context differs | [1.0] / [1.0] / [1.0] |
+| fourth | 31.34-34.13 | He still finished fourth. Another runner was chased | He still finished 4th, another runner was chased | He still finished 4th, another runner was chased | IDENTICAL | [0.71] / [] / [] |
+| dogs | 32.76-37.52 | Another runner was chased a mile off course by dogs and the real winner Thomas Hicks | Another runner was chased a mile off course by dogs and the real winner Thomas Hicks | Another runner was chased a mile off course by dogs and the real winner Thomas Hicks | IDENTICAL | [0.93] / [0.95] / [0.87] |
+| egg | 38.61-42.08 | His trainers kept him going with egg whites, brandy and strychnine. | His trainers kept him going with egg whites, brandy and strictening. | His trainers kept him going with egg whites, brandy and strychnine. | word OK, context differs | [0.62] / [0.67] / [0.62] |
+| brandy | 38.73-42.23 | His trainers kept him going with egg whites, brandy and strychnine. | His trainers kept him going with egg whites, brandy and strychnine. | His trainers kept him going with egg whites, brandy and strychnine. | IDENTICAL | [0.96] / [0.97] / [0.95] |
+| strychnine | 39.57-44.13 | him going with egg whites, brandy and strictening. Luckily, he made it to the finish line. | him going with egg whites, brandy and strychnine. Luckily he made it to the finish line. | him going with egg whites, brandy and strictening. Luckily he made it to the finish line. | same as voice.wav (whisper spells it differently on voice.wav itself) | [] / [0.77] / [] |
+| unluckily | 42.08-46.95 | Luckily, he made it to the finish line. Unluckily, his trainers had to carry him across it. | Luckily, he made it to the finish line. Unluckily, his trainers had to carry him across it. | Luckily, he made it to the finish line. Unluckily, his trainers had to carry him across it. | IDENTICAL | [0.98] / [0.98] / [0.97] |
+| carry | 44.13-47.07 | Unluckily, his trainers had to carry him across it. | Unluckily, his trainers had to carry him across it. | Unluckily, his trainers had to carry him across it. | IDENTICAL | [1.0] / [1.0] / [1.0] |
+| fourteen | 46.95-49.97 | Of 32 runners, only 14 finished. | Of 32 runners, only 14 finished. | Of 32 runners, only 14 finished. | IDENTICAL | [1.0] / [1.0] / [1.0] |
+| car | 49.90-52.89 | and the man who rode in the car, the next year | and the man who rode in the car the next year | and the man who rode in the car the next year | IDENTICAL | [1.0] / [1.0] / [1.0] |
+| boston | 51.81-54.44 | The next year, he won the Boston Marathon. | The next year, he won the Boston Marathon. | The next year, he won the Boston Marathon. | IDENTICAL | [1.0] / [0.99] / [0.99] |
+| foot | 52.89-55.80 | he won the Boston Marathon, on foot. | he won the Boston Marathon, on foot. | He won the Boston Marathon, on foot. | IDENTICAL | [0.97] / [0.96] / [0.98] |

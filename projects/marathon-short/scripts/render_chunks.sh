@@ -2,7 +2,7 @@
 # Resumable chunked render for shots that keep getting interrupted: 40-frame chunks -> out/marathon/chunks/, then joined into out/marathon/final/shot_XX.mp4
 cd "$(dirname "$0")/.."
 export REMOTION_TMP=$PWD/.rtmp TMPDIR=$PWD/.rtmp
-R=(0 136 198 334 422 496 648 768 890 938 988 1062 1140 1228 1322 1458 1590)
+R=(0 133 204 340 449 553 686 768 886 988 1078 1273 1331 1415 1507 1680)
 mkdir -p out/marathon/chunks out/marathon/final
 for s in "$@"; do
   o=out/marathon/final/shot_$(printf %02d $s).mp4; [ -f "$o" ] && continue

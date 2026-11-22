@@ -1,9 +1,9 @@
-# Final mix of "The Exploding Whale": voice (gain only) + original score (ducked under speech, per-section level
+# Final mix of "The 1904 Olympic Marathon": voice (gain only) + original score (ducked under speech, per-section level
 # automation relative to the voice) + synthesized SFX stem (lightly ducked under speech). Keying = words.json spans,
 # widened by the voice's own measured activity (analysis only: the voice itself is never processed beyond gain).
 # Master gain to -14 LUFS integrated; own 4x-oversampled look-ahead limiter for <= -1 dBTP;
-# exactly 53.000 s = 2,544,000 samples / 48 kHz / stereo / 24-bit.
-# Writes public/whale/mix.wav + voice/mix_final.wav (same file), audio/out/stem_*.wav, audio/cues.md.
+# exactly 56.000 s = 2,688,000 samples / 48 kHz / stereo / 24-bit.
+# Writes public/marathon/mix.wav + voice/mix_final.wav (same file), audio/out/stem_*.wav, audio/cues.md.
 # One command:  python3 audio/mix.py      (music cached in audio/out/_cache/; --fresh re-renders everything)
 import os
 import sys
@@ -20,24 +20,25 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 OUT = os.path.join(HERE, "out")
 CACHE = os.path.join(OUT, "_cache")
-N = ns(T.DUR)                    # 2,544,000 samples = 53.000 s
+N = ns(T.DUR)                    # 2,688,000 samples = 56.000 s
 TARGET_LUFS = -14.0
 CEIL_DBTP = -1.3                 # limiter ceiling (spec: true peak <= -1.0 dBTP)
 DUCK_DB = -3.0                   # gentle music dip while the voice speaks (slow attack / release, no pumping)
 SFX_DUCK_DB = -3.0               # SFX dip while the voice speaks
 MUSIC_UNDER = -18.0              # music vs voice, LU, over the spoken parts of each section (after the duck)
-GAP_BLOOM_DB = 6.5               # extra lift in narration gaps >= GAP_MIN s (with the duck release: ~ -11 LU under the voice)
+GAP_BLOOM_DB = 4.5               # extra lift in narration gaps >= GAP_MIN s (with the duck release: ~ -11 LU under the voice)
 GAP_MIN = 0.55
 
 # per-section offsets (dB) on top of MUSIC_UNDER
-SEC_OFFSET = {}
+SEC_OFFSET = {"nap": -3.0}      # the lullaby section is quiet, so its computed gain also lifts the soured-piano tail under "so he lay"
 # rides on the music only (start, end, dB)
-RIDES = [(21.42, 22.24, -24.0),   # a breath of silence for the very soft 'The plan?' (any bed there made whisper hear 'A plan')
-         (40.86, 41.24, -24.0)]  # the weak 'And' (41.12-41.2): the returning groove fades up under 'most' instead (whisper dropped 'And' at -6 dB)
-# rides on the SFX only (start, end, dB): the BOOM tail steps back for 'Unluckily,' (33.06-33.55) after peaking in the gap
-SFX_RIDES = [(21.60, 21.80, -6.0),    # the beds' crossfade into shot 7 stays out of the very soft 'The' of 'The plan?'
-             (33.02, 33.60, -6.0),
-             (40.80, 41.24, -15.0)]   # the soft 'And' after the hubcap: the shot-14 surf comes up under 'most' 
+RIDES = [(6.12, 6.38, -14.0),    # the soft 't' of 'part.' (whisper heard 'park' in a window)
+         (14.80, 15.15, -10.0),   # the very soft 'And' of 'And there were' (15.00-15.08; missing from words.json)
+         (22.70, 23.05, -10.0),   # the weak 'th' of 'then they found out' (whisper heard 'and')
+         (41.40, 42.05, -9.0),    # 'strychnine' (the woozy groove steps back)
+         (50.22, 50.55, -8.0)]    # the soft 'And' of 'And the man who rode' after the dissolve to Boston
+# rides on the SFX only (start, end, dB): the same soft onsets
+SFX_RIDES = [(6.12, 6.38, -10.0), (14.80, 15.15, -10.0), (22.70, 23.05, -10.0), (50.25, 50.55, -6.0)]
 SFX_RIDE_RAMP = 0.06
 
 
@@ -127,7 +128,7 @@ def gap_bloom(spans):
     edges = [(-1.0, 0.0)] + [tuple(x) for x in spans] + [(T.DUR + 1, T.DUR + 2)]
     for (a0, a1), (b0, b1) in zip(edges[:-1], edges[1:]):
         if b0 - a1 >= GAP_MIN:
-            d[max(0, ns(a1 + 0.12)): max(0, ns(b0 - 0.2))] = GAP_BLOOM_DB
+            d[max(0, ns(a1 + 0.12)): max(0, ns(b0 - 0.32))] = GAP_BLOOM_DB      # down again before the next word's soft onset
     return ndimage.uniform_filter1d(d, ns(0.3), mode="nearest")
 
 
@@ -151,7 +152,7 @@ def section_curve(m_d, v, mask):
         else:
             Lm, Lv = integrated(m_d[:, seg]), integrated(v[:, seg]) if np.any(v[:, seg]) else -99
         g = (Lv + MUSIC_UNDER + SEC_OFFSET.get(name, 0.0) - Lm) if (np.isfinite(Lm) and Lv > -90) else prev
-        if name == "hold":                      # music stops for the tense hold and the BOOM: keep the previous level
+        if name in ("dropout", "breath"):       # music drops out / holds one quiet chord: keep the previous level
             g = prev
         gains[name] = float(np.clip(g, -30, 30))
         prev = gains[name]
@@ -161,7 +162,7 @@ def section_curve(m_d, v, mask):
         curve[t >= a] = gains[name]
     sm = ndimage.uniform_filter1d(curve, ns(0.12), mode="nearest")      # 120 ms crossfade between section levels
     hard = np.zeros(N, bool)
-    for tb in (T.fr(T.FLASH), T.fr(T.HOLD[0])):                             # silent / hit boundaries switch instantly
+    for tb in ():                             # (no instant switches: every section change rides the 120 ms crossfade)
         hard[ns(tb - 0.1): ns(tb + 0.1)] = True
     curve = np.where(hard, curve, sm)
     for a, b, db in RIDES:
@@ -294,8 +295,8 @@ def word_margins(gv, gm, gs):
     return rows
 
 
-KEY_WORDS = ["dynamite", "whale", "move", "smell", "Highway", "boulder", "plan", "seagulls", "filming", "plunger", "exploded",
-             "everyone", "blubber", "crowd", "car", "beach", "avoid", "buried", "park"]
+KEY_WORDS = ["poison", "Lorz", "car", "rotten", "nap", "fourth", "dogs", "strychnine", "Unluckily", "carry", "14", "fourteen", "foot",
+             "race", "heat", "dust", "course", "cheered", "apples", "egg", "brandy", "finish", "Boston"]
 
 
 # ================================================================ main
@@ -353,7 +354,7 @@ def main():
     # stems carry the master gain AND the limiter's gain curve (+ the end fade), so voice + music + sfx = mix exactly
     endf = fades(np.ones((1, N)), 0.002, 0.03)[0]
     gv, gm, gs = (x_ * dbg(G) * (g3 * endf)[None, :] for x_ in (v, m, s_st))
-    mix_path = os.path.join(ROOT, "public", "whale", "mix.wav")
+    mix_path = os.path.join(ROOT, "public", "marathon", "mix.wav")
     os.makedirs(os.path.dirname(mix_path), exist_ok=True)
     write_wav(mix_path, y)
     shutil.copyfile(mix_path, os.path.join(ROOT, "voice", "mix_final.wav"))
@@ -381,7 +382,8 @@ def main():
     lg |= tc_ >= spans[-1][1] + 0.2
     gap_under = float(lufs(gv) - np.median(Mm_[lg]))
     sp_ = np.array([r[7] for r in rows if np.isfinite(r[7])])
-    music_cuts = [T.fr(T.FLASH), 4.70, T.fr(T.HOLD[0]) - 0.04, T.fr(T.OOPS), 35.45, 40.45, 40.95, 22.27, T.fr(T.WINK)]
+    music_cuts = [T.fr(T.FLASH), T.fr(T.CAR1) + 0.08, T.fr(T.DRIP), T.fr(T.STOP_DEAD), 25.30, T.fr(768) - 0.1, T.fr(T.SOUR[0]), 29.84, T.fr(947),
+                  35.62, 36.0, T.fr(T.HELD_BREATH), 44.40, T.fr(T.WINK)]
     n_chk, bad = click_check(y, gs, gm, [(e[0], e[1], e[2], e[3] * dbg(G)) for e in events], music_cuts)
     clip = int((np.abs(y) >= 0.9999).sum())
     mrows = word_margins(gv, gm, gs)
@@ -410,20 +412,22 @@ def write_cues(C, b, st_, rows, eb, spans, v):
     vI = st_["voice_I"]
     L = []
     w = L.append
-    w("# The Exploding Whale - soundtrack cue sheet")
+    w("# The 1904 Olympic Marathon - soundtrack cue sheet")
     w("")
-    w("All sound is original and synthesized in numpy/scipy: instruments in `instruments.py` (guitar pluck, Rhodes, upright bass, "
-      "brushes, shaker, soft kick, vibes, celesta, pizzicato, whistle from the shared kit + a ukulele added in `music.py`), SFX in "
-      "`sfx_whale.py` (surf, gulls, dynamite, rope, truck, crates, camera, plunger, BOOM, splats, car crunch, bulldozer, park...) "
-      "with helpers from `sfx_gen.py` / `sfx_emu.py` / `sfx_bat.py`; placed by `music.py` / `sfx.py` from `timeline.py` "
+    w("All sound is original and synthesized in numpy/scipy: instruments in `instruments.py` (guitar pluck, upright bass, "
+      "brushes, shaker, soft kick, vibes, celesta, pizzicato from the shared kit) + a soft honky-tonk upright piano added in `music.py`; SFX in "
+      "`sfx_marathon.py` (heat buzz / cicadas, the bottle + gulp + swirl boing, a 1904 one-cylinder car + bulb horn, the pistol pop, stadium crowd "
+      "murmur / cheers / held breath, dust, coughs, well winch + drip, tape snaps, boaters, record scratch, apple pick + crunch, blergh, snores, "
+      "dogs + frantic feet, egg, glug, clink, lift, medal plonk, drop-out thuds / sighs / wagon / splash, Boston spring birds, the wink ting) "
+      "with helpers from `sfx_gen.py` / `sfx_emu.py` / `sfx_bat.py` (`sfx_whale.py` stays for reference, unused); placed by `music.py` / `sfx.py` from `timeline.py` "
       "(frames from SHOTS.md), mixed by `mix.py`.")
     w("Voice = `voice/voice.wav`, gain only (no EQ, no compression, no pitch, no time change). Rebuild everything + verify: "
-      "`bash audio/build.sh` (about 1.5 min; mix only: `python3 audio/mix.py --fresh`).")
+      "`bash audio/build.sh` (about 3 min with the whisper checks; mix only: `python3 audio/mix.py --fresh`, about 1 min).")
     w("")
     w("## Files")
     w("| file | content |")
     w("|---|---|")
-    w(f"| `public/whale/mix.wav` = `voice/mix_final.wav` | final mix, 48 kHz, stereo, 24-bit, {st_['samples']:,} samples = {st_['samples'] / SR:.3f} s |")
+    w(f"| `public/marathon/mix.wav` = `voice/mix_final.wav` | final mix, 48 kHz, stereo, 24-bit, {st_['samples']:,} samples = {st_['samples'] / SR:.3f} s |")
     w("| `audio/out/stem_voice.wav` / `stem_music.wav` / `stem_sfx.wav` | stems at mix gain, after the master limiter's gain curve: voice + music + sfx = mix.wav |")
     w("| `audio/check.py` | verification: whisper transcription of voice.wav vs the mix (faster-whisper small.en), sample count |")
     w("")
@@ -466,16 +470,18 @@ def write_cues(C, b, st_, rows, eb, spans, v):
     w("")
     w("Applied section gains (dB): " + ", ".join(f"{k} {v_:+.1f}" for k, v_ in st_["sec_gains"].items()) + "." +
       ((" Music rides: " + ", ".join(f"{a:.2f}-{b_:.2f} s {db:+.1f} dB" for a, b_, db in RIDES)) if RIDES else "") +
-      ((" SFX rides: " + ", ".join(f"{a:.2f}-{b_:.2f} s {db:+.1f} dB" for a, b_, db in SFX_RIDES) + " (60 ms ramps): the BOOM tail steps back for 'Unluckily,', and the beds dip for the soft 'And'.") if SFX_RIDES else ""))
+      ((" SFX rides: " + ", ".join(f"{a:.2f}-{b_:.2f} s {db:+.1f} dB" for a, b_, db in SFX_RIDES) + " (60 ms ramps).") if SFX_RIDES else ""))
     w("")
     w("Narration gaps (measured on voice.wav), where the louder hits and the music blooms go: " +
       ", ".join(f"{spans[i][1]:.2f}-{spans[i + 1][0]:.2f}" for i in range(len(spans) - 1)) + ".")
     w("")
-    w(f"## Music map (chill seaside score: laid-back acoustic bed, {music.BPM:.0f} bpm, swung eighths, G major)")
-    w("Fingerpicked nylon guitar, warm Rhodes, round upright bass, brushes + shaker + soft kick (no snare, no crashes, no rolls), "
-      "vibes sparkles; seaside colour: a light ukulele chopping the & of 2 and 4, and a soft whistled WHALE motif "
-      "(D5 E5 A5 . G5 E5 D5, swung; only ever inside narration gaps). Loops: day Gmaj7 Em9 Cmaj9 D9sus, dunes Cmaj9 Bm7 Em9 D9sus, "
-      "soft Am7 Fmaj7 Cadd9; held D7 before the hold; resolve on Gmaj9 at the wink. All composed here (no existing melodies). "
+    w(f"## Music map (chill score with a ragtime-period wink: laid-back acoustic bed, {music.BPM:.0f} bpm, swung eighths, F major)")
+    w("A soft honky-tonk upright piano (own additive model: two strings per note detuned a few cents, felt-soft hammer, damper) "
+      "comping lazy after-beats on 2 and 4 and playing a little syncopated RAG motif (A4 C5 . D5 . F5 E5 D5 C5) and its 3-note answer "
+      "only inside narration gaps; fingerpicked nylon guitar, round upright bass in two (walking for the dogs), brushes + shaker + soft kick "
+      "(no snare, no crashes, no rolls), celesta / vibes / pizz for the soft comedy beats. Loops: the ragtime circle F6 D7 G7 C7, lazy F6 Bb6 F6 C7, "
+      "sunny F6 Dm7 Gm7 C9sus, woozy Gm7 C7 F6 Abdim7 (piano further out of tune, slow pitch sway, half-time), Boston Bb6 Bdim7 F6 D7 G7 C7; "
+      "resolve on F6/9 at the wink. All composed here (no existing melodies: not Maple Leaf Rag, not The Entertainer). "
       "The emu short's brass march stays in `music_march.py` for reference (not used).")
     w("")
     w("| time s | frame | music |")
@@ -487,8 +493,10 @@ def write_cues(C, b, st_, rows, eb, spans, v):
     w("naive = the event's level vs the voice stem (max momentary, LU); applied = naive - 8 dB + offsets; beds are integrated loudness. "
       "'mix LUFS' = the event's max momentary at mix gain, before the -3 dB speech duck (compare: voice max momentary "
       f"{st_['voice_Mmax']:.1f} LUFS, integrated {vI:.1f} LUFS). Frames not pinned in SHOTS.md, chosen here (mostly inside measured gaps): "
-      f"tumble {T.TUMBLE}, gull thud {T.FAINT_THUD}, truck doors {T.TRUCK_DOORS}, crates {T.CRATE_TIMES}, oops {T.OOPS}, hubcap {T.HUBCAP}, "
-      f"far gull calls {T.GULL_CALLS}, plus the shovels, whoas and squishes listed below.")
+      f"swirl boing {T.SWIRL} s, coughs {T.COUGHS}, drip lands {T.DRIP_LAND}, boater fwips {T.HATS_FWIP}, record scratch {T.SCRATCH}, "
+      f"blergh {T.BLERGH}, snore {T.SNORE_OUT}, bark volley {T.BARKS_GAP}, medal {T.MEDAL}, sighs {T.SIGHS}, splash {T.SPLASH}, final honk {T.HONK_T} s "
+      "(each moved off a key word into the measured gap next to its locked frame; the frame stays the visual sync point and a dark or "
+      "above-band part of the sound - or the cut itself, for the cheer @752 - sits on the frame).")
     w("")
     w("## Speech-band masking check (key words)")
     w("For every word of words.json (window = word start .. end + 0.10 s): voice level minus SFX / music / bed (music + sfx) "

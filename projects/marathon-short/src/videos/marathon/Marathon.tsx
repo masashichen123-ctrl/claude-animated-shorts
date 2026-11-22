@@ -1,5 +1,5 @@
-// "The Exploding Whale" (Florence, Oregon, 1970): 53 s vertical short in the flat-characters-in-a-3D-toon-world style,
-// on the missile / emu / bat shorts' look stack (owner: post, with ink.ts / lensblur.ts / grade.ts).
+// "The 1904 Olympic Marathon" (St. Louis, 1904): 56 s vertical short in the flat-characters-in-a-3D-toon-world style,
+// on the whale / emu / bat shorts' look stack (owner: post, with ink.ts / lensblur.ts / grade.ts).
 // One three.js world (world.ts) posed per frame from the story timeline (story.ts). Post chain:
 //   InkPass (world ink lines, own pass) -> lens blur pre + main (thin-lens DOF per shot from dofAt) ->
 //   [bloom (emissive only) + NEUTRAL tone mapping + colour grade] (one merged EffectPass), MSAA 4.
@@ -40,7 +40,7 @@ const toggles = (): PostToggles => ({ ink: true, lens: true, pre: true, bloom: t
 // so saturated sources (an orange lamp: luminance < 1.3) still bloom. Emissives need k >= 1.8 to glow fully.
 const BLOOM_T = 1.45, BLOOM_S = 0.35;
 /** per light preset bloom strength / radius (lighting.md 3.4; e-fold glow ~30 px at 1080 for radius 0.6) */
-const BLOOM_LOOK: Record<string, [number, number]> = { day: [0.7, 0.65], sunny: [0.7, 0.65] };
+const BLOOM_LOOK: Record<string, [number, number]> = { day: [0.7, 0.65], spring: [0.7, 0.65] };
 /** per-light bright-pass threshold (max channel, linear); a lights.ts preset may carry its own `bloomT`, which wins */
 const BLOOM_TH: Record<string, number> = {};
 /** per-shot bloom intensity factor */
@@ -61,7 +61,7 @@ const fwd = new THREE.Vector3(), fpt = new THREE.Vector3();
 /** waits for loadKit() (procedural world: resolves at once; kept so async assets can be added without touching the comp) */
 const useKit = () => {
   const [kit, setKit] = useState<boolean | null>(null);
-  const [handle] = useState(() => delayRender("whale kit"));
+  const [handle] = useState(() => delayRender("marathon kit"));
   useEffect(() => { loadKit().then((k) => { setKit(k); continueRender(handle); }); }, [handle]);
   return kit;
 };

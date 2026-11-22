@@ -1,7 +1,7 @@
-# Verification for the whale short's mix: exact sample count, loudness (ffmpeg ebur128), and intelligibility - faster-whisper
+# Verification for the marathon short's mix: exact sample count, loudness (ffmpeg ebur128), and intelligibility - faster-whisper
 # small.en transcribes voice.wav alone and the final mix; every narration word of SCRIPT.md must come through the mix
 # exactly as it does on the voice alone (word-level diff), on the whole file AND on ~3.5 s windows around each key word
-# (exploded x2, car, blubber, buried, ...). Appends a report to audio/cues.md.
+# (poison, Lorz, car, rotten, nap, fourth, dogs, strychnine, Unluckily, carry, fourteen, foot, ...). Appends a report to audio/cues.md.
 # Run with the system python that has faster-whisper:  /usr/bin/python3 audio/check.py
 import os
 import re
@@ -12,9 +12,9 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-MIX = os.path.join(ROOT, "public", "whale", "mix.wav")
+MIX = os.path.join(ROOT, "public", "marathon", "mix.wav")
 FINAL = os.path.join(ROOT, "voice", "mix_final.wav")
-NSAMP = 2544000                     # 53.000 s at 48 kHz
+NSAMP = 2688000                     # 56.000 s at 48 kHz
 VOICE = os.path.join(ROOT, "voice", "voice.wav")
 
 
@@ -26,7 +26,13 @@ def pcm16k(path):
 def norm_words(text):
     t = text.lower().replace("-", " ")
     t = re.sub(r"[^a-z0-9' ]+", " ", t)
-    return [{"45": "forty five", "8": "eight"}.get(x, x) for x in t.split()]
+    out = []
+    for x in t.split():
+        out += NUM.get(x, x).split()
+    return out
+
+
+NUM = {"1904": "nineteen oh four", "90": "ninety", "10": "ten", "32": "thirty two", "14": "fourteen", "lorenz": "lorz"}
 
 
 def transcribe(model, path_or_pcm):
@@ -40,8 +46,8 @@ def transcribe(model, path_or_pcm):
     return words
 
 
-KEYS = ("dynamite", "whale", "move", "smell", "highway", "boulder", "plan", "seagulls", "filming", "plunger", "exploded",
-        "everyone", "blubber", "crowd", "car", "beach", "avoid", "buried", "park")
+KEYS = ("poison", "lorz", "car", "rotten", "nap", "fourth", "dogs", "strychnine", "unluckily", "carry", "fourteen", "foot",
+        "race", "heat", "dust", "water", "cheered", "apples", "egg", "brandy", "boston")
 
 
 def main():
@@ -54,7 +60,7 @@ def main():
     w(f"- Mix stream: `{dur}`")
     same = open(MIX, "rb").read() == open(FINAL, "rb").read()
     ok_len = f"duration_ts={NSAMP}" in dur and "channels=2" in dur
-    w(f"- exact length {NSAMP:,} samples, stereo: {'OK' if ok_len else 'FAIL'}; voice/mix_final.wav identical to public/whale/mix.wav: {'OK' if same else 'FAIL'}")
+    w(f"- exact length {NSAMP:,} samples, stereo: {'OK' if ok_len else 'FAIL'}; voice/mix_final.wav identical to public/marathon/mix.wav: {'OK' if same else 'FAIL'}")
     tv = transcribe(model, VOICE)
     tm = transcribe(model, MIX)
     ts = transcribe(model, os.path.join(HERE, "out", "stem_voice.wav"))     # the same voice at mix gain + master limiter
@@ -116,9 +122,11 @@ def main():
         has = k[0] in norm_words(sm_)
         in_stem = k[0] in norm_words(ss_)
         pk = lambda X: [float(x[3]) for x in X if norm_words(x[0])[:1] == k[:1]]
-        bad_ = (not has) and in_stem
+        in_voice = k[0] in norm_words(sv_)
+        bad_ = (not has) and in_stem and in_voice          # lost only through the music + SFX (voice.wav itself spells it out)
         win_bad += bad_
-        verdict = "IDENTICAL" if ok else ("word OK, context differs" if has else ("KEY WORD MISSING" if bad_ else "missing in the voice stem too (whisper window artifact)"))
+        verdict = "IDENTICAL" if ok else ("word OK, context differs" if has else ("KEY WORD MISSING" if bad_ else
+                   ("same as voice.wav (whisper spells it differently on voice.wav itself)" if not in_voice else "missing in the voice stem too (whisper window artifact)")))
         w(f"| {k[0]} | {a:.2f}-{b:.2f} | {sv_} | {ss_} | {sm_} | {verdict} | {pk(xv)} / {pk(xs)} / {pk(xm)} |")
     rep = "\n".join(out)
     print(rep)
