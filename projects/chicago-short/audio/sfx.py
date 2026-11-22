@@ -77,8 +77,8 @@ def cues():
         (26.0, 27.3, "flag_hotel", "@788 the flag on the roof fluttering (dark, quiet)", [lambda d, r: pan(C.flag(d, r), 0.45) * 0.8], -41, [(0, 0.0), (0.5, 1.0), (1.3, 1.0)]),
         (27.18, 31.3, "amb_office", "the contractors' office: quiet room tone, a wall clock, a pen scratching, a far street (shot 8)", [lambda d, r: C.office(d, r)], -38, None),
         (31.18, 36.0, "amb_yard", "under the hotel, daylight: a breeze, a far street, flags, a far bird (shot 9)", [lambda d, r: C.yard(d, r)], -38, None),
-        (34.3, 36.0, "marching", "@1033 hundreds of workers march in and take their positions (a growing column of boots on packed earth, soft and dark)",
-         [lambda d, r: C.marching(d, r, 1.9, 26, 1.0, (0.2, 1.0))], -33, [(0, 0.0), (0.3, 0.7), (1.0, 1.0), (1.55, 0.8), (1.7, 0.0)]),
+        (fr(T.MARCH), 35.9, "marching", "@1033 hundreds of workers march in and take their positions (a growing column of boots on packed earth, soft and dark)",
+         [lambda d, r: C.marching(d, r, 88 / 60, 26, 1.0, (0.2, 1.0))], -33, [(0, 0.5), (0.3, 0.8), (1.0, 1.0), (1.4, 0.9), (1.47, 0.0)]),
         (35.9, 40.85, "amb_yard2", "the signal and the turns: a breeze, a hush over the yard, flags (shot 10)", [lambda d, r: C.yard(d, r, 0.8)], -39, None),
         (40.7, 43.45, "amb_yard3", "hotel wide: breeze, far street (shot 11)", [lambda d, r: C.yard(d, r, 0.9)], -38, None),
         (40.8, 43.4, "groan_wide", "@1223-1301 the whole hotel creaking slowly up, inch by inch (dark timber groan)",
@@ -88,7 +88,7 @@ def cues():
          [lambda d, r: C.lift_hum(d, r)], -34, [(0, 0.0), (0.6, 1.0), (6.3, 1.0), (7.5, 0.55), (9.1, 0.0)]),
         (49.6, 52.45, "amb_window", "window close-up, bright day: a light breeze and a far street (shot 13)", [lambda d, r: C.street(d, r, 0.7, 5, 0.3, 0.6)], -39, None),
         (52.28, 54.15, "amb_platform", "the platform at golden dusk: an idling steam engine (soft chuffs), a far station crowd, a breeze (shot 14a)", [lambda d, r: C.platform(d, r)], -36, None),
-        (53.9, D, "amb_sleeper", "@1619+ inside the sleeping car: rails clatter 'ta-dak ta-dak' soft and lulling at a slow 0.75 s cycle (the music rocks with it), a low carriage rumble, panels creaking",
+        (fr(T.RAILS), D, "amb_sleeper", "@1619+ inside the sleeping car: rails clatter 'ta-dak ta-dak' soft and lulling at a slow 0.75 s cycle (the music rocks with it), a low carriage rumble, panels creaking",
          [lambda d, r: C.sleeper_bed(d, r, 1.0, 0.75)], -33, [(0, 0.0), (0.35, 1.0), (3.5, 1.0), (5.0, 0.8)]),
     ]
     for i, (a, b, name, desc, parts, lvl, env) in enumerate(beds):
@@ -108,12 +108,12 @@ def cues():
 
     # ------------------------------------------------ shot 2: swamp, frog, mud
     add(Cue(fr(T.FROG), "frog_plop", "@250 a frog plops from the puddle: a soft dark 'bloop' (below 900 Hz, under 'swamp')",
-            lambda: (C.frog_plop(rng(250)), 0.0), -14, p=-0.3, send=0.1, frame=T.FROG))
+            lambda: (C.frog_plop(rng(250)), 0.0), -17, p=-0.3, send=0.1, frame=T.FROG))
     add(Cue(T.FROG_RING, "droplets", "...and its three tiny droplet 'plip's in the gap after 'swamp.' (8.73-9.04)",
             lambda: (C.droplet_ring(rng(251)), 0.0), -17, p=-0.3, send=0.25, frame=f30(T.FROG_RING)))
     for k, (tm, sz, pp) in enumerate(((9.36, 1.0, -0.4), (9.72, 0.8, 0.35), (10.0, 1.2, -0.1))):
         add(Cue(tm, "mud_slurp", f"the street is a river of mud: a sticky wet suction 'shlupp' ({k + 1}/3, dark, under 'streets were rivers')",
-                (lambda r=rr(), sz=sz: (C.mud_slurp(r, sz, 800), 0.0)), -15, p=pp, send=0.06, frame=f30(tm)))
+                (lambda r=rr(), sz=sz: (C.mud_slurp(r, sz, 800), 0.0)), -18, p=pp, send=0.06, frame=f30(tm)))
     add(Cue(T.SCHLORP, "boot_schlorp", "@303 the man loses his boot: a long wet suction + the bright 'schlorp' pop lands in the gap after 'mud,' (10.43-10.73)",
             lambda: (C.schlorp(rng(303)), 0.42), -9, p=0.3, send=0.1, frame=f30(T.SCHLORP)))
 
@@ -191,15 +191,15 @@ def cues():
 
     # ------------------------------------------------ shot 12: the hotel keeps open
     add(Cue(fr(T.SIGN), "sign_flip", "@1309 the bellhop flips the little key sign: a wooden 'clack-clack' + a settling jingle",
-            lambda: (C.sign_flip(rng(1309)), 0.0), -13, lpf=3200, p=-0.3, send=0.1, frame=T.SIGN))
+            lambda: (C.sign_flip(rng(1309)), 0.0), -17, lpf=3200, p=-0.3, send=0.1, frame=T.SIGN))
     add(Cue(fr(T.SOUP), "soup_slurp", "@1360 the diner slurps his soup (a soft 'shlrp', dark; under 'Guests kept')",
             lambda: (C.soup_slurp(rng(1360)), 0.0), -16, p=0.3, send=0.08, frame=T.SOUP))
     add(Cue(fr(T.SNORE), "snore", "@1385 the sleeper snores in his nightcap: a fluttering dark inhale (under 'sleeping')",
             lambda: (M.snore(rng(1385), 0.55, 0.0, 480), 0.0), -15, p=-0.2, send=0.06, frame=T.SNORE))
     add(Cue(46.72, "snore_out", "...and the whistly exhale (dark, quiet, under 'checking in')",
-            lambda: (M.snore(rng(1386), 0.01, 0.3, 700), 0.0), -19, p=-0.2, send=0.06, frame=f30(46.72)))
+            lambda: (M.snore(rng(1386), 0.01, 0.3, 500), 0.0), -25, p=-0.2, send=0.06, frame=f30(46.72)))
     add(Cue(T.DING_T, "desk_bell", "@1409 the clerk rings the desk bell: one bright 'ding' (in the gap after 'in,' 47.21-47.56; the frame is 46.97)",
-            lambda: (C.desk_bell(rng(1409)), 0.0), -10, p=0.3, send=0.2, frame=T.BELL))
+            lambda: (C.desk_bell(rng(1409)), 0.0), -12, p=0.3, send=0.2, frame=T.BELL))
 
     # ------------------------------------------------ shot 13: the window
     add(Cue(fr(T.TAP), "glass_tap", "@1526 the inspector taps the glass with a knuckle: a small dry 'tok' + a glassy ring (tiny, on 'window')",

@@ -407,7 +407,7 @@ export const shiny = (c: string, sh = 70) => {
   if (!m) { m = twoTone(new THREE.MeshPhongMaterial({ color: c, shininess: sh, specular: new THREE.Color("#8890a0") })); mats.set(key, m); }
   return m;
 };
-const BRASS = "#d9a83a";
+export const BRASS = "#d9a83a";
 export const woodM = (c = "#9a7a58") => texM("oldWood" + c, () => P.oldWoodHD(c));
 /** unlit material with a painted map (flags, banners: never go grey in side light) */
 export const unlit = (key: string, map: () => THREE.Texture, side: THREE.Side = THREE.DoubleSide) => {
@@ -417,7 +417,6 @@ export const unlit = (key: string, map: () => THREE.Texture, side: THREE.Side = 
 };
 
 // ---- fences + poles ----
-export const BRASS = "#d9a83a";
 export const FAR = 900;
 export const M = M4;
 /** a sub-group built from its own batch (toggled / posed per frame by the set's tick) */

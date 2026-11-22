@@ -579,7 +579,7 @@ const hatBehind = (p: Pen, o: Outfit, hd: Head, light: number, thick: number, ow
 const hairOn = (p: Pen, o: Outfit, hd: Head, light: number, thick: number, ow: number) => {
   const style: HairStyle | null = o.hat === "hair" ? o.hairStyle ?? "bowl"
     : o.hat === "fedora" || o.hat === "garrison" || o.hat === "peaked" || o.hat === "cap" || o.hat === "hardhat" || o.hat === "bowler" || o.hat === "boater"
-      || o.hat === "goggles" || o.hat === "beret" ? (o.hair ? "crop" : null) : o.hat === "lady" ? "bunTop" : null;
+      || o.hat === "goggles" || o.hat === "beret" || o.hat === "flatcap" || o.hat === "nightcap" || o.hat === "tophat" ? (o.hair ? "crop" : null) : o.hat === "lady" ? "bunTop" : null;
   if (!style) return;
   const col = o.hair ?? "#3a2a20", pts = huShape(hd, HAIR[style](ct0(hd)), 3);
   filled(p, pts, col, light, hd.a, ow * 0.9, thick);
@@ -670,6 +670,21 @@ const hatOn = (p: Pen, o: Outfit, hd: Head, light: number, thick: number, seed: 
     for (let k = 0; k < 5; k++) { const [dx, dy] = hu(hd, -0.6 + 0.3 * k, ct * 0.62 + 0.05 * (k % 2)); p.dot(dx, dy, 3.2 * u, "rgba(255,250,230,0.85)"); }
     const [kx, ky] = hu(hd, -0.95, 0.42);
     p.poly([[kx, ky], [kx - 9 * u, ky + 14 * u], [kx + 3 * u, ky + 12 * u]], c, 1.4 * u);
+  } else if (o.hat === "flatcap") {
+    // flat cap: a soft wide pancake crown sloping to a short stiff peak on the facing side
+    const c = o.cap ?? "#6a6458", yb = ct + 0.5, tilt = rad(5);
+    const body = hatShape(hd, [[-1.0, yb + 0.02, 1], [-1.04, yb - 0.3], [-0.5, yb - 0.5], [0.4, yb - 0.54], [1.12, yb - 0.3], [1.16, yb + 0.02, 1], [0, yb + 0.08]], tilt, 2);
+    filled(p, body, c, light, hd.a, ow, thick);
+    p.stroke([hu(hd, -0.5, yb - 0.4), hu(hd, 0.1, yb - 0.3), hu(hd, 0.7, yb - 0.2)], 1.4 * u, mul(c, [0.6, 0.6, 0.66]));
+    const pk = hatShape(hd, [[0.5, yb - 0.02, 1], [1.5, yb + 0.0, 1], [1.44, yb + 0.14], [0.8, yb + 0.2], [0.5, yb + 0.1]], tilt, 2);
+    p.poly(pk, mul(c, [0.72, 0.72, 0.76]), 2.4 * u);
+  } else if (o.hat === "nightcap") {
+    // nightcap: a long floppy cone flopping back with a pom-pom
+    const c = o.cap ?? "#f4f0ea", yb = ct + 0.5;
+    const body = hatShape(hd, [[-0.98, yb + 0.02, 1], [-0.9, yb - 0.5], [-0.4, yb - 1.0], [-0.2, yb - 1.4], [-1.0, yb - 1.7], [-1.7, yb - 1.35], [-1.9, yb - 0.9], [-1.3, yb - 1.35], [-0.7, yb - 1.1], [0.1, yb - 0.7], [0.7, yb - 0.5], [1.02, yb + 0.02, 1], [0, yb + 0.08]], 0, 2);
+    filled(p, body, c, light, hd.a, ow, thick);
+    p.band([hu(hd, -1.0, yb - 0.04), hu(hd, 1.04, yb - 0.04)], o.band ?? "#c0352e", 0.14 * hd.a, 1.2 * u);
+    const [bx, by] = hu(hd, -1.9, yb - 0.82); p.ell(bx, by, 0.2 * hd.a, 0.2 * hd.a, o.band ?? "#c0352e", 2.2 * u);
   } else if (o.hat === "tophat") {
     const yb = crown + 0.22 * HH, ht = 0.8 * HH, wb = 0.31 * W, wt = 0.33 * W, col = "#2e2a36";
     const R = (pts: P2[]) => rotPts(pts, hd.rot, cx, hd.wy);
@@ -738,7 +753,8 @@ const hatOn = (p: Pen, o: Outfit, hd: Head, light: number, thick: number, seed: 
 export type Arms = [P2[], P2[]];
 /** held prop; for the hammer the number is the strike 0 (raised) .. 1 (struck) */
 export type Prop = null | "icecream" | "shako" | ["hammer", number] | "stick" | "pen" | "bucket" | "folder" | "clipboard" | "shovel" | "mic" | "filmcam" | "basket"
-  | "poison" | "flask" | "eggcup" | "egg" | "apple" | "appleRot" | "pistol" | "parasol" | "boaterHand";
+  | "poison" | "flask" | "eggcup" | "egg" | "apple" | "appleRot" | "pistol" | "parasol" | "boaterHand"
+  | "blueprint" | "gavel" | "whistle" | "flagPole" | "magnifier" | "bell" | "spoon" | "trunk" | "coin" | "thermo" | "bag" | "candle" | "bar" | "tray" | "keyfob" | "watch" | "chart" | "broom";
 
 const BUILD: Record<Build, { a: number; torso: number; legs: number; tw: number }> = {
   adult: { a: 118, torso: 1.1, legs: 1.4, tw: 0.7 },
@@ -1224,6 +1240,65 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
       p.poly(rrect(hx - 16 * u, hy - 26 * u, hx + 16 * u, hy - 10 * u, 3 * u), "#e8cf7a", 2.2 * u);
       p.band([[hx - 16 * u, hy - 14 * u], [hx + 16 * u, hy - 14 * u]], "#c0352e", 4 * u, 0);
       p.dot(hx, hy, 5.5 * u);
+    } else if (prop === "blueprint") { // a rolled blueprint tube, blue with pale rim and a red band
+      p.band([[hx - 6 * u, hy + 18 * u], [hx + 22 * u * f, hy - 40 * u]], "#3a6ab8", 12 * u, 2.2 * u, "round");
+      p.band([[hx + 12 * u * f, hy - 18 * u], [hx + 17 * u * f, hy - 28 * u]], "#e04a3a", 12 * u, 0);
+      p.ell(hx + 22 * u * f, hy - 40 * u, 7 * u, 5 * u, "#e8f0fb", 1.8 * u);
+      p.dot(hx, hy, 5.5 * u);
+    } else if (prop === "gavel") { // a wooden mallet raised
+      p.band([[hx, hy + 8 * u], [hx + 4 * u, hy - 38 * u]], "#8a5a34", 6 * u, 1.6 * u, "round");
+      p.poly(rrect(hx - 12 * u, hy - 56 * u, hx + 20 * u, hy - 36 * u, 4 * u), "#a8723e", 2.4 * u);
+      p.dot(hx, hy, 5.5 * u);
+    } else if (prop === "whistle") { // a brass whistle at the lips
+      p.poly(rrect(hx - 11 * u, hy - 6 * u, hx + 11 * u, hy + 6 * u, 4 * u), "#e8c040", 2 * u);
+      p.dot(hx - 6 * u * f, hy, 3 * u, INK); p.dot(hx, hy, 5.5 * u);
+    } else if (prop === "flagPole") { // a signal flag on a staff, red pennant with a pale stripe
+      p.band([[hx, hy + 30 * u], [hx + 2 * u, hy - 150 * u]], "#d8c8a0", 5 * u, 1.6 * u, "round");
+      p.poly([[hx + 2 * u, hy - 150 * u], [hx + 2 * u + 90 * u * f, hy - 128 * u], [hx + 2 * u, hy - 98 * u]], "#d8282e", 2.6 * u);
+      p.poly([[hx + 2 * u, hy - 134 * u], [hx + 2 * u + 56 * u * f, hy - 125 * u], [hx + 2 * u, hy - 116 * u]], "#fbf6e8", 0);
+      p.dot(hx, hy, 5.5 * u);
+    } else if (prop === "magnifier") { // a brass magnifying glass
+      p.band([[hx, hy + 6 * u], [hx + 20 * u * f, hy - 22 * u]], "#6a4a2a", 5 * u, 1.4 * u, "round");
+      p.ell(hx + 30 * u * f, hy - 36 * u, 19 * u, 19 * u, "rgba(190,225,245,0.75)", 3.4 * u); p.ell(hx + 24 * u * f, hy - 42 * u, 4 * u, 7 * u, "rgba(255,255,255,0.85)", 0);
+      p.dot(hx, hy, 5.5 * u);
+    } else if (prop === "bell") { // a brass desk bell
+      p.poly([[hx - 18 * u, hy + 8 * u], [hx + 18 * u, hy + 8 * u], [hx + 12 * u, hy - 12 * u], [hx - 12 * u, hy - 12 * u]], "#e8c040", 2.4 * u);
+      p.ell(hx, hy - 12 * u, 12 * u, 5 * u, "#f6dc7a", 2 * u); p.dot(hx, hy - 18 * u, 3.4 * u, "#8a6a1a"); p.dot(hx, hy, 5.5 * u);
+    } else if (prop === "spoon") { // soup spoon raised
+      p.band([[hx, hy + 6 * u], [hx + 8 * u * f, hy - 44 * u]], "#d6dae0", 3.4 * u, 1.2 * u, "round");
+      p.ell(hx + 10 * u * f, hy - 54 * u, 9 * u, 12 * u, "#e8ecf0", 2 * u); p.ell(hx + 10 * u * f, hy - 52 * u, 6 * u, 8 * u, "#d86a2a", 0);
+      p.dot(hx, hy, 5.5 * u);
+    } else if (prop === "trunk") { // a travelling trunk with brass corners
+      p.poly(rrect(hx - 30 * u, hy - 4 * u, hx + 30 * u, hy + 40 * u, 5 * u), "#8a4a2a", 2.6 * u);
+      p.band([[hx - 30 * u, hy + 14 * u], [hx + 30 * u, hy + 14 * u]], "#d9a83a", 4 * u, 1.2 * u);
+      p.poly(rrect(hx - 8 * u, hy + 10 * u, hx + 8 * u, hy + 20 * u, 2 * u), "#e8c040", 1.4 * u);
+      p.dot(hx, hy, 5.5 * u);
+    } else if (prop === "coin") { // a gold coin held up between finger and thumb
+      p.ell(hx + 4 * u * f, hy - 16 * u, 16 * u, 16 * u, "#f2c23a", 2.8 * u); p.ell(hx + 4 * u * f, hy - 16 * u, 10 * u, 10 * u, "#ffe27a", 1.6 * u);
+      p.ell(hx - 1 * u * f, hy - 21 * u, 3 * u, 5 * u, "#ffffff", 0); p.dot(hx, hy, 5.5 * u);
+    } else if (prop === "thermo") { // a glass thermometer, red mercury
+      p.band([[hx, hy + 4 * u], [hx + 10 * u * f, hy - 34 * u]], "#f6f6f2", 5 * u, 1.4 * u, "round");
+      p.band([[hx + 2 * u * f, hy - 4 * u], [hx + 8 * u * f, hy - 26 * u]], "#d8282e", 2.2 * u, 0, "round");
+      p.dot(hx, hy, 5.5 * u);
+    } else if (prop === "bag") { // a doctor's black bag
+      p.poly(rrect(hx - 28 * u, hy + 4 * u, hx + 28 * u, hy + 44 * u, 8 * u), "#3a2a26", 2.6 * u);
+      p.stroke([[hx - 14 * u, hy + 4 * u], [hx - 8 * u, hy - 8 * u], [hx + 8 * u, hy - 8 * u], [hx + 14 * u, hy + 4 * u]], 4 * u, "#5a463c");
+      p.band([[hx - 26 * u, hy + 14 * u], [hx + 26 * u, hy + 14 * u]], "#5a463c", 3 * u, 0); p.dot(hx, hy, 5.5 * u);
+    } else if (prop === "candle") { // a candlestick with a steady flame
+      p.poly(rrect(hx - 7 * u, hy - 18 * u, hx + 7 * u, hy + 8 * u, 2 * u), "#f6efd8", 2 * u); p.poly(rrect(hx - 16 * u, hy + 8 * u, hx + 16 * u, hy + 14 * u, 2 * u), "#d9a83a", 2 * u);
+      p.poly([[hx - 5 * u, hy - 18 * u], [hx, hy - 40 * u], [hx + 5 * u, hy - 18 * u]], "#ffb830", 1.6 * u); p.dot(hx, hy, 5.5 * u);
+    } else if (prop === "bar") { // a crossbar handle held in both hands
+      p.band([[hx - 70 * u, hy], [hx + 70 * u, hy]], "#3a3e48", 9 * u, 2 * u, "round"); p.dot(hx - 70 * u, hy, 8 * u, "#2a2d36"); p.dot(hx + 70 * u, hy, 8 * u, "#2a2d36"); p.dot(hx, hy, 5.5 * u);
+    } else if (prop === "tray") { // a silver tray with a covered dish
+      p.ell(hx, hy - 4 * u, 34 * u, 7 * u, "#d6dae0", 2.2 * u); p.ell(hx, hy - 20 * u, 20 * u, 17 * u, "#e8ecf0", 2.2 * u, 180, 360); p.dot(hx, hy - 36 * u, 3.4 * u, "#d6dae0"); p.dot(hx, hy, 5.5 * u);
+    } else if (prop === "keyfob") { // a brass door key (the OPEN pictogram)
+      p.ell(hx, hy - 14 * u, 9 * u, 9 * u, "#e8c040", 2.4 * u); p.band([[hx, hy - 6 * u], [hx, hy + 24 * u]], "#e8c040", 5 * u, 1.6 * u); p.band([[hx, hy + 20 * u], [hx + 9 * u, hy + 20 * u]], "#e8c040", 4 * u, 1.4 * u); p.dot(hx, hy, 5.5 * u);
+    } else if (prop === "watch") { // a gold pocket watch dangling on its chain
+      p.stroke([[hx, hy], [hx - 4 * u, hy + 24 * u]], 2.4 * u, "#c89a2a"); p.ell(hx - 4 * u, hy + 36 * u, 12 * u, 12 * u, "#f2c23a", 2.6 * u); p.ell(hx - 4 * u, hy + 36 * u, 8 * u, 8 * u, "#fbf6e8", 1.2 * u); p.dot(hx, hy, 5.5 * u);
+    } else if (prop === "chart") { // a chart on a board (pictures only)
+      p.poly(rrect(hx - 24 * u, hy - 40 * u, hx + 24 * u, hy + 14 * u, 3 * u), "#fbf8ee", 2.4 * u);
+      p.stroke([[hx - 16 * u, hy - 8 * u], [hx - 6 * u, hy - 22 * u], [hx + 4 * u, hy - 12 * u], [hx + 16 * u, hy - 32 * u]], 2.6 * u, "#c0352e"); p.dot(hx, hy, 5.5 * u);
+    } else if (prop === "broom") { p.band([[hx, hy + 40 * u], [hx + 4 * u, hy - 70 * u]], "#8a5a34", 4 * u, 1.4 * u, "round"); p.dot(hx, hy, 5.5 * u);
     } else if (Array.isArray(prop)) {
       const ang = rad(-70 + 105 * clamp(prop[1], 0, 1));
       const Rh = (pts: P2[]) => rotPts(pts, ang, hx, hy);
@@ -1242,7 +1317,7 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
   // ---- head: rotates with the body, plus its own tilt about the chin ----
   const Ah = A + headTilt, [cpx, cpy] = rotAbout([300, chin], rad(A), [300, hipY]);
   p.rot = Ah ? [rad(Ah), 300, chin, cpx - 300, cpy - chin] : null;
-  const brim = o.hat === "peaked" || o.hat === "shako" || o.hat === "shako_tall" || o.hat === "fedora" || o.hat === "hardhat" || o.hat === "bowler" || o.hat === "boater" || o.hat === "goggles" || o.hat === "lady";
+  const brim = o.hat === "peaked" || o.hat === "shako" || o.hat === "shako_tall" || o.hat === "fedora" || o.hat === "hardhat" || o.hat === "bowler" || o.hat === "boater" || o.hat === "goggles" || o.hat === "lady" || o.hat === "flatcap";
   HAT.lift = opts.hatLift ?? 0; HAT.tilt = opts.hatTilt ?? 0;
   drawHead(p, o, hd, light, thick, seed, false, () => {
     faceFront(p, hd.cx, hd.wy, W, expr, f, look, lid, brim, skin, o.moustache, o.build === "stout", opts.gaze ?? 0, !!o.glasses, !!o.soot);
@@ -1780,7 +1855,7 @@ export const fxFlag = (p: Pen, ph: number) => {
 
 /** a scrappy cartoon farm dog, side view facing screen right, on a 600 x 600 canvas (paws at y ~ 540).
  *  phase = gallop cycle 0..1, bark = mouth open + bark ticks, col / patch = coat colours */
-export type DogOpts = { phase: number; bark: boolean; col: string; patch: string; ears?: number; light?: number };
+export type DogOpts = { phase: number; bark: boolean; col: string; patch: string; ears?: number; light?: number; nose?: boolean };
 export const dogDraw = (p: Pen, o: DogOpts) => {
   const g0 = p.g; g0.save(); g0.translate(300, 300); g0.scale(0.8, 0.8); g0.translate(-370, -330);
   const ph = o.phase * Math.PI * 2, by = 360 - 22 * Math.abs(Math.sin(ph)), stretch = Math.cos(ph);
@@ -1811,6 +1886,74 @@ export const dogDraw = (p: Pen, o: DogOpts) => {
   taper(p, [hx + 2, hy - 48], [hx + 40, hy - 44], 9, 4);
   const ea = (o.ears ?? 0) + 0.3 * Math.sin(ph);
   p.poly([[hx - 40, hy - 50], [hx - 100 - 20 * ea, hy - 30 + 40 * ea], [hx - 70, hy + 30], [hx - 30, hy - 10]], dark, 9);
+  if (o.nose) { p.line([[hx + 30, hy + 60], [hx + 80, hy + 20], [hx + 118, hy + 6]], mul(o.col, [0.9, 0.88, 0.9]), 30); p.ell(hx + 122, hy + 4, 26, 22, o.patch, 7); p.stroke([[hx + 130, hy - 40], [hx + 150, hy - 70]], 7); p.stroke([[hx + 142, hy - 30], [hx + 175, hy - 52]], 7); }
   if (o.bark) for (let k = 0; k < 3; k++) { const a = rad(-30 + k * 25); p.stroke([[hx + 150 + Math.cos(a) * 10, hy + 20 + Math.sin(a) * 10], [hx + 150 + Math.cos(a) * 60, hy + 20 + Math.sin(a) * 60]], 10); }
   g0.restore();
+};
+
+// ---------------- Chicago 1861 effects + animals ----------------
+/** a green frog (300 x 300 canvas), t = jump 0..1 (0 sitting, 0.5 mid-air stretched) */
+export const fxFrog = (p: Pen, t: number) => {
+  const up = Math.sin(t * Math.PI), by = 220 - 110 * up, st = 1 + 0.25 * up, G = "#4fa83a", D = "#2f7a2a";
+  p.ell(150, by, 70 / Math.sqrt(st), 52 * st, G, 8);
+  p.ell(150, by + 8, 40 / Math.sqrt(st), 28 * st, "#d8e8a0", 0);
+  const lx = 38 + 8 * up, p1: P2[] = [[90, by + 20], [lx + 10, by + 60 - 40 * up], [lx - 10, by + 80]];
+  p.line(p1, D, 20); p.line(p1.map(([x, y]) => [300 - x, y] as P2), D, 20);
+  p.ell(112, by - 46 * st, 22, 22, "#e8f2b0", 7); p.ell(188, by - 46 * st, 22, 22, "#e8f2b0", 7); p.dot(114, by - 44 * st, 9); p.dot(186, by - 44 * st, 9);
+  p.arc(150, by - 4, 40, 18, 20, 160, 6);
+};
+/** a rising green swamp bubble (400 x 400), t = growth 0..1 (pops at 1) */
+export const fxBubble = (p: Pen, t: number) => {
+  const r = 40 + 130 * Math.min(1, t), g = p.g;
+  g.save(); g.globalAlpha = t > 0.9 ? Math.max(0, 1 - (t - 0.9) / 0.1) : 1;
+  p.ell(200, 200, r, r, "rgba(150,210,90,0.8)", 9); p.ell(200 - r * 0.3, 200 - r * 0.35, r * 0.22, r * 0.14, "rgba(255,255,230,0.85)", 0, 0, 360, -30);
+  p.ell(200 + r * 0.35, 200 + r * 0.3, r * 0.1, r * 0.08, "rgba(255,255,230,0.5)", 0);
+  g.restore();
+};
+/** a splash of mud (400 x 400), t = 0..1 */
+export const fxMud = (p: Pen, t: number) => {
+  const e = 1 - (1 - t) ** 2, g = p.g; g.save(); g.globalAlpha = t < 0.6 ? 1 : Math.max(0, 1 - (t - 0.6) / 0.4);
+  for (let i = 0; i < 9; i++) { const a = (i / 9) * Math.PI * 2 + 0.3, d = 40 + 110 * e * (0.6 + 0.4 * ((i * 7) % 3) / 2); p.ell(200 + Math.cos(a) * d, 230 - Math.abs(Math.sin(a)) * d * 0.9 + 60 * t * t, 22 * (1 - 0.4 * t), 20 * (1 - 0.4 * t), "#6a4a2c", 6); }
+  p.ell(200, 240, 60 * (0.6 + 0.4 * e), 26, "#7a5636", 7);
+  g.restore();
+};
+/** a cough / sneeze puff of green-white clouds with little lines (400 x 400), t = 0..1 */
+export const fxCough = (p: Pen, t: number) => {
+  const e = 1 - (1 - t) ** 2, g = p.g; g.save(); g.globalAlpha = t < 0.6 ? 1 : Math.max(0, 1 - (t - 0.6) / 0.4);
+  for (let i = 0; i < 5; i++) { const a = -0.5 + i * 0.25, d = 40 + 130 * e; p.ell(70 + Math.cos(a) * d, 200 + Math.sin(a) * d * 0.7, 26 + 14 * e, 24 + 12 * e, i % 2 ? "#e8f2d8" : "#d6ecb8", 7); }
+  for (let k = 0; k < 3; k++) { const a = -0.45 + k * 0.45; p.stroke([[70 + Math.cos(a) * 40, 200 + Math.sin(a) * 30], [70 + Math.cos(a) * (80 + 40 * e), 200 + Math.sin(a) * (60 + 30 * e)]], 8); }
+  g.restore();
+};
+/** a circling brown flow (arrow ring) on a 400 x 400 canvas, drawn flat on the water; t = spin phase 0..1 */
+export const fxSwirl = (p: Pen, t: number) => {
+  const g = p.g, a0 = t * Math.PI * 2;
+  for (let r = 60; r <= 170; r += 55) {
+    p.arc(200, 200, r, r * 0.6, (a0 * 57.3) + r, (a0 * 57.3) + r + 260, 18, "#4a3220");
+    const e = a0 + (r + 260) / 57.3; const ex = 200 + Math.cos(e) * r, ey = 200 + Math.sin(e) * r * 0.6;
+    p.poly([[ex + 28 * Math.cos(e + 1.7), ey + 20 * Math.sin(e + 1.7)], [ex + 36 * Math.cos(e + 0.0 - 0.2 + Math.PI / 2 + 1.57), ey + 36 * Math.sin(e + Math.PI / 2 + 1.57) * 0.6], [ex - 28 * Math.cos(e + 1.7), ey - 20 * Math.sin(e + 1.7)]], "#4a3220", 0);
+  }
+  void g;
+};
+/** a spinning gold coin (300 x 300): t = spin phase 0..1 (squashes in x) */
+export const fxCoin = (p: Pen, t: number) => {
+  const sx = Math.abs(Math.cos(t * Math.PI * 2)) * 0.92 + 0.08, g = p.g;
+  g.save(); g.translate(150, 150); g.scale(sx, 1); g.translate(-150, -150);
+  p.ell(150, 150, 100, 100, "#e8b020", 10); p.ell(150, 150, 74, 74, "#ffd84a", 5); p.ell(150, 150, 28, 28, "#e8b020", 5);
+  p.arc(150, 150, 54, 54, 200, 300, 12, "#fff2a8");
+  g.restore();
+};
+/** a carthorse (side view, 700 x 560 canvas), facing +x; phase = walk 0..1, mud = brown to the knees */
+export const horseDraw = (p: Pen, o: { phase: number; col: string; mane: string; mud?: boolean }) => {
+  const ph = o.phase * Math.PI * 2, dark = mul(o.col, [0.72, 0.7, 0.74]), by = 250 + 4 * Math.sin(ph * 2);
+  const leg = (hx: number, a: number, c: string) => { const kx = hx + Math.sin(a) * 28, ky = by + 120, fx = kx + Math.sin(a * 1.3) * 34, fy = 470; p.line([[hx, by + 50], [kx, ky], [fx, fy]], c, 30); p.ell(fx + 8, fy + 6, 24, 14, "#2a2220", 6); if (o.mud) p.line([[kx, ky + 50], [fx, fy]], "#6a4a2c", 34, false); };
+  leg(190, Math.sin(ph) * 0.7, dark); leg(470, Math.sin(ph + Math.PI) * 0.7, dark);
+  p.line([[110, by], [60, by + 90 + 10 * Math.sin(ph)], [74, by + 170]], o.mane, 20);
+  const body = [[110, by - 60], [300, by - 80], [490, by - 62], [520, by + 10], [470, by + 70], [300, by + 80], [140, by + 70], [100, by + 10]] as P2[];
+  p.shadedFill(body, o.col, dark, rad(-120), 220, 0.4); p.poly(body, null, 10);
+  leg(240, Math.sin(ph + Math.PI) * 0.7 + 0.1, o.col); leg(520, Math.sin(ph) * 0.7 - 0.1, o.col);
+  p.line([[500, by - 40], [590, by - 130], [600, by - 70]], o.col, 70);
+  p.ell(612, by - 94, 62, 44, o.col, 10, 0, 360, 25); p.poly([[560, by - 150], [585, by - 200], [610, by - 148]], dark, 8);
+  p.dot(620, by - 108, 8); p.ell(660, by - 78, 14, 10, "#2a2220", 0);
+  p.line([[520, by - 70], [500, by - 150], [560, by - 170]], o.mane, 18, false);
+  p.band([[470, by - 70], [610, by - 90]], "#7a4a2a", 7, 1.2);
 };

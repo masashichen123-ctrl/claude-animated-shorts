@@ -355,10 +355,10 @@ def build():
     for k, m in enumerate([86, 83, 79]):
         b.add("celesta", I.celesta(F(m), 0.14, _r(), 1.0), fr(T.SNORE) + 0.1 + 0.35 * k, 0.3 - 0.2 * k)
     groove(b, fr(T.BELL), fr(1442), [("G6", 2), ("D7", 2)], vel=0.85)
-    chord_hit(b, fr(T.BELL), "G69", 0.22, 0.03, dur=1.2, bass=False)
+    chord_hit(b, fr(T.BELL) + 0.3, "G69", 0.22, 0.03, dur=1.2, bass=False)
     groove(b, fr(1442), 49.0, [("C6", 4), ("D7", 4)], vel=0.95)
-    chord_hit(b, 49.05, "G69", 0.3, 0.035, dur=1.6)
-    sparkle(b, 49.08, [79, 83, 86, 91], 0.18, 0.3, 0.09)
+    chord_hit(b, 49.18, "G69", 0.3, 0.035, dur=1.6)
+    sparkle(b, 49.22, [79, 83, 86, 91], 0.18, 0.3, 0.09)
     b.cue(43.50, "THE HOTEL NEVER CLOSED: a warm lazy loop (G6 C6 G6 D7) - guitar, bass, piano after-beats, brushes, shaker")
     b.cue(fr(T.SNORE), "SLEEPER @1385: a half-time lullaby (guitar + bass, G6 C6) with three falling celesta 'Z's (G5 B... D G)")
     b.cue(fr(T.BELL), "CLERK @1409: the groove pops back, a warm G6/9 chord on the bell frame (G6 D7)")

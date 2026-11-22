@@ -1,5 +1,5 @@
 #!/bin/bash
-# One command for the whole soundtrack of "The 1904 Olympic Marathon": render music + SFX, mix, master, write stems and
+# One command for the whole soundtrack of "Chicago Lifts a Hotel": render music + SFX, mix, master, write stems and
 # cues.md, then verify (ffmpeg loudness is inside mix.py; whisper intelligibility check appends to cues.md).
 set -e
 cd "$(dirname "$0")/.."

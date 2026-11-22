@@ -176,7 +176,7 @@ def sleeper_bed(dur, r, level=1.0, cycle=0.75):
     n = ns(dur)
     t = np.arange(n) / SR
     out = np.zeros((2, n))
-    tm = r.uniform(0, 0.05)
+    tm = 0.0
     while tm < dur - 0.3:
         for j, dt in enumerate((0.0, 0.17)):
             L = 0.22

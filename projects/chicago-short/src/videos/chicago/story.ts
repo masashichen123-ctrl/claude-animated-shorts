@@ -87,7 +87,7 @@ export const EV = {
 // street: the Tremont House stands with its front face on the plane z = 0 (x -9..9), the body running back to z = -22;
 //   the plaza opens toward +z; the jackscrew field is a grid under the footprint. The hotel's group is lifted by
 //   hotelY(id, f); the timber grillage under it by 0.5 m.
-export const HOTEL = { W: 18, D: 22, FH: [0, 4.4, 8.0, 11.6, 15.2, 18.8, 22.4] as number[], TOP: 22.4 };
+export const HOTEL = { W: 18, D: 22, FH: [0, 4.4, 8.0, 11.6, 15.2, 18.8, 22.4] as number[], TOP: 22.4, BAYS: [-7.2, -3.6, 0, 3.6, 7.2] as number[], SILL: 0.85 };
 export const SCREWS = { COLS: 18, ROWS: 18, DX: 1.0, DZ: 1.2 };
 export const screwX = (i: number) => -8.5 + SCREWS.DX * i;
 export const screwZ = (j: number) => -0.9 - SCREWS.DZ * j;
@@ -126,7 +126,7 @@ export const riseAt = (id: number, f: number): number => {
 };
 /** height of the hotel's underside above the ground */
 export const hotelY = (id: number, f: number): number => {
-  if (id === 7) return 0;                  // before the lift: the hotel stands on its plinth
+  if (id === 7) return 0.55;                // before the lift: the hotel stands on its plinth
   if (id === 1) return 3.4 + riseAt(1, f);
   if (id === 9) return 2.6;
   return 2.6 + riseAt(id, f);

@@ -5,12 +5,14 @@
 // pure function of id + f) and returns the camera's look point.
 import * as THREE from "three";
 import { ctex, cloudHD } from "./paint";
-import { buildSets, SET_META, SetRig, CLOCK } from "./build";
-import * as B from "./build";
+import { buildSets, SET_META, CLOCK } from "./sets";
+import type { SetRig } from "./build";
+import * as B from "./sets";
 import { LIGHTS, LOOK, LightPreset, LightName, lightOf, SHOT_SUN, SHOT_SUN_FROM, SHOT_SUN_DIR, SHOT_SKY, CUR } from "./lights";
 import { TONE, CHAR, HAZE, untone } from "./shade";
 import { NOINK } from "./ink";
-import { Pool, Actor, Fx, stage } from "./cast";
+import { Pool, Actor, Fx } from "./cast";
+import { stage } from "./stage";
 import { CARD_K } from "./cardshade";
 import { cardShade } from "./cardshade";
 import { FPS, SHOTS, ShotDef, SetName, camAt, setOf } from "./story";
@@ -19,7 +21,7 @@ const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 /** square card geometry (dogs, small lit items): 1 x 1 m, centred */
 const SQ = new THREE.PlaneGeometry(1, 1);
 /** shots whose sky gets the 4 view-placed hero clouds, and their [azimuth offset, elevation (rad), width m, aspect] */
-const HERO_CLOUD_SHOTS = new Set([1, 2, 3, 4, 5, 6, 8, 10, 11, 13, 14, 15]);
+const HERO_CLOUD_SHOTS = new Set([1, 2, 3, 4, 6, 7, 9, 10, 11, 12, 13, 14]);
 const HERO_CLOUDS: [number, number, number, number][] = [[-0.14, 0.075, 220, 3.2], [0.13, 0.11, 250, 2.8], [0.0, 0.045, 320, 6], [-0.3, 0.05, 200, 5]];
 /** camera-relative sun azimuth actually used for a shot (sun disc only when it is roughly ahead of the lens) */
 const o2 = (id: number) => Math.abs(SHOT_SUN[id]?.az ?? 90);
