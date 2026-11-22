@@ -756,7 +756,7 @@ const buildBeach = (): SetRig => {
     if (id === 15) gT.position.set(18, hf(18, 2), 2), gT.rotation.y = 0.9; else gT.rotation.y = 0;
     gD.visible = id === 15 && f >= EV.CUT15; const dp = dozerAt(f); gD.position.set(dp[0], hf(dp[0], dp[2]), dp[2]); gD.rotation.y = -0.15;
     gM.visible = mk > 0.01; gM.scale.set(10.5 * mk, 6.0 * mk, 5.2 * mk); gM.position.set(-0.2, -0.3, 0);
-    gF.visible = id === 15 && f >= EV.MOUND15 - 1; const fk = easeOut((f - EV.MOUND15 + 1) / 5); gF.scale.setScalar(Math.max(0.01, fk)); gF.position.set(0.4, 5.6, 0.2);
+    gF.visible = id === 15 && f >= 1449; const fk = easeOut((f - 1449) / 4); // audio/cues.md flag_pop @1451 gF.scale.setScalar(Math.max(0.01, fk)); gF.position.set(0.4, 5.6, 0.2);
     for (const fm of foams) { const k = fm.userData.k as number; fm.position.z = fm.userData.z0 + 0.8 * Math.sin(t * 0.9 + k * 1.3); (fm.material as THREE.MeshBasicMaterial).map!.offset.x = t * 0.004 * (k + 1); }
   };
   return rig;

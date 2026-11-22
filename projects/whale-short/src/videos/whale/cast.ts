@@ -454,8 +454,9 @@ const crowd = (out: Stage, cam: CamInfo, f: number, t: number, mood: "cheer" | "
     }
     if (c.prop === "basket" && mood !== "panic") fo.prop = "basket";
     stand(out, cam, c.i, c.o, c.key, p, { ...fo, facing }, t);
-    if (c.prop === "umbrella" && (mood === "panic" || mood === "up") && d > 7) { // pops open over the head
-      const k = mood === "panic" ? easeOut((f - f0 + 2) / 5) : 0, ck = c.i % 4;
+    if (c.prop === "umbrella" && (mood === "panic" || mood === "up") && d > 7) { // pops open over the head (audio: @1035 / 1050 / 1053)
+      const fo2 = [1035, 1050, 1053, 1053][Math.floor((c.i - 100) / 11) % 4];
+      const k = mood === "panic" ? easeOut((f - fo2 + 2) / 5) : 0, ck = c.i % 4;
       item(out, `umb${q(k, 6)}|${ck}`, (pn) => fxUmbrella(pn, q(k, 6), UMB_COL[ck]), [p[0] + 0.25, p[1] + 2.0 + 0.25 * k, p[2] + 0.05], 1.3 + 0.5 * k, -0.15 * facing, 512);
     }
   }
@@ -513,18 +514,21 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
     case 4: { // the tug of war: five locals haul on the rope; it snaps, they tumble; the smell: noses pinched, a gull faints
       const snap = f >= EV.SNAP4, smell = f >= EV.SMELL4 - 2;
       for (let k = 0; k < 5; k++) {
-        const fall = snap ? easeOut((f - EV.SNAP4) / 9) : 0, q0 = ropeAt(3.0 + 1.05 * k + (1.3 + 0.15 * k) * fall);
+        // audio/cues.md: the tumbles land @376 / @380 / @384 (a 9-frame fall each)
+        const fs = [367, 367, 371, 375, 375][k], down = f >= fs;
+        const fall = down ? easeOut((f - fs) / 9) : 0, q0 = ropeAt(3.0 + 1.05 * k + (1.3 + 0.15 * k) * fall);
         const p = B(q0[0] + 0.25 * (k % 2 ? 1 : -1), q0[2]);
-        if (!snap) {
+        if (!down) {
           actor(out, cam, 50 + k, local70(k * 7 + 2), "l70_" + ((k * 7 + 2) % 48), p, [
             { f: 334, expr: "pained", lean: -12 - 2 * (k % 2), armF: "pull", armB: "pull" },
             { f: 350, expr: k % 2 ? "yell" : "pained", lean: -16 },
+            { f: EV.SNAP4, expr: "shock", lean: -22, armF: "up", armB: "up", dur: 3 },
           ], t, faceTo(cam, p, [W[0] - 7.6, 0, W[2]]), (fo) => ({ ...fo, tilt: -4 + 2 * Math.sin(f * 0.6 + k), lift: 0 }));
-        } else if (f < 386 + k * 2) {
+        } else if (f < fs + 18) {
           out.places.push(person(cam, { i: 50 + k, o: local70(k * 7 + 2), okey: "l70_" + ((k * 7 + 2) % 48) }, p[0], p[1], p[2], { side: false, mirror: false }, { mode: "fall", expr: k % 2 ? "shock" : "dazed", facing: 1, blink: 0 }, {}));
-          if (f - EV.SNAP4 < 18) puff(out, [p[0], p[1] + 0.3, p[2]], (f - EV.SNAP4) / FPS, 1.4, 0.6, k, SAND);
+          if (f - fs >= 8 && f - fs < 26) puff(out, [p[0], p[1] + 0.3, p[2]], (f - fs - 8) / FPS, 1.4, 0.6, k, SAND);
         } else sitter(out, cam, 50 + k, local70(k * 7 + 2), "l70_" + ((k * 7 + 2) % 48), p, [
-          { f: 386, expr: "dazed", headTilt: 8 },
+          { f: 384, expr: "dazed", headTilt: 8 },
           { f: EV.SMELL4, expr: "pained", armF: "pinch", headTilt: -6, shrug: 1, dur: 3 },
         ], t, 1, (fo) => ({ ...fo, armR: smell ? "pinch" : undefined }));
       }
@@ -533,14 +537,14 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
       // the gull on the post: sniffs, then faints off it backwards
       const Pt = S.POST4, top = beachY(Pt[0], Pt[2]) + 1.35, gs = 0.7;
       if (f < EV.SMELL4 + 2) gull(out, cam, 60, [Pt[0], top + 0.43 * gs, Pt[2]], { pose: "stand", size: gs, expr: f > 396 ? "lick" : "open", mirror: true }, t);
-      else { const u = clamp01((f - EV.SMELL4 - 2) / 10); gull(out, cam, 60, [Pt[0] + 0.7 * u, lerp(top + 0.43 * gs, beachY(Pt[0], Pt[2]) + 0.22, u * u), Pt[2] + 0.2 * u], { pose: "faint", size: gs, roll: -1.9 * easeOut(u), mirror: true }, t); }
+      else { const u = clamp01((f - EV.SMELL4 - 2) / 14); gull(out, cam, 60, [Pt[0] + 0.7 * u, lerp(top + 0.43 * gs, beachY(Pt[0], Pt[2]) + 0.22, u * u), Pt[2] + 0.2 * u], { pose: "faint", size: gs, roll: -1.9 * easeOut(u), mirror: true }, t); }
       break;
     }
     case 5: { // the orange truck pulls up; the crew hop out; the Engineer steps forward, confident
       const T5 = S.TRUCK5;
       if (f >= 436 && f < 452) puff(out, [T5[0] - 3, 0.6, T5[2] + 1.3], (f - 436) / FPS, 2.4, 0.55, 2, SAND);
       for (let k = 0; k < 3; k++) {
-        const h0 = 446 + 4 * k, u = clamp01((f - h0) / 8);
+        const h0 = [482, 488, 468][k], u = clamp01((f - h0) / 8);
         if (f < h0) continue;
         const x = T5[0] - 2.2 + 1.5 * k + 0.6 * u, z = T5[2] + 1.6 + 1.4 * u, jump = 0.5 * Math.sin(Math.PI * u);
         actor(out, cam, 70 + k, crew(k), "crew" + k, [x, jump + 0.3, z], [
@@ -568,7 +572,7 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
           { f: 566, expr: "grin", armF: "point" },
         ], t, 1, (fo) => ({ ...fo, prop: f < 566 ? "clipboard" : null }));
         if (f >= EV.BUBBLE6 - 2) {
-          const pop = easeOut((f - EV.BUBBLE6 + 2) / 5), k = q(smooth((f - EV.BUBBLE6 - 4) / 12), 12);
+          const pop = easeOut((f - EV.BUBBLE6 + 2) / 5), k = q(smooth((f - 560) / 12), 12);
           item(out, `thought${k}`, (pn) => { const g = pn.g; g.save(); g.translate(0, 40); g.scale(0.94, 0.94); fxThought(pn, k); g.restore(); }, [ep[0] + 0.55, ep[1] + 2.55, ep[2] - 0.5], 1.45 * pop, 0, 1024);
         }
       } else { // the crew stack crate after crate of dynamite against the whale
@@ -595,6 +599,7 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
           { f: 708, expr: "laugh", armF: "point", look: 1 },                  // "pieces"
           { f: 730, expr: "proud", armB: "hip" },
         ], t, 1, (fo) => ({ ...fo, expr: talk(t, 652 / FPS, 728 / FPS, fo.expr ?? "proud") }));
+        if (f >= 653) sparkle(out, [S.EASEL[0] - 0.2, beachY(S.EASEL[0], S.EASEL[2]) + 1.7, S.EASEL[2] + 0.3], f, 653, 0.6, 1.4); // easel tap @655
         [[1.9, 9.4], [1.0, 8.6]].forEach(([x, z], k) => actor(out, cam, 72 + k, crew(k), "crew" + k, B(x, z), [
           { f: 648, expr: "nervous", look: 1, gaze: 0.3 },
           { f: 710, expr: k ? "awe" : "smile_closed" },
@@ -663,8 +668,8 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
       }
       const bk = CROWD[9].p, bp: V3 = [bk[0] + 0.5, bk[1], bk[2] + 0.3];
       if (panic) { // the dropped basket, then a chunk lands right on it
-        if (f < 1046) item(out, "basketItem", basketItem, [bp[0], bp[1] + 0.22, bp[2]], 0.55, 0, 512);
-        fallChunk(out, bp, f, 1046, 0.9, 5, 16);
+        if (f < 1057) item(out, "basketItem", basketItem, [bp[0], bp[1] + 0.22, bp[2]], 0.55, 0, 512);
+        fallChunk(out, bp, f, 1057, 0.9, 5, 16);
       }
       break;
     }
@@ -685,6 +690,10 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
     }
     case 13: { // the lonely sedan; the smoke cloud small on the horizon; the chunk FLATTENS it
       for (let k = 0; k < 5; k++) bigCloud(out, [-275 + 12 * (k % 3), 14 + 16 * k, -390 - 8 * k], 34 + 8 * k, f, 1000 + k * 4, 12, k, k % 2 ? "#b8b0b2" : "#d8c8a8", 0.5);
+      if (f >= 1214) { // audio/cues.md hubcap_roll @1216
+        const u = clamp01((f - 1214) / 14), w = 0.4 * Math.sin(u * 14) * (1 - u);
+        item(out, "hubcap", hubcapItem, [1.8 + 2.6 * easeOut(u), 0.24 - 0.1 * u * u, 1.3 + 1.6 * easeOut(u)], 0.5, u * 9 + w, 256);
+      }
       if (f >= EV.CRUSH13) {
         const s = (f - EV.CRUSH13) / FPS;
         puff(out, [-1.6, 0.4, 1.6], s, 3.2, 0.8, 1, SAND); puff(out, [1.8, 0.4, 1.5], s, 3.0, 0.8, 2, SAND);
@@ -731,7 +740,7 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
           const g0 = Math.floor(f / 7) * 7, s = (f - g0) / FPS; // a shovelful of sand arcing onto the mound every 7 f
           puff(out, [x + (x < 0 ? 1 : -1) * 2.2 * s * 3, 1.4 + 2.5 * s - 6 * s * s, z - 1.2 * s * 3], s, 1.0, 0.24, g0 + k, SAND);
         });
-        if (f >= EV.MOUND15) sparkle(out, [0.7, 6.9, 0.4], f, EV.MOUND15, 1.4, 1.5);
+        if (f >= 1450) sparkle(out, [0.7, 6.9, 0.4], f, 1450, 1.4, 1.5);
       }
       break;
     }
@@ -741,7 +750,7 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
       const Sg = S.SIGN, top = 2.38, gs = 0.62, land = EV.LAND16, u = clamp01((f - (land - 18)) / 18);
       if (f < land) gull(out, cam, 230, [lerp(Sg[0] + 4.5, Sg[0] + 0.5, easeOut(u)), lerp(top + 3.2, top + 0.43 * gs, easeOut(u)), Sg[2] + 0.1], { pose: "fly", phase: flap(f, 0, 5), size: gs, mirror: true, roll: -0.15 * (1 - u) }, t);
       else gull(out, cam, 230, [Sg[0] + 0.5, top + 0.43 * gs - 0.02 * Math.exp(-(f - land) / 3), Sg[2] + 0.1],
-        { pose: f >= EV.WINK16 - 8 ? "wink" : "stand", size: gs, expr: f >= EV.WINK16 - 1 && f < EV.WINK16 + 14 ? "wink" : f >= EV.WINK16 - 8 ? "smug" : "open", mirror: true, look: f > land + 3 ? 1 : 0 }, t);
+        { pose: f >= EV.WINK16 - 8 ? "wink" : "stand", size: gs, expr: f >= EV.WINK16 - 1 && f < EV.WINK16 + 14 ? "wink" : f >= 1570 ? "happy" : f >= EV.WINK16 - 8 ? "smug" : "open", mirror: true, look: f > land + 3 ? 1 : 0 }, t);
       if (f >= EV.WINK16) sparkle(out, [Sg[0] + 0.85, top + 0.75, Sg[2] + 0.2], f, EV.WINK16, 0.5, 1.5);
       gull(out, cam, 231, [-4.6, 0.26, 4.4], { pose: "stand", size: 0.5, look: 0.5 }, t);
       break;
@@ -764,4 +773,11 @@ const basketItem = (p: Pen) => {
   p.poly([[150, 300], [450, 300], [430, 470], [170, 470]], "#c98e48", 12);
   for (const y of [350, 410]) p.stroke([[160, y], [440, y]], 6, "#8a5a2a");
   p.poly([[160, 300], [300, 260], [440, 300]], "#e2453c", 8);
+};
+/** a chrome hubcap seen face-on (it rolls away after the crush) */
+const hubcapItem = (p: Pen) => {
+  p.ell(300, 300, 200, 200, "#c9ced6", 16);
+  p.ell(300, 300, 130, 130, "#e6eaf0", 8);
+  for (let k = 0; k < 6; k++) { const a = (k / 6) * Math.PI * 2; p.stroke([[300 + 40 * Math.cos(a), 300 + 40 * Math.sin(a)], [300 + 120 * Math.cos(a), 300 + 120 * Math.sin(a)]], 10, "#8a9098"); }
+  p.ell(300, 300, 40, 40, "#8a9098", 8);
 };
