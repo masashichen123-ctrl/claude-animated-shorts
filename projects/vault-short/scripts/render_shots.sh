@@ -3,9 +3,9 @@
 # usage: scripts/render_shots.sh [shot numbers...]   (default: all missing)
 cd "$(dirname "$0")/.."
 export REMOTION_TMP=$PWD/.rtmp TMPDIR=$PWD/.rtmp
-R=(0 198 300 389 469 618 715 817 937 1072 1223 1301 1489 1570 1770)
+R=(0 183 330 455 522 695 775 935 1114 1241 1373 1430 1590)
 mkdir -p out/vault/final
-SHOTS=${@:-$(seq 1 14)}
+SHOTS=${@:-$(seq 1 12)}
 for s in $SHOTS; do
   o=out/vault/final/shot_$(printf %02d $s).mp4
   [ -z "$*" ] && [ -f "$o" ] && continue

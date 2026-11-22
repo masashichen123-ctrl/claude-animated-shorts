@@ -1,12 +1,12 @@
-# Every sound effect + ambience bed of "Chicago Lifts a Hotel" (1861) as a cue list locked to the picture (timeline.py),
-# rendered into one stereo SFX stem. Level convention (same as the marathon / emu / bat shorts): each EVENT has a "naive"
-# level (LU relative to the voice stem's integrated loudness, measured as the event's max momentary loudness) and is
-# placed SFX_DB under it, plus per-cue offsets; ambience BEDS are integrated loudness and not reduced.
-# Rule: an SFX under a spoken word stays >= 12 dB under the voice in the speech band (300-5000 Hz), is dark (low-passed),
-# or moves into a narration gap. So the hits that land on words here are built low and round (the frog plop, slurps, the
-# clunk, the bonk, the shovels, the creaks) or are tiny dry transients (ratchet clicks, board ticks, the tap), and the
-# bright or sustained details (the droplet ring, the schlorp pop, the tut, the gavel, the gasps, the gravel dump, the iron
-# ring, the whistle, the chime, the desk bell, the wink, the train whistle) sit inside measured gaps (timeline.py lists them).
+# Every sound effect + ambience bed of "The Time Lock" as a cue list locked to the picture (timeline.py), rendered into one stereo
+# SFX stem. Level convention (same as the earlier shorts): each EVENT has a "naive" level (LU relative to the voice stem's
+# integrated loudness, measured as the event's max momentary loudness) and is placed SFX_DB under it, plus per-cue offsets;
+# ambience BEDS are integrated loudness and not reduced.
+# Rule: an SFX under a spoken word stays >= 12 dB under the voice in the speech band (300-5000 Hz), is dark (low-passed), or
+# moves into a narration gap. So the hits that land on words here are built low and round (the vault-door groan below 330 Hz,
+# the cobble steps, the slipper flops, the bolt clunk, the dull pats, the clacks) or are tiny dry transients (ticks, clicks), and the
+# bright or sustained details (the crowbar clank, the gasp, the key jingle, the door's golden shimmer, the spark ping, the bell, the
+# snip, the slaps, the coin chinks, the wink 'ting') sit inside measured gaps (timeline.py lists them).
 import numpy as np
 from dsp import (SR, ns, tt, rng, dbg, lp, hp, bp, pan, st, place, fades, widen, make_ir, convolve_st,
                  momentary_max, integrated)
@@ -15,11 +15,14 @@ import sfx_emu as E
 import sfx_bat as B
 import sfx_marathon as M
 import sfx_chicago as C
+import sfx_vault as V
 import timeline as T
 
 N = ns(T.DUR)
 SFX_DB = -4.0                      # SFX are supportive; key hits get their level through `naive`
 fr = T.fr
+BEAT = 60.0 / T.BPM
+BED_BOOST = 5.0                    # ambience beds sit 32-38 LU under the voice's integrated loudness (subtle, but audible in the gaps)
 
 
 class Cue:
@@ -53,169 +56,189 @@ def _bed(dur, fin, fout, parts, env_pts=None):
 
 def cues():
     Cs = []
-    R = rng(1861)
+    R = rng(1874)
     rr = lambda: rng(int(R.integers(1 << 30)))
     add = Cs.append
     D = T.DUR
     f30 = lambda t: int(round(t * 30))
+    ev = lambda t, name, desc, fn, naive, **kw: add(Cue(t, name, desc, fn, naive, **kw))
 
     # ------------------------------------------------ ambience beds (integrated loudness vs the voice stem)
+    g1 = T.GRID0
+    g2 = fr(1430) + 0.02
     beds = [
-        (0.0, 6.75, "amb_street_hook", "Chicago street, bright day: a far crowd murmur, a breeze, sparrows, a far cart (shot 1)", [lambda d, r: C.street(d, r, 1.0, 12)], -37, None),
-        (3.30, 6.65, "groan_hook", "@100-198 the whole hotel creaking up on its jackscrews: a slow, deep timber + brick groan rising in rate and weight (dark, below ~1.1 kHz, under 'lifted a giant brick hotel into the air ... guests still inside')",
-         [lambda d, r: C.timber_groan(d, r)], -30, [(0, 0.0), (0.7, 0.55), (3.0, 1.0), (3.35, 0.7)]),
-        (3.25, 6.62, "cheer_hook", "@100-198 the workers cheer below (dark crowd cheer swelling as the hotel rises; under the narration, blooms in the flash gap)",
-         [lambda d, r: M.cheer(d, r, 18, 1.0, 1200)], -34, [(0, 0.0), (0.6, 0.6), (1.6, 1.0), (3.1, 1.0), (3.37, 0.8)]),
-        (6.55, 10.1, "amb_swamp", "swamp-edge streets, overcast: soft lake lapping, cattails hissing in a breeze, far frogs, flies (shot 2)", [lambda d, r: C.swamp(d, r, 1.0, 3)], -36, None),
-        (9.95, 13.0, "amb_mud", "the muddy street: sticky slop, flies, a faint far crowd (shot 3)", [lambda d, r: C.mud_street(d, r)], -38, None),
-        (10.85, 13.0, "puddle_bubbling", "@328 the puddle bubbling and burping (dark slow green bubbles; under 'sewage had nowhere to go')", [lambda d, r: C.puddle_bubbling(d, r)], -34, [(0, 0.0), (0.2, 1.0), (1.9, 1.0), (2.15, 0.0)]),
-        (12.92, 15.75, "amb_sickroom", "sickroom and street, overcast: dark room tone, a slow wall clock, a far murmur (shot 4)", [lambda d, r: C.sickroom(d, r)], -38, None),
-        (15.6, 20.75, "amb_council", "the council hall, warm interior: room tone, a murmuring council, creaking floorboards (shot 5)", [lambda d, r: C.council_hall(d, r)], -37, None),
-        (20.55, 23.95, "amb_dig", "the street being raised: a breeze, sparrows, workers murmuring, a far wagon (shot 6)", [lambda d, r: C.dig(d, r)], -38, None),
-        (23.78, 27.3, "amb_hotel_front", "the grand hotel front: a bright street, a carriage on cobbles (clip-clop + wheels), a far crowd (shot 7)",
-         [lambda d, r: C.street(d, r, 0.8, 8), lambda d, r: C.hooves(d, r, 2.0, 1.0, 0.7, -0.35)], -35, None),
-        (26.0, 27.3, "flag_hotel", "@788 the flag on the roof fluttering (dark, quiet)", [lambda d, r: pan(C.flag(d, r), 0.45) * 0.8], -41, [(0, 0.0), (0.5, 1.0), (1.3, 1.0)]),
-        (27.18, 31.3, "amb_office", "the contractors' office: quiet room tone, a wall clock, a pen scratching, a far street (shot 8)", [lambda d, r: C.office(d, r)], -38, None),
-        (31.18, 36.0, "amb_yard", "under the hotel, daylight: a breeze, a far street, flags, a far bird (shot 9)", [lambda d, r: C.yard(d, r)], -38, None),
-        (fr(T.MARCH), 35.9, "marching", "@1033 hundreds of workers march in and take their positions (a growing column of boots on packed earth, soft and dark)",
-         [lambda d, r: C.marching(d, r, 88 / 60, 26, 1.0, (0.2, 1.0))], -33, [(0, 0.5), (0.3, 0.8), (1.0, 1.0), (1.4, 0.9), (1.47, 0.0)]),
-        (35.9, 40.85, "amb_yard2", "the signal and the turns: a breeze, a hush over the yard, flags (shot 10)", [lambda d, r: C.yard(d, r, 0.8)], -39, None),
-        (40.7, 43.45, "amb_yard3", "hotel wide: breeze, far street (shot 11)", [lambda d, r: C.yard(d, r, 0.9)], -38, None),
-        (40.8, 43.4, "groan_wide", "@1223-1301 the whole hotel creaking slowly up, inch by inch (dark timber groan)",
-         [lambda d, r: C.timber_groan(d, r, 0.8)], -36, [(0, 0.0), (0.5, 0.8), (2.0, 1.0), (2.6, 0.0)]),
-        (43.3, 49.75, "amb_lobby", "hotel cutaway interior, warm: a lobby and dining-room murmur, a clock, cutlery tinks (shot 12)", [lambda d, r: C.lobby(d, r)], -37, None),
-        (43.35, 52.45, "lift_hum", "@1301-1570 the gentle hum of the whole building rising (low drones 54 / 82 / 108 Hz beating softly, a faint timber creak)",
-         [lambda d, r: C.lift_hum(d, r)], -34, [(0, 0.0), (0.6, 1.0), (6.3, 1.0), (7.5, 0.55), (9.1, 0.0)]),
-        (49.6, 52.45, "amb_window", "window close-up, bright day: a light breeze and a far street (shot 13)", [lambda d, r: C.street(d, r, 0.7, 5, 0.3, 0.6)], -39, None),
-        (52.28, 54.15, "amb_platform", "the platform at golden dusk: an idling steam engine (soft chuffs), a far station crowd, a breeze (shot 14a)", [lambda d, r: C.platform(d, r)], -36, None),
-        (fr(T.RAILS), D, "amb_sleeper", "@1619+ inside the sleeping car: rails clatter 'ta-dak ta-dak' soft and lulling at a slow 0.75 s cycle (the music rocks with it), a low carriage rumble, panels creaking",
-         [lambda d, r: C.sleeper_bed(d, r, 1.0, 0.75)], -33, [(0, 0.0), (0.35, 1.0), (3.5, 1.0), (5.0, 0.8)]),
+        (0.0, 12.25, "amb_night_town", "moonlit town at night: soft crickets, a faint breeze (shots 1-2, through the march)", [lambda d, r: V.night_town(d, r)], -38, [(0, 0.9), (6.1, 0.9), (6.5, 0.6), (11.0, 0.6), (12.2, 0.0)]),
+        (12.1, 17.5, "amb_vault_room", "bank interior by candlelight: a dark low room tone and a faint candle flicker (shots 3-4)", [lambda d, r: V.vault_room(d, r)], -39, None),
+        (17.3, 24.85, "amb_workshop", "Sargent's workshop, warm: room tone, gear whirs, tinkering clinks, a wall clock (shot 5-6)", [lambda d, r: V.workshop(d, r)], -37, [(0, 0.0), (0.5, 0.2), (1.3, 1.0)]),
+        (24.95, 31.25, "ticking_1", "@750-935 the steady clockwork ticking beneath, on the music's 96 bpm beat grid (tick / tock alternating, dark)",
+         [lambda d, r: V.clock_ticks(d, r, 0.0, BEAT, 1.0, 2400)], -37, [(0, 0.0), (0.12, 1.0), (6.2, 1.0), (6.3, 0.0)]),
+        (31.1, 37.2, "amb_prairie", "Morrison, Illinois, bright day: a dry prairie breeze, a far bird phrase, a slow cart, a faint town murmur (shot 8)", [lambda d, r: V.prairie(d, r)], -37, None),
+        (37.1, 45.2, "amb_night_vault", "the vault at night again: a dark room tone, a faint candle flicker, far crickets (shots 9-10)", [lambda d, r: V.vault_room(d, r), lambda d, r: V.night_town(d, r, 0.35)], -41, None),
+        (45.6, 47.72, "queue_murmur", "@1382-1403 the queue of bankers outside Sargent's shop: a low murmur and shuffling (dark)", [lambda d, r: V.murmur_queue(d, r)], -38, [(0, 0.0), (0.4, 1.0), (1.8, 1.0), (2.1, 0.5)]),
+        (45.1, 47.7, "amb_street_banks", "a bright street of banks: a breeze, a far cart (shot 11)", [lambda d, r: C.street(d, r, 0.6, 5, 0.3, 0.6)], -39, None),
+        (47.6, D, "hum_modern", "the modern vault: a low mains hum (60 / 120 Hz) and a faint air-handler hiss, calm and bright (shot 12)", [lambda d, r: V.modern_hum(d, r)], -38, [(0, 0.0), (0.4, 1.0), (4.0, 1.0), (5.3, 0.6)]),
+        (g2 - 0.02, T.WINK_T - 0.1, "ticking_2", "the guard clock's ticking under 'today, banks still use time locks', on the music's beat grid (tiny, dark)",
+         [lambda d, r: V.clock_ticks(d, r, 0.0, BEAT, 0.8, 2200)], -43, [(0, 0.0), (0.2, 1.0), (3.9, 1.0), (4.2, 0.0)]),
     ]
     for i, (a, b, name, desc, parts, lvl, env) in enumerate(beds):
         fo = 0.12 if b < D - 0.01 else 0.8
         fi = 0.4 if a == 0 else 0.1
         g = _bed(b - a, fi, fo, parts, env)
-        add(Cue(a, name, desc, (lambda g=g, sd=300 + i: g(sd)), lvl, "bed", send=0.0))
+        add(Cue(a, name, desc, (lambda g=g, sd=300 + i: g(sd)), lvl + BED_BOOST, "bed", send=0.0))
 
     # ------------------------------------------------ XF air swells
     for f in T.XF:
         add(Cue(fr(f), "xf_air", f"soft warm-air swell through the dissolve @{f}",
                 (lambda r=rr(): (G.whoosh(0.6, r, 0.3, 300, 1500, 0.9, 0.2, 0.06), 0.3)), -26, lpf=1800, send=0.15, frame=f))
 
-    # ------------------------------------------------ shot 1: the hook
-    add(Cue(T.FLASH_T, "flash_pff", "@196 the white FLASH: a soft muffled 'pfoomf' (sub + dark air), not a bang (in the gap after 'inside.' 6.59-7.23)",
-            lambda: (M.flash_pff(rng(196)), 0.0), -8, send=0.1, frame=T.FLASH))
+    # ------------------------------------------------ shot 1: the hook, the bedroom
+    ev(2.08, "owl", "a far owl hoots 'hoo, hoo-hooo' in the gap after '1860s,' (2.05-2.42)", lambda: (V.owl(rng(2)), 0.0), -15, p=-0.5, send=0.4, frame=f30(2.08))
+    ev(fr(T.CROWBAR), "crowbar_toss", "@126 the robber tosses the crowbar over his shoulder: a dark whoosh (under 'vaults')",
+       lambda: (V.crowbar_toss(rng(126)), 0.0), -20, p=0.2, send=0.1, frame=T.CROWBAR)
+    ev(T.CLANK_T, "crowbar_clank", "...and it clanks onto the cobbles and bounces: iron 'clank-ank-nk' in the gap after 'vaults.' (4.67-4.96)",
+       lambda: (V.crowbar_clank(rng(127)), 0.0), -1, p=0.35, send=0.08, frame=f30(T.CLANK_T))
+    ev(fr(T.TIPTOE[0]) + 0.28, "tiptoe_steps", "@126-150 the three robbers tiptoe off: soft-soled dark steps (they sit under the music's pizzicato motif)",
+       lambda: (V.tiptoe_steps(rng(128), 5, 0.3125), 0.0), -24, send=0.05, frame=f30(fr(T.TIPTOE[0]) + 0.28))
+    ev(fr(T.CUT_BED) + 0.02, "snore", "@150 the banker snores in his nightcap: a fluttering dark inhale and a whistly exhale (under 'They just kidnapped the banker')",
+       lambda: (M.snore(rng(150), 0.55, 0.3, 330), 0.0), -22, p=-0.2, send=0.06, frame=T.CUT_BED)
+    add(Cue(5.02, "candle_flame", "@150-172 a candle flame flutters over the bed (a faint dark flicker, tiny crackles)", (lambda: (V.candle(0.95, rng(129)), 0.0)), -35, "bed", send=0.0, frame=T.CUT_BED))
+    ev(fr(T.GASP) + 0.0, "gasp_dark", "@172 the banker's eyes pop: a tiny dark intake on the frame (under 'banker.')",
+       lambda: (lp(C.gasp(rng(172), 1), 600, 2), 0.0), -26, p=-0.1, send=0.05, frame=T.GASP)
+    ev(T.GASP_T, "gasp", "...and the full startled 'hh-aah!' gasp in the gap after 'banker.' (6.12-6.77)",
+       lambda: (C.gasp(rng(173), 2), 0.0), -3, p=0.0, send=0.15, frame=f30(T.GASP_T))
+    ev(T.FLASH_T, "flash_pff", "@183 the white FLASH: a soft muffled 'pfoomf' (sub + dark air), not a bang, at the very start of the gap (6.12-6.77)",
+       lambda: (M.flash_pff(rng(183)), 0.0), -2, send=0.1, frame=T.FLASH)
 
-    # ------------------------------------------------ shot 2: swamp, frog, mud
-    add(Cue(fr(T.FROG), "frog_plop", "@250 a frog plops from the puddle: a soft dark 'bloop' (below 900 Hz, under 'swamp')",
-            lambda: (C.frog_plop(rng(250)), 0.0), -17, p=-0.3, send=0.1, frame=T.FROG))
-    add(Cue(T.FROG_RING, "droplets", "...and its three tiny droplet 'plip's in the gap after 'swamp.' (8.73-9.04)",
-            lambda: (C.droplet_ring(rng(251)), 0.0), -17, p=-0.3, send=0.25, frame=f30(T.FROG_RING)))
-    for k, (tm, sz, pp) in enumerate(((9.36, 1.0, -0.4), (9.72, 0.8, 0.35), (10.0, 1.2, -0.1))):
-        add(Cue(tm, "mud_slurp", f"the street is a river of mud: a sticky wet suction 'shlupp' ({k + 1}/3, dark, under 'streets were rivers')",
-                (lambda r=rr(), sz=sz: (C.mud_slurp(r, sz, 800), 0.0)), -18, p=pp, send=0.06, frame=f30(tm)))
-    add(Cue(T.SCHLORP, "boot_schlorp", "@303 the man loses his boot: a long wet suction + the bright 'schlorp' pop lands in the gap after 'mud,' (10.43-10.73)",
-            lambda: (C.schlorp(rng(303)), 0.42), -9, p=0.3, send=0.1, frame=f30(T.SCHLORP)))
+    # ------------------------------------------------ shot 2: the plan, the scoop, the march
+    ev(6.40, "plan_unroll", "@205 a robber unrolls the plan on the bedpost: a crackly paper curl (starts in the gap 6.12-6.77, its end flops flat on the frame, dark)",
+       lambda: (lp(C.paper_unroll(rng(205), 0.45), 3500, 1), 0.0), -15, p=0.25, send=0.1, frame=T.PLAN)
+    ev(T.SCOOP_T, "scoop_whoosh", "@239 they scoop the banker up: a cloth-and-arms whoosh in the gap before 'Grab' (7.66-7.97)",
+       lambda: (G.whoosh(0.27, rng(239), 0.4, 300, 1600, 0.9, 0.15, 0.1), 0.0), -7, p=-0.1, send=0.1, frame=f30(T.SCOOP_T))
+    for k, (tm, sz, pp) in enumerate(((fr(T.SCOOP) + 0.02, 1.0, -0.4), (fr(T.SCOOP) + 0.34, 0.7, 0.3))):
+        ev(tm, "slipper_flop", f"@239 the banker's slippers dangle and flop ({k + 1}/2: a soft dark 'fwp', under 'Grab the manager')",
+           (lambda r=rr(), sz=sz: (M.flop_thud(r, sz, 600), 0.0)), -23, p=pp, send=0.06, frame=f30(tm))
+    ev(fr(T.MARCH[0]), "march_cobbles", "@275-330 the night march on cobbles: two robbers' boots on every beat of the 96 bpm grid, the banker's slippers flopping on the off-beats (dark, in step with the music)",
+       lambda: (V.march_cobbles(fr(T.MARCH[1]) - fr(T.MARCH[0]) + 0.1, rng(275), BEAT), 0.0), -27, send=0.06, frame=T.MARCH[0])
 
-    # ------------------------------------------------ shot 3: the puddle, the dog
-    for k, tm in enumerate((10.98, 11.55, 12.05)):
-        add(Cue(tm, "puddle_burp", f"a green burp-bubble pops in the puddle ({k + 1}/3, dark)",
-                (lambda r=rr(): (C.burp(r), 0.0)), -17, p=[0.2, -0.3, 0.1][k], send=0.1, frame=f30(tm)))
-    add(Cue(T.SNORT_T, "dog_snort", "@358 the passing dog holds its nose and snorts 'pfft-pfft' (gap after 'go.' 12.26-12.66)",
-            lambda: (C.dog_snort(rng(358)), 0.0), -13, p=0.35, send=0.08, frame=f30(T.SNORT_T)))
+    # ------------------------------------------------ shot 3: the vault
+    ev(11.80, "vault_creak_gap", "@365 the vault door's upper creak (a metal hinge squeal) in the gap before 'Steel' (11.73-12.18), cut off before the word",
+       lambda: (V.creak_bright(0.36, rng(365)), 0.0), -7, p=0.0, send=0.2, frame=f30(11.80))
+    add(Cue(11.80, "vault_groan", "@365-374 the huge vault door groans: a very deep, slow creak (below ~330 Hz, a sub swell) under 'Steel vault' and the pull-back",
+            (lambda: (V.vault_groan(2.9, rng(366), 330), 0.0)), -1, "event", send=0.05, extra=-4.0, frame=T.VAULT[0]))
+    ev(T.KEYJ[0] / 30 + 0.22, "key_jingle", "@438 the banker's key on its string jangles: bright little metal clinks in the gap after 'key,' (14.79-15.23)",
+       lambda: (V.key_jingle(rng(438), 0.45), 0.0), -2, p=0.3, send=0.2, frame=f30(T.KEYJ[0] / 30 + 0.22))
+    ev(15.42, "key_tremble", "@462 the trembling key, heard dark (small clinks low-passed at 1.6 kHz, under 'scared')",
+       lambda: (lp(V.key_jingle(rng(440), 0.5, 0.8), 1600, 2), 0.0), -26, lpf=1600, p=0.3, send=0.1, frame=f30(15.42))
+    for k, (tm, pp) in enumerate(((15.45, -0.2), (15.62, 0.2), (15.85, -0.2), (16.02, 0.2))):
+        ev(tm, "knee_knock", f"@462 his knees knock ({k + 1}/4, a dark dull 'tup', under 'scared banker')", (lambda r=rr(): (V.knee_knock(r), 0.0)), -22, p=pp, send=0.05, frame=f30(tm))
 
-    # ------------------------------------------------ shot 4: the sick
-    add(Cue(13.0, "sneeze_soft", "@389 a green-faced townsman sneezes 'ah-ah-choo' (muffled, dark: it sits under 'Diseases like cholera')",
-            lambda: (C.sneeze(rng(389)), 0.0), -15, lpf=700, p=-0.5, send=0.1, frame=389))
-    add(Cue(13.62, "cough_soft", "a 'COUGH' puff, muffled and dark (under 'kept breaking')",
-            lambda: (M.cough(rng(405), 2, 125), 0.0), -15, lpf=700, p=0.45, send=0.1, frame=f30(13.62)))
-    add(Cue(13.95, "thermo_tink", "a thermometer tinks on a cup (tiny, bright, sparse)",
-            lambda: (C.thermo_tink(rng(414)), 0.0), -20, p=0.5, send=0.2, frame=f30(13.95)))
-    add(Cue(T.TUT_T, "doctor_tut", "@427 the doctor shakes his head: a dry 'tsk, tsk' (in the gap after 'out,' 14.55-14.96)",
-            lambda: (C.tut(rng(427)), 0.0), -11, p=-0.15, send=0.08, frame=T.TUT))
-    add(Cue(T.SNEEZE_T + 0.06, "cough_last", "one last small cough from the back of the row (same gap, soft)",
-            lambda: (M.cough(rng(428), 1, 130), 0.0), -17, lpf=2500, p=0.5, send=0.1, frame=f30(T.SNEEZE_T + 0.06)))
+    # ------------------------------------------------ shot 4: the wheel, the door
+    ev(fr(T.WHEEL) - 0.02, "wheel_turn", "@484 he turns the big spoked wheel: a slow iron ratchet 'krk ... krk' (dark, under 'open')",
+       lambda: (V.wheel_turn(0.62, rng(484), 6.5, 650), 0.0), -18, send=0.06, frame=T.WHEEL)
+    add(Cue(fr(T.DOOR) - 0.05, "door_creak", "@493 the vault door swings open with a deep creak (dark, below ~380 Hz, a sub swell; under 'open anything')",
+            (lambda: (V.vault_groan(1.7, rng(493), 380), 0.0)), -3, "event", send=0.05, extra=-4.0, frame=T.DOOR))
+    ev(T.OPEN_T - 0.04, "door_creak_tail", "...its hinge squeal rings out in the gap after 'anything.' (16.90-17.49)",
+       lambda: (V.creak_bright(0.45, rng(494)), 0.0), -7, p=0.0, send=0.25, frame=f30(T.OPEN_T))
+    ev(T.OPEN_T, "golden_shimmer", "@493 golden light spills over the robbers: a soft airy swell with shimmering high partials in the gap after 'anything.'",
+       lambda: (V.golden_shimmer(rng(495), 0.45), 0.0), -2, p=0.0, send=0.3, frame=f30(T.OPEN_T))
 
-    # ------------------------------------------------ shot 5: the council
-    add(Cue(T.GAVEL_T, "gavel", "@496 the mayor bangs the gavel: a crisp dry 'tok' + the oak table (in the gap after 'decision,' 16.55-16.86; the frame is 16.53)",
-            lambda: (C.gavel(rng(496)), 0.0), -7, p=0.0, send=0.15, frame=T.GAVEL))
-    add(Cue(T.GASP_T, "council_gasp", "@541-585 the councilmen gasp 'ooooh' at the easel picture (gap after 'feet,' 18.35-18.66)",
-            lambda: (C.gasp(rng(541), 5), 0.0), -12, p=0.0, send=0.15, frame=f30(T.GASP_T)))
-    add(Cue(fr(555), "gasp_soft", "@555 a murmuring 'ooh' under 'build the sewers' (dark, quiet)",
-            lambda: (C.gasp(rng(555), 3), 0.0), -18, lpf=700, p=-0.2, send=0.1, frame=555))
-    add(Cue(T.GASP2_T, "council_gasp2", "...and a second, smaller 'oooh' after 'underneath.' (gap 20.09-20.69)",
-            lambda: (C.gasp(rng(585), 4), 0.0), -15, p=0.15, send=0.15, frame=f30(T.GASP2_T)))
+    # ------------------------------------------------ shot 5: the workshop
+    ev(fr(T.SPARK) + 0.0, "pre_spark", "@594 the idea lights up: a tiny dark 'pip' on the frame (under 'clever')",
+       lambda: (V.pre_spark(rng(594)), 0.0), -26, p=0.0, send=0.05, frame=T.SPARK)
+    ev(T.SPARK_T, "spark_ping", "...and its bright 'ting' with a rising sparkle in the gap after 'idea.' (20.50-20.84)",
+       lambda: (V.spark_ping(rng(595)), 0.0), -3, p=0.15, send=0.25, frame=f30(T.SPARK_T))
+    ev(fr(T.SCRIBBLE[0]) + 0.0, "pencil", "@625-658 he scribbles on the blueprint: a soft pencil scratching in strokes (quiet, dull, under 'Build a lock that even the banker')",
+       lambda: (V.pencil(1.5, rng(625), 6.5), 0.0), -37, p=0.2, send=0.05, frame=T.SCRIBBLE[0])
+    ev(22.50, "pencil_x", "@676 two quick pencil strokes cross the banker's face out (tiny)",
+       lambda: (V.pencil(0.22, rng(676), 12.0), 0.0), -33, p=0.2, send=0.05, frame=f30(22.50))
+    ev(fr(T.SCREW) - 0.02, "screwdriver", "@722 a screwdriver pries a clock open: a tiny metal creak and a woody 'pop' (dark, under 'parts')",
+       lambda: (V.screwdriver_pop(rng(722)), 0.0), -25, p=-0.2, send=0.08, frame=T.SCREW)
+    ev(fr(T.SCREW) + 0.17, "springs", "@722 clock springs and gears spill and bounce over the bench: soft low 'boing' coils (300-900 Hz) and tiny clinks (under 'parts from two kitchen clocks')",
+       lambda: (lp(V.springs(rng(723), 12, 1.5), 1100, 1), 0.0), -28, p=0.0, send=0.1, frame=f30(fr(T.SCREW) + 0.17))
+    ev(T.CLATTER_T, "springs_last", "...the last coils roll off the bench in the gap after 'clocks.' (25.51-25.94)",
+       lambda: (V.springs(rng(724), 4, 0.5), 0.0), -22, p=0.4, send=0.15, frame=f30(T.CLATTER_T))
+    ev(fr(T.ASSEMBLE[0]), "assemble", "@742-750 Sargent fits the gears together: tiny dry clicks climbing in pitch and a soft 'chk' (under 'kitchen')",
+       lambda: (V.assemble_clicks(rng(742), 7, 0.25), 0.0), -25, p=0.1, send=0.05, frame=T.ASSEMBLE[0])
 
-    # ------------------------------------------------ shot 6: the street dig, the bonk
-    for k, (tm, pp) in enumerate(((fr(623) + 0.05, -0.4), (21.12, 0.3), (21.4, -0.2))):
-        add(Cue(tm, "shovel", f"@623-650 a shovel bites into earth and scrapes ({k + 1}/3; dark, under 'streets were easy')",
-                (lambda r=rr(): (C.shovel(r), 0.0)), -17, p=pp, send=0.06, frame=f30(tm)))
-    add(Cue(T.GRAVEL_T, "gravel_dump", "@650 the wagon dumps its load: a pouring rush, tumbling stones, a deep thump (gap after 'easy,' 21.71-22.01; the frame is 21.67)",
-            lambda: (C.gravel_dump(rng(650)), 0.0), -12, p=0.2, send=0.08, frame=T.SHOVEL[1]))
-    add(Cue(fr(T.BONK), "head_bonk", "@685 the man bonks his head on the low window: a hollow wooden 'bonk' (dark, under 'go up')",
-            lambda: (C.bonk(rng(685)), 0.0), -12, p=-0.2, send=0.08, frame=T.BONK))
-    add(Cue(T.BONK_STARS, "bonk_stars", "...and the little wobbling 'bwoi-oi-oing' of seeing stars in the gap after 'too.' (23.46-23.86)",
-            lambda: (C.bonk_stars(rng(686)), 0.0), -14, p=-0.2, send=0.2, frame=f30(T.BONK_STARS)))
+    # ------------------------------------------------ shot 7: the lock mechanism
+    ev(fr(T.BOLT), "bolt_click", "@798 a clock arm locks the bolt: a short steel 'ka-chk' (dark, on 'bolt')",
+       lambda: (V.bolt_click(rng(798)), 0.0), -22, p=0.0, send=0.08, frame=T.BOLT)
+    ev(27.30, "wheel_try1", "@840 the banker's hand strains the wheel (the first try): a slow iron ratchet starting in the gap after 'locked,' (27.28-27.59)",
+       lambda: (V.wheel_turn(0.25, rng(840), 7.0, 800), 0.0), -17, send=0.06, frame=f30(27.30))
+    ev(fr(T.FAIL1), "clack1", "@840 the wheel stops dead: a firm steel 'clack' (dark, on 'release')",
+       lambda: (V.lock_clack(rng(841)), 0.0), -24, p=0.0, send=0.08, frame=T.FAIL1)
+    ev(fr(T.FAIL1) + 0.07, "rattle1", "...and a tiny shake of the stuck mechanism (dull, quiet)",
+       lambda: (V.tiny_rattle(rng(842)), 0.0), -26, lpf=1500, p=0.2, send=0.05, frame=f30(fr(T.FAIL1) + 0.07))
+    ev(29.28, "wheel_try2", "@887 the second try: the ratchet strains again in the gap after 'hour,' (29.26-29.59)",
+       lambda: (V.wheel_turn(0.22, rng(887), 8.0, 800), 0.0), -17, send=0.06, frame=f30(29.28))
+    ev(fr(T.FAIL2) - 0.05, "clack2", "@887 the second 'clack' (the wheel stopping dead, in the last frames of the gap before 'no matter')",
+       lambda: (V.lock_clack(rng(888), 0.9), 0.0), -21, p=0.0, send=0.08, frame=T.FAIL2)
+    ev(fr(T.FAIL2) + 0.03, "rattle2", "...and another tiny rattle (dull, quiet, under 'no matter')",
+       lambda: (V.tiny_rattle(rng(889)), 0.0), -26, lpf=1500, p=-0.2, send=0.05, frame=f30(fr(T.FAIL2) + 0.03))
+    ev(T.SIGH_T, "sigh", "@910 the banker sighs, defeated: a breathy falling 'haaah' in the gap after 'asking.' (30.76-31.20)",
+       lambda: (M.sigh(rng(910), 0.38, 105), 0.0), -8, p=-0.2, send=0.12, frame=f30(T.SIGH_T))
 
-    # ------------------------------------------------ shot 7-8: the hotel, the office
-    add(Cue(fr(T.HOTEL[0]) + 0.1, "doorman", "@715 a carriage pulls up at the hotel: a leather-and-brass jingle of harness (dark, quiet)",
-            lambda: (lp(G.rattle(0.8, rng(716), 20, np.exp(-tt(0.8) / 0.3), True), 2200, 1), 0.0), -26, p=-0.4, send=0.1, frame=T.HOTEL[0]))
-    add(Cue(26.80, "blueprint_unroll", "@823 Pullman unrolls the blueprint on the table: a crackly paper curl, its end flopping flat on the frame (starts in the gap 26.77-27.17)",
-            lambda: (C.paper_unroll(rng(823), 0.62), 0.0), -14, p=0.25, send=0.1, frame=T.BLUEPRINT))
-    for k, (tm, a) in enumerate(((29.70, 0.8), (29.91, 0.9), (30.12, 1.0), (30.32, 0.9))):
-        add(Cue(tm, "handshake", f"@890-912 the partners shake hands in a chain ({k + 1}/4): a firm 'pap' of palms + cloth",
-                (lambda r=rr(), a=a: (C.hand_pat(r) * a, 0.0)), -16, p=-0.5 + 0.35 * k, send=0.08, frame=f30(tm)))
+    # ------------------------------------------------ shot 8: Morrison
+    ev(T.BELL_T, "far_bell", "a far church bell tolls in the gap after '1874,' (33.00-33.37) (Morrison)",
+       lambda: (V.far_bell(rng(933), 0.5, 392.0, 0.3), 0.0), -10, p=0.5, send=0.4, frame=f30(T.BELL_T))
+    ev(32.45, "horse", "a horse nickers somewhere on the main street (soft, dark, under the held '1874,')",
+       lambda: (V.horse(rng(934), 0.9), 0.0), -25, lpf=1400, p=-0.5, send=0.15, frame=f30(32.45))
+    ev(fr(T.BOLTON), "bolting_clunk", "@1034 Sargent bolts the great door on: a heavy iron 'THUNK' and a wrench ratchet (dark, on 'vault')",
+       lambda: (V.bolting_clunk(rng(1034)), 0.0), -15, p=0.0, send=0.08, frame=T.BOLTON)
+    ev(fr(T.PAT), "door_pat", "@1040 he pats it proudly: a dull 'pomp' on cold steel (dark, on 'door')",
+       lambda: (V.hand_pat_dark(rng(1040)), 0.0), -19, p=0.1, send=0.08, frame=T.PAT)
+    ev(T.SNIP_T, "ribbon_snip", "@1087 the ribbon is snipped: a bright steel 'snik' in the micro-gap 36.09-36.22 before 'Illinois' (and a soft cloth fall)",
+       lambda: (V.ribbon_snip(rng(1087)), 0.0), -3, p=0.2, send=0.2, frame=T.SNIP)
+    ev(36.70, "far_bell2", "...and the town bell answers in the gap after 'Illinois.' (36.62-37.08)",
+       lambda: (V.far_bell(rng(1088), 0.4, 440.0, 0.3), 0.0), -12, p=0.5, send=0.4, frame=f30(36.70))
+    ev(36.75, "horse2", "...and the horse whinnies back (the same gap, soft)",
+       lambda: (V.horse(rng(1089), 0.32), 0.0), -17, lpf=1800, p=-0.5, send=0.15, frame=f30(36.80))
 
-    # ------------------------------------------------ shot 9: the jackscrews
-    add(Cue(fr(T.CLUNK), "jackscrew_clunk", "@974 the worker sets the big iron jackscrew under the beam: a heavy low 'CLUNK' (dark; on 'jackscrews')",
-            lambda: (C.iron_clunk(rng(974)), 0.0), -10, p=0.0, send=0.08, frame=T.CLUNK))
-    add(Cue(T.RING_T, "iron_ring", "...and the iron ringing on a moment, bright, in the gap after 'building,' (33.65-34.00)",
-            lambda: (C.iron_ring(rng(975)), 0.0), -18, p=0.15, send=0.2, frame=f30(T.RING_T)))
+    # ------------------------------------------------ shot 9: the night return
+    ev(fr(T.MARCH2[0]), "march_cobbles2", "@1126-1151 the robbers march the nightshirted banker again on cobbles (dark, on the beat grid, under 'kidnapping no longer worked')",
+       lambda: (V.march_cobbles(fr(T.MARCH2[1]) - fr(T.MARCH2[0]) + 0.1, rng(1126), BEAT), 0.0), -27, send=0.06, frame=T.MARCH2[0])
+    ev(38.82, "wheel_try3", "@1172 the banker turns the new wheel: a short ratchet strain in the gap before 'Unluckily' (38.76-39.07)",
+       lambda: (V.wheel_turn(0.15, rng(1172), 8.0, 800), 0.0), -17, send=0.06, frame=f30(38.82))
+    ev(38.97, "clack3", "@1172 the wheel does not move: a steel 'clack' (the last 80 ms of the gap before 'Unluckily')",
+       lambda: (V.lock_clack(rng(1173), 0.9), 0.0), -21, p=0.0, send=0.08, frame=T.FAIL3)
+    ev(T.PALM_T - 0.025, "face_palm", "@1210 the robbers face-palm: three quick 'pap's staggered across the micro-gap before 'neither' (40.16-40.30)",
+       lambda: (V.palm_slap(rng(1210), 1.0), 0.0), -5, p=-0.5, send=0.1, frame=T.PALM)
+    ev(T.PALM_T + 0.02, "face_palm2", "...second robber", lambda: (V.palm_slap(rng(1211), 0.9), 0.0), -5, p=0.0, send=0.1, frame=T.PALM)
+    ev(T.PALM_T + 0.05, "face_palm3", "...third robber", lambda: (V.palm_slap(rng(1212), 0.9), 0.0), -5, p=0.5, send=0.1, frame=T.PALM)
+    ev(fr(T.PALM), "face_palm_dull", "...and a dull 'pomp' of palm on the frame (dark, quiet, on 'neither')",
+       lambda: (V.palm_dull(rng(1213)), 0.0), -24, p=0.0, send=0.05, frame=T.PALM)
 
-    # ------------------------------------------------ shot 10: the signal
-    add(Cue(T.WHISTLE_T, "whistle", "@1079 the foreman blows his pea whistle: a short 'tweeet' (in the narrow gap after 'signal,' 36.29-36.52; the frame is 35.97)",
-            lambda: (C.pea_whistle(rng(1079), 2900.0, 0.23), 0.0), -9, p=-0.3, send=0.15, frame=T.WHISTLE))
-    ripples = [(fr(T.CLICKS[0]), 12, 0.40, "@1130-1142"), (fr(T.CLICK2), 11, 0.36, "@1168"), (fr(T.CLICK3), 11, 0.36, "@1194")]
-    for k, (tm, kk, sp, lab) in enumerate(ripples):
-        add(Cue(tm, "ratchet_ripple", f"{lab} the ripple of ratchet 'clicks' running down the line ({k + 1}/3: tiny dry transients)",
-                (lambda r=rr(), kk=kk, sp=sp: (C.ratchet(r, kk, sp, 2200), 0.0)), [-12, -11, -10][k], send=0.1, frame=f30(tm)))
-        add(Cue(tm + 0.05, "timber_creak", f"...each with a small timber creak as the beam takes the turn ({k + 1}/3, dark)",
-                (lambda r=rr(): (C.timber_creak(r, 0.55), 0.0)), [-17, -16, -15][k], p=0.0, send=0.08, frame=f30(tm + 0.05)))
+    # ------------------------------------------------ shot 10: the waiting
+    ev(fr(T.FIST), "fist_shake", "@1260 a robber shakes his fist at the banker: a cloth swish (dark, on 'threaten')",
+       lambda: (V.fist_shake(rng(1260), 0.5), 0.0), -24, p=-0.3, send=0.06, frame=T.FIST)
+    ev(42.58, "rope_tie", "@1283 they tie him to the chair: a fibrous rope rustle starting in the gap after 'him,' (42.57-42.84) and a final tug 'thup' under 'tie him up'",
+       lambda: (V.rope_tie(0.55, rng(1283)), 0.0), -19, p=0.3, send=0.06, frame=T.ROPE)
+    ev(43.40, "knit", "@1303 the knitting needles click (tiny, dull, under 'and wait')",
+       lambda: (V.knit_clicks(0.25, rng(1303), 6.0), 0.0), -31, lpf=2500, p=0.4, send=0.05, frame=T.LAPSE[0])
+    ev(43.79, "card_shuffle", "@1303-1325 the card players shuffle (a bright riffle) in the gap after 'wait.' (43.68-44.05)",
+       lambda: (V.card_shuffle(rng(1304), 0.3), 0.0), -8, p=-0.4, send=0.1, frame=f30(43.79))
+    ev(43.86, "bird_chirp", "...and a bird chirps from its nest on a robber's head (the same gap)",
+       lambda: (V.bird_chip(rng(1305)), 0.0), -11, p=0.4, send=0.2, frame=f30(43.86))
+    for k, tm in enumerate(T.acc_times()):
+        ev(tm, "lapse_tick", f"@1303-1325 the accelerating ticks of the time-lapse ({k + 1}/{len(T.acc_times())}: tiny, dark, the first on 'wait', the rest under 'The clock did')",
+           (lambda r=rr(): (lp(B.tick(r, False, 0.9), 2200, 2), 0.0)), -33, p=0.2 * (1 if k % 2 else -1), send=0.05, frame=f30(tm))
+    ev(fr(T.SMUG), "smug_tick", "@1342 the clock's tiny smug 'tick' (one dark wooden tick on 'care')",
+       lambda: (V.smug_tick(rng(1342), 0.9), 0.0), -26, send=0.05, frame=T.SMUG)
+    ev(T.SMUG_T2, "smug_tick2", "...and a second, even smugger tick in the gap after 'care.' (45.08-45.66)",
+       lambda: (V.smug_tick(rng(1343), 1.0, True), 0.0), -8, p=0.1, send=0.2, frame=f30(T.SMUG_T2))
 
-    # ------------------------------------------------ shot 11: the rising board
-    for k, f in enumerate(T.TICKS):
-        add(Cue(fr(f), "board_tick", f"@{f} the board flag clicks up one mark (a dry wooden 'tok', tiny)",
-                (lambda r=rr(): (C.board_tick(r), 0.0)), [-13, -12, -11][k], p=0.4, send=0.1, frame=f))
-    add(Cue(T.CHIME_T, "fanfare_chime", "@1276 the flag tops six marks: a little three-note fanfare chime (G C E + sparkle) in the gap after 'six feet,' (42.88-43.46)",
-            lambda: (C.chime_fanfare(rng(1276)), 0.0), -9, p=0.2, send=0.25, frame=f30(T.CHIME_T)))
+    # ------------------------------------------------ shot 11: the queue
+    for k, tm in enumerate((fr(1383), fr(1392), fr(1401))):
+        ev(tm, "coin_bag", f"@1382-1403 a banker plonks a heavy coin bag down ({k + 1}/3: dark thump, under 'every bank wanted one')",
+           (lambda r=rr(): (V.coin_bag_thump(r, 1.0), 0.0)), -28, p=[-0.4, 0.2, 0.5][k], send=0.06, frame=f30(tm))
+    ev(T.COIN_T, "coin_chinks", "...the coins chink in their bags in the gap after 'one.' (47.12-47.70)",
+       lambda: (V.coin_chinks(rng(1403), 0.45), 0.0), -5, p=0.3, send=0.2, frame=f30(T.COIN_T))
 
-    # ------------------------------------------------ shot 12: the hotel keeps open
-    add(Cue(fr(T.SIGN), "sign_flip", "@1309 the bellhop flips the little key sign: a wooden 'clack-clack' + a settling jingle",
-            lambda: (C.sign_flip(rng(1309)), 0.0), -17, lpf=3200, p=-0.3, send=0.1, frame=T.SIGN))
-    add(Cue(fr(T.SOUP), "soup_slurp", "@1360 the diner slurps his soup (a soft 'shlrp', dark; under 'Guests kept')",
-            lambda: (C.soup_slurp(rng(1360)), 0.0), -16, p=0.3, send=0.08, frame=T.SOUP))
-    add(Cue(fr(T.SNORE), "snore", "@1385 the sleeper snores in his nightcap: a fluttering dark inhale (under 'sleeping')",
-            lambda: (M.snore(rng(1385), 0.55, 0.0, 480), 0.0), -15, p=-0.2, send=0.06, frame=T.SNORE))
-    add(Cue(46.72, "snore_out", "...and the whistly exhale (dark, quiet, under 'checking in')",
-            lambda: (M.snore(rng(1386), 0.01, 0.3, 500), 0.0), -25, p=-0.2, send=0.06, frame=f30(46.72)))
-    add(Cue(T.DING_T, "desk_bell", "@1409 the clerk rings the desk bell: one bright 'ding' (in the gap after 'in,' 47.21-47.56; the frame is 46.97)",
-            lambda: (C.desk_bell(rng(1409)), 0.0), -12, p=0.3, send=0.2, frame=T.BELL))
-
-    # ------------------------------------------------ shot 13: the window
-    add(Cue(fr(T.TAP), "glass_tap", "@1526 the inspector taps the glass with a knuckle: a small dry 'tok' + a glassy ring (tiny, on 'window')",
-            lambda: (C.glass_tap(rng(1526)), 0.0), -14, p=0.1, send=0.1, frame=T.TAP))
-    add(Cue(T.WINK_T, "wink_ting", "@1550 the inspector winks: a small bright 'ting' on A7 (gap after 'broke.' 51.59-52.18)",
-            lambda: (M.wink_ting(rng(1550)), 0.0), -9, p=0.25, send=0.25, frame=T.WINK))
-
-    # ------------------------------------------------ shot 14: the railway
-    add(Cue(fr(T.STEAM), "steam_hiss", "@1588 the locomotive lets off steam beside rich Pullman: a soft dark 'pssshh' (below ~1.8 kHz, under 'rich')",
-            lambda: (C.steam_hiss(1.7, rng(1588), 1.0, 1700), 0.0), -15, p=-0.2, send=0.1, frame=T.STEAM))
-    add(Cue(fr(T.COIN), "coin_spin", "@1596 a gold coin spins on the platform: a bright quickening ring + a rattle as it settles (under 'building')",
-            lambda: (C.coin_spin(rng(1596)), 0.0), -17, p=0.35, send=0.2, frame=T.COIN))
-    add(Cue(fr(T.SNORE2), "snore2", "@1676 push in on a sleeper: a soft, slow snore (dark)",
-            lambda: (M.snore(rng(1676), 0.6, 0.12, 450), 0.0), -17, p=0.3, send=0.06, frame=T.SNORE2))
-    add(Cue(T.TWHISTLE_T, "train_whistle", "@1727 a soft far train whistle at the very end (after 'them.' 57.89; the frame is 57.57)",
-            lambda: (C.train_whistle(rng(1727), 1.07), 0.0), -12, p=0.1, send=0.3, frame=T.TRAIN_WHISTLE))
+    # ------------------------------------------------ shot 12: the modern vault
+    ev(fr(T.STEPS) + 0.02, "guard_steps", "@1504 the guard clock marches up on its stiff little legs: tiny hard 'tik' steps (dark-ish, under 'security guard')",
+       lambda: (V.guard_steps(rng(1504), 4, BEAT / 2), 0.0), -30, send=0.05, frame=T.STEPS)
+    ev(T.WINK_T, "wink_ting", "@1551 the guard clock winks: a small bright 'ting' on A7 (frame 51.70; in the gap right after 'clock.' 51.94-)",
+       lambda: (M.wink_ting(rng(1551)), 0.0), 0, p=0.25, send=0.25, frame=T.WINK)
     return Cs
 
 

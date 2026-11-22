@@ -422,3 +422,62 @@ export const fieldHD = () => ctex("fieldHD", 1024, 256, (g, r) => {
   for (let i = 0; i < 16; i++) { g.fillStyle = jit(r, cols[i % 6], 0.06, 3, 0.1); g.fillRect(i * 64, 0, 64, 256); }
   for (let i = 0; i < 120; i++) { const x = U(r, 0, 1024); g.strokeStyle = "rgba(90,70,20,0.25)"; g.lineWidth = 2; g.beginPath(); g.moveTo(x, 0); g.lineTo(x + U(r, -4, 4), 256); g.stroke(); }
 });
+
+// =================================================================================================================
+// THE TIME LOCK painters: brushed steel, cut stone blocks, white vault tiles, a patchwork quilt, dials (no digits)
+// =================================================================================================================
+/** brushed steel plate (512 px = 1 m): long horizontal streaks, a soft sheen, tiny scratches; light bluish grey */
+export const steelHD = (base = "#8a95a6") => ctex("steelHD" + base, 512, 512, (g, r) => {
+  g.fillStyle = base; g.fillRect(0, 0, 512, 512);
+  const lg = g.createLinearGradient(0, 0, 512, 512);
+  lg.addColorStop(0, "rgba(255,255,255,0.16)"); lg.addColorStop(0.5, "rgba(255,255,255,0)"); lg.addColorStop(1, "rgba(20,30,50,0.16)");
+  g.fillStyle = lg; g.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 260; i++) { const y = U(r, 0, 512), x = U(r, 0, 512), l = U(r, 60, 320), lt = r() > 0.5; g.strokeStyle = lt ? "rgba(255,255,255,0.10)" : "rgba(20,30,50,0.10)"; g.lineWidth = U(r, 1, 3); g.beginPath(); g.moveTo(x, y); g.lineTo(x + l, y + U(r, -1.5, 1.5)); g.stroke(); if (x + l > 512) { g.beginPath(); g.moveTo(x - 512, y); g.lineTo(x - 512 + l, y); g.stroke(); } }
+  for (let i = 0; i < 14; i++) { const x = U(r, 0, 512), y = U(r, 0, 512); g.strokeStyle = "rgba(255,255,255,0.22)"; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x, y); g.lineTo(x + U(r, -50, 50), y + U(r, -50, 50)); g.stroke(); }
+  octaves(g, r, 512, 512, 512, "235,240,250", "30,40,60", 0.7);
+});
+/** large cut stone blocks (512 px = 2 m): 3 courses of 2 blocks, joints as dark tints, chips and a soft wash */
+export const stoneBlockHD = (base = "#a9a291") => ctex("stoneBlockHD" + base, 512, 512, (g, r) => {
+  g.fillStyle = "#4a4640"; g.fillRect(0, 0, 512, 512);
+  const rows = 4, bh = 512 / rows;
+  for (let row = 0; row < rows; row++) {
+    const off = (row % 2) * 128;
+    for (let c = -1; c < 3; c++) {
+      const x = c * 256 + off + 3, y = row * bh + 3;
+      g.fillStyle = jit(r, base, 0.09, 4, 0.12); rr(g, x, y, 250, bh - 6, 8); g.fill();
+      const lg = g.createLinearGradient(0, y, 0, y + bh); lg.addColorStop(0, "rgba(255,255,255,0.14)"); lg.addColorStop(1, "rgba(30,25,20,0.14)"); g.fillStyle = lg; rr(g, x, y, 250, bh - 6, 8); g.fill();
+    }
+  }
+  octaves(g, r, 512, 512, 256, "255,250,235", "50,45,40", 0.9);
+});
+/** white glossy vault tiles (512 px = 2 m, 4 x 4) with pale blue-grey grout */
+export const tileHD = (a = "#f2f5f8", b = "#d6dee8") => ctex("tileHD" + a + b, 512, 512, (g, r) => {
+  g.fillStyle = "#9aa8ba"; g.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { g.fillStyle = jit(r, (i + j) % 2 ? b : a, 0.03, 1, 0.05); rr(g, i * 128 + 3, j * 128 + 3, 122, 122, 4); g.fill(); const lg = g.createLinearGradient(i * 128, j * 128, i * 128 + 128, j * 128 + 128); lg.addColorStop(0, "rgba(255,255,255,0.35)"); lg.addColorStop(0.5, "rgba(255,255,255,0)"); lg.addColorStop(1, "rgba(120,140,170,0.14)"); g.fillStyle = lg; rr(g, i * 128 + 3, j * 128 + 3, 122, 122, 4); g.fill(); }
+  octaves(g, r, 512, 512, 512, "255,255,255", "90,110,140", 0.35);
+});
+/** a patchwork quilt (512 px = 1 m): coloured squares with stitched seams */
+export const quiltHD = (a = "#c8403a", b = "#f1e4c4", c = "#3a6ab0") => ctex("quiltHD" + a + b + c, 512, 512, (g, r) => {
+  const n = 6, s = 512 / n;
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { g.fillStyle = jit(r, [a, b, c][(i * 2 + j * 3) % 3], 0.05, 2, 0.08); g.fillRect(i * s, j * s, s, s); if ((i + j) % 2 === 0) { g.fillStyle = "rgba(255,255,255,0.35)"; g.beginPath(); g.moveTo(i * s + s / 2, j * s + 8); g.lineTo(i * s + s - 8, j * s + s / 2); g.lineTo(i * s + s / 2, j * s + s - 8); g.lineTo(i * s + 8, j * s + s / 2); g.closePath(); g.fill(); } }
+  g.strokeStyle = "rgba(255,248,230,0.7)"; g.setLineDash([8, 7]); g.lineWidth = 2.4;
+  for (let k = 0; k <= n; k++) { g.beginPath(); g.moveTo(k * s, 0); g.lineTo(k * s, 512); g.moveTo(0, k * s); g.lineTo(512, k * s); g.stroke(); }
+  g.setLineDash([]);
+  octaves(g, r, 512, 512, 512, "255,240,220", "40,20,30", 0.4);
+});
+/** a clock dial (512 x 512): cream face, a dark ring, 12 tick marks (long every quarter), NO digits; optional red set mark */
+export const dialHD = (face = "#f6efdc", mark = false, ring = "#2a2230") => ctex("dialHD" + face + mark + ring, 512, 512, (g) => {
+  g.fillStyle = ring; g.beginPath(); g.arc(256, 256, 256, 0, 7); g.fill();
+  g.fillStyle = face; g.beginPath(); g.arc(256, 256, 240, 0, 7); g.fill();
+  const lg = g.createRadialGradient(210, 200, 20, 256, 256, 250); lg.addColorStop(0, "rgba(255,255,255,0.35)"); lg.addColorStop(1, "rgba(120,90,50,0.22)"); g.fillStyle = lg; g.beginPath(); g.arc(256, 256, 240, 0, 7); g.fill();
+  g.strokeStyle = ring; g.lineCap = "round";
+  for (let k = 0; k < 60; k++) { const a = (k / 60) * Math.PI * 2, big = k % 15 === 0, mid = k % 5 === 0, r0 = big ? 170 : mid ? 188 : 210, r1 = 228; g.lineWidth = big ? 18 : mid ? 11 : 4; g.beginPath(); g.moveTo(256 + r0 * Math.sin(a), 256 - r0 * Math.cos(a)); g.lineTo(256 + r1 * Math.sin(a), 256 - r1 * Math.cos(a)); g.stroke(); }
+  if (mark) { g.fillStyle = "#d8282e"; g.beginPath(); const a = Math.PI * 0.62; g.moveTo(256 + 226 * Math.sin(a), 256 - 226 * Math.cos(a)); g.arc(256 + 196 * Math.sin(a), 256 - 196 * Math.cos(a), 26, 0, 7); g.fill(); }
+});
+/** warm brown leather / dark walnut for benches and counters (512 px = 1 m) */
+export const walnutHD = (base = "#6a4228") => ctex("walnutHD" + base, 512, 512, (g, r) => {
+  g.fillStyle = base; g.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 40; i++) grain(g, r, 512, U(r, 0, 512), U(r, 0, 512), U(r, 120, 400), 4, 2.4, "rgba(30,12,0,0.28)");
+  for (let i = 0; i < 18; i++) grain(g, r, 512, U(r, 0, 512), U(r, 0, 512), U(r, 100, 300), 3, 2, "rgba(255,210,150,0.14)");
+  octaves(g, r, 512, 512, 256, "255,200,150", "20,8,0", 0.6);
+});

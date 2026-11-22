@@ -1,16 +1,14 @@
 // Our cast as lit flat sprites in the 3D world (owner: characters, with toon.ts / cardshade.ts). Each frame every
 // character asks for a drawing (a key + a draw call); the pool keeps one canvas per distinct drawing. People are
-// yaw-only billboards shaded by cardShade() (scene tint, bright floor, side gradient toward the sun, painted crescent in
-// the drawing); standing ones get a soft multiply contact blob. DOGS and items (flying boaters, the medal, Z bubbles)
-// are lit square billboard cards. Effects (dust clouds, the pistol puff, heat shimmer, the blazing sun, confetti,
-// steam, stink lines, sparkles, the water drop) are unlit cards; glow > 1 blooms. Cards, effects and blobs live on the
-// NOINK layer so the world ink pass never outlines their quads. Runners ride in the 1904 cars from story.ts carsAt.
+// yaw-only billboards shaded by cardShade() (scene tint, bright floor, side gradient toward the key, painted crescent in
+// the drawing); standing ones get a soft multiply contact blob. Items (the plan, the blueprint, the crowbar, money bags) are
+// lit square billboard cards. Effects (puffs, sparkles, the idea spark, candle flames, light spill, zzz) are unlit cards;
+// glow > 1 blooms. Cards, effects and blobs live on the NOINK layer so the world ink pass never outlines their quads.
 // CONTRACT with world.ts: stage(id, t, cam) -> { places, fx, lights }; Pool / Actor / Fx draw them.
 import * as THREE from "three";
 import {
   Pen, bodyFront, bodySide, fxContact, fxShadow, fxSmoke, fxDustCloud, fxSparkle, fxSpeed, fxBurst, fxDust,
-  Outfit, Expr, FrontOpts, SideOpts, ArmPose, ArmSpec, fxPoof, fxStink, fxStars,
-  fxZ, fxHeat, fxSun, fxConfetti, fxBoater, fxDrop, fxSteam, fxMedal, dogDraw, DogOpts, fxFlame, fxMist, fxFrog, fxBubble, fxMud, fxCough, fxSwirl, fxCoin, horseDraw,
+  Outfit, Expr, FrontOpts, SideOpts, ArmPose, ArmSpec, fxPoof, fxStars, fxZ, fxSteam, fxFlame, fxConfetti,
 } from "./toon";
 import { FPS, SHOTS, V3, Light, smooth, clamp01, easeOut, lerp, EV, setOf } from "./story";
 import { NOINK } from "./ink";
@@ -211,13 +209,13 @@ export const person = (cam: CamInfo, who: Who, x: number, y: number, z: number, 
  *  stretched AWAY from the sun, length ~1.6 m / tan(sun elevation), capped. Golden: world.ts casts real card shadows. */
 // charshade.md 3.4: core ~.62-.70 on screen, near-neutral (B/R <= 1.12), ~0.6-0.8 body width, soft edge
 // keyed by string so new light presets ("morning", "gallery") work; an unknown key falls back to day
-const CONTACT: Record<string, [number, number, number]> = { day: [0.62, 0.6, 0.66], overcast: [0.6, 0.6, 0.66], warm: [0.6, 0.58, 0.64], interior: [0.6, 0.58, 0.64], golden: [0.56, 0.5, 0.66] };
+const CONTACT: Record<string, [number, number, number]> = { day: [0.62, 0.6, 0.66], night: [0.5, 0.54, 0.7], candle: [0.46, 0.5, 0.66], interior: [0.6, 0.58, 0.64], modern: [0.66, 0.68, 0.76] };
 const TAIL: [number, number, number] = [0.72, 0.7, 0.78];
 const toSrgb = (v: number) => { const c = clamp01(v); return c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055; };
 export const hexOf = (c: [number, number, number], k: number) => "#" + c.map((v) => Math.round(255 * toSrgb(1 - (1 - v) * k)).toString(16).padStart(2, "0")).join("");
 export const blob = (out: Stage, x: number, y: number, z: number, sc = 1, k = 1) => {
   const hl = Math.hypot(SUN.x, SUN.z) || 1, ox = -SUN.x / hl, oz = -SUN.z / hl, rot = Math.atan2(-ox, -oz);
-  if (LNAME === "day" || LNAME === "overcast" || LNAME === "warm") {
+  if (LNAME === "day") {
     const el = Math.asin(Math.min(0.99, Math.max(0.1, SUN.y)));
     const len = Math.min(2.4, Math.max(0.5, 1.6 / Math.tan(el))) * sc, h = len + 0.55 * sc, c = 0.3 * h; // feet at v = .2 of the card
     const tc = hexOf(TAIL, k);
@@ -231,7 +229,7 @@ export const blob = (out: Stage, x: number, y: number, z: number, sc = 1, k = 1)
 
 // ---------------- staging helpers ----------------
 /** a practical light this frame (fire glow, the bulb, the POOF flash): world.ts feeds them to its point lights */
-export type Glow = { p: V3; I: number; col: string; d?: number };
+export type Glow = { p: V3; I: number; col: string; d?: number; halo?: number };
 export type Stage = { places: Place[]; fx: FxPlace[]; lights: Glow[] };
 /** frame-steady expression switch: before ts (seconds, minus the reaction lead) a, after b */
 export const at = <T,>(t: number, ts: number, a: T, b: T) => (t < ts - LEAD ? a : b);
@@ -348,17 +346,6 @@ export const item = (out: Stage, key: string, draw: (p: Pen) => void, p: V3, siz
 /** an unlit effect card */
 export const fxc = (out: Stage, key: string, cw: number, ch: number, draw: (p: Pen) => void, c: V3, w: number, h: number, o: { soft?: boolean; glow?: number; rot?: number; flat?: boolean } = {}) =>
   out.fx.push({ key, cw, ch, draw, x: c[0], y: c[1], z: c[2], w, h, ...o });
-/** a scrappy dog: a square card of `size` m whose paws stand on ground point g; dx = travel direction (screen side) */
-const DOG_COL: [string, string][] = [["#c8945a", "#f2e2c4"], ["#3a3436", "#f4f0ea"], ["#8a5a34", "#4a2e20"]];
-export const dog = (out: Stage, cam: CamInfo, k: number, g: V3, dir: V3, f: number, bark: boolean, size = 1.05) => {
-  const d = cam.pos.distanceTo(_cp.set(g[0], g[1] + 0.4, g[2])), px = (size / Math.max(0.05, d)) * 1900 * 1.33;
-  const cw = px > 700 ? 1024 : px > 330 ? 512 : 256;
-  const mirror = dir[0] * cam.right.x + dir[2] * cam.right.z < 0, ph = q(((f / 9 + k * 0.37) % 1 + 1) % 1, 8);
-  const o: DogOpts = { phase: ph, bark, col: DOG_COL[k % 3][0], patch: DOG_COL[k % 3][1] };
-  const hop = 0.06 * Math.abs(Math.sin(ph * Math.PI * 2));
-  out.places.push({ key: `D|${fkey(o)}`, draw: (pn) => dogDraw(pn, o), x: g[0], y: g[1] + 0.29 * size + hop, z: g[2], scale: size, sq: true, billboard: true, mirror, size: [cw, cw, cw / 600] });
-  blob(out, g[0], g[1], g[2], 0.9);
-};
 /** a big dust / smoke cloud lobe: grows over 0.3 s from f0, lives `life` s, rises */
 export const bigCloud = (out: Stage, c: V3, size: number, f: number, f0: number, life: number, seed: number, tint: string, rise = 0, drift: V3 = [0, 0, 0]) => {
   const s = (f - f0) / FPS;
@@ -372,10 +359,6 @@ export const poof = (out: Stage, c: V3, size: number, f: number, f0: number, lif
   if (u < 0 || u >= 1) return;
   const k = q(u, 16);
   fxc(out, `poof${k}`, 400, 400, (p) => fxPoof(p, k), c, size, size, { glow: 1.3 });
-};
-export const stink = (out: Stage, c: V3, size: number, f: number, seed = 0) => {
-  const k = q(((f / 20 + seed * 0.37) % 1 + 1) % 1, 10);
-  fxc(out, `stink${k}`, 300, 400, (p) => fxStink(p, k), [c[0], c[1] + size * 0.6, c[2]], size * 0.75, size);
 };
 export const steam = (out: Stage, c: V3, size: number, f: number) => {
   const k = q((f / 24) % 1, 12);
@@ -393,18 +376,11 @@ export const zzz = (out: Stage, c: V3, f: number, f0: number, size = 0.5) => {
     item(out, "zzz", fxZ, [c[0] + 0.35 * u + 0.08 * Math.sin(u * 7), c[1] + 1.1 * u, c[2]], size * (0.45 + 0.75 * Math.min(1, u * 2.5)) * (u > 0.85 ? (1 - u) / 0.15 : 1), 0.15 * Math.sin(u * 5), 512);
   }
 };
-/** heat shimmer: soft wavy bands over the road at distance d ahead of the lens */
-export const heat = (out: Stage, cam: CamInfo, f: number, cs: V3[], w = 9) => {
-  const ph = q((f / 20) % 1, 10);
-  cs.forEach((c, k) => fxc(out, `heat${q((ph + k * 0.3) % 1, 10)}`, 600, 300, (p) => fxHeat(p, (ph + k * 0.3) % 1), c, w, w * 0.22, { soft: true }));
-  void cam;
-};
-
 // ---------------- people helpers ----------------
 export const W_ = (i: number, o: Outfit, okey: string): Who => ({ i, o, okey });
 export type { Who };
 export type { Beat as BeatT };
-void bodySide; void fxSpeed; void fxBurst; void fxDust; void fxSmoke; void fxHeat; void fxSun; void fxConfetti; void fxBoater; void fxDrop; void fxMedal; void dogDraw; void easeOut; void lerp; void smooth;
-export { fxMist, fxFlame, fxFrog, fxBubble, fxMud, fxCough, fxSwirl, fxCoin, horseDraw, fxSteam, fxStink, fxStars, fxZ, fxSparkle, fxPoof, fxDustCloud, fxBurst };
-export type { DogOpts, Expr, FrontOpts, ArmSpec, ArmPose, Outfit };
+void bodySide; void fxSpeed; void fxBurst; void fxDust; void fxSmoke; void fxConfetti; void easeOut; void lerp; void smooth;
+export { fxFlame, fxSteam, fxStars, fxZ, fxSparkle, fxPoof, fxDustCloud, fxBurst };
+export type { Expr, FrontOpts, ArmSpec, ArmPose, Outfit };
 export { SHOTS, setOf, EV, clamp01, FPS };

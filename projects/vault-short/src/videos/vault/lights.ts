@@ -1,13 +1,17 @@
-// Light presets per time of day. The sun is CAMERA-RELATIVE and frozen per shot (world.ts update()):
+// Light presets of "The Time Lock". The key (sun / moon) is CAMERA-RELATIVE and frozen per shot or per sun key (world.ts update()):
 // az = degrees from the shot camera's forward axis (0 = sun straight ahead = backlight, +90 = screen right,
 // 180 = behind camera), el = elevation. lit/shade/lift are LINEAR RGB multipliers for shade.ts (may exceed 1).
 // Look values from the missile / bridge / emu / bat look passes (look_reports/lighting.md, grade.md, depth.md): warm lit
 // side, low-chroma cool shade, albedo floor, sun cookie, corner AO, exponential key-tinted haze, painted sky with sun glow.
-// The marathon short (lead's rule: real colour separation, deep blue sky top -> pale horizon, white clouds):
-//   1-14 "day": St. Louis, 30 Aug 1904, a HOT 90-degree day: warm key from behind the lens' shoulder, warm dusty haze
-//   15   "spring": Boston 1905, a fresh spring day, a touch cooler and greener
+// The vault short's mood arc (lead's rules: real colour separation, deep navy night with a warm moon, warm candle / lamp
+// glow as the hero accent, cool rim on the cards; day scenes with a deep blue sky):
+//   night    the moonlit 1870s street: silver-blue key, navy sky, cream moon + stars, warm lamp windows, cool card rim
+//   candle   night interiors (bedroom, the bank hall): moonlight through tall windows, warm candle practicals as the hero
+//   interior Sargent's workshop: warm window key + lamps
+//   day      Morrison, Illinois (1874) and the street of banks: bright, deep blue sky, warm key
+//   modern   the gleaming modern vault: bright cool-white light, chrome
 import type { Light } from "./story";
-import { SHOTS } from "./story";
+import { SHOTS, lightAt } from "./story";
 type C3 = [number, number, number];
 /** every preset name (story.ts `Light` plus the ones this file adds; see SHOT_LIGHT) */
 export type LightName = Light;
@@ -43,8 +47,8 @@ const H = (col: string, start: number, len: number, h: number, max: number, sat 
 export const LIGHTS: Record<LightName, LightPreset> = {
   day: {
     // warm key (lit neutrals hue 60-85 deg), low-chroma blue-violet shade, from behind the camera's right shoulder
-    az: 122, el: 50,
-    lit: [1.46, 1.27, 0.96], shade: [0.3, 0.29, 0.37], lift: [0.04, 0.045, 0.075], lambert: 0.35, sideK: 0.84, term: 0.2,
+    az: 122, el: 48,
+    lit: [1.46, 1.27, 0.96], shade: [0.3, 0.29, 0.38], lift: [0.04, 0.045, 0.08], lambert: 0.35, sideK: 0.84, term: 0.2,
     charTint: [1.0, 0.95, 0.88], charShade: 0.86, charGrad: 0.07, bodyGrad: 0.2, sideTint: [0.92, 0.90, 0.96],
     blob: [0.62, 0.58, 0.6], actorShadow: false,
     top: "#3e7fd2", hor: "#dfe8ee", skyCurve: [0.0, 0.5, 0.6], fog: "#d9e4ec", fogNear: 25, fogFar: 300, sunDisc: "#000000",
@@ -54,80 +58,87 @@ export const LIGHTS: Record<LightName, LightPreset> = {
     bloomI: 0.7, bloomR: 0.65, softM: 0.16,
     haze: H("#e4e4dc", 60, 260, 60, 0.55), glowCol: "#fff2d0", glowK: 0.26,
   },
-  overcast: {
-    // the swamp town: soft grey-blue overcast with blue breaks; low contrast, cool lit side, cool shade
-    az: 122, el: 56,
-    lit: [1.26, 1.2, 1.08], shade: [0.42, 0.42, 0.5], lift: [0.05, 0.055, 0.085], lambert: 0.3, sideK: 0.88, term: 0.3,
-    charTint: [0.98, 0.96, 0.94], charShade: 0.9, charGrad: 0.05, bodyGrad: 0.16, sideTint: [0.92, 0.92, 0.98],
-    blob: [0.66, 0.64, 0.7], actorShadow: false,
-    top: "#4a7cc0", hor: "#cfd8de", skyCurve: [0.0, 0.5, 0.6], fog: "#c9d3d8", fogNear: 20, fogFar: 260, sunDisc: "#000000",
-    sunCol: "#f0f2f4", sunI: 2.2, sky: "#d4e0ee", ground: "#8a7a5a", hemiI: 0.5,
-    bias: -0.00025, normalBias: 0.015,
-    albFloor: [0.035, 0.035, 0.045], gobo: 0.5, goboScale: 7, rim: [0, 0, 0], ao: 0.12, aoR: 0.8, prac: 1, pracCol: "#ffb048",
-    bloomI: 0.6, bloomR: 0.65, softM: 0.3,
-    haze: H("#cfd8da", 25, 150, 40, 0.7), glowCol: "#eef2f4", glowK: 0.12,
+  night: {
+    // moonlight: cool silver-blue key, deep blue shade (coloured, never black), a cool card rim; the moon is a warm cream disc
+    az: 125, el: 34,
+    lit: [0.86, 0.92, 1.08], shade: [0.1, 0.13, 0.28], lift: [0.03, 0.045, 0.12], lambert: 0.35, sideK: 0.86, term: 0.14,
+    charTint: [0.8, 0.88, 1.0], charShade: 0.84, charGrad: 0.1, bodyGrad: 0.26, sideTint: [0.8, 0.86, 1.0],
+    blob: [0.55, 0.62, 0.82], actorShadow: true,
+    top: "#0a1640", hor: "#34508c", skyCurve: [0.05, 0.6, 1.0], fog: "#243a70", fogNear: 40, fogFar: 380, sunDisc: "#f6ecc8",
+    sunCol: "#bcd4ff", sunI: 2.6, sky: "#4a6aa8", ground: "#2a2c4c", hemiI: 0.45,
+    bias: -0.0005, normalBias: 0.03,
+    albFloor: [0.04, 0.05, 0.09], gobo: 0, goboScale: 9, rim: [0.16, 0.22, 0.42], ao: 0.08, aoR: 0.7, prac: 2.4, pracCol: "#ffb060",
+    bloomI: 0.95, bloomR: 0.7, softM: 0.3,
+    haze: H("#1e3064", 40, 240, 50, 0.5), glowCol: "#8a9ac8", glowK: 0.3,
+    moon: 4.2, cardGain: 0.9, cardRim: [0.42, 0.62, 1.15], cardRimK: 1,
+  },
+  candle: {
+    // a night interior: cool moonlight through tall windows (blue pools on the floor), deep indigo shade, warm candle practicals
+    az: 118, el: 40,
+    lit: [0.78, 0.9, 1.15], shade: [0.11, 0.13, 0.27], lift: [0.04, 0.05, 0.12], lambert: 0.4, sideK: 0.88, term: 0.16,
+    charTint: [0.86, 0.9, 1.0], charShade: 0.86, charGrad: 0.1, bodyGrad: 0.24, sideTint: [0.82, 0.86, 1.0],
+    blob: [0.56, 0.6, 0.78], actorShadow: true,
+    top: "#10163a", hor: "#10163a", skyCurve: [0, 0.5, 0.6], fog: "#1a2048", fogNear: 40, fogFar: 300, sunDisc: "#000000",
+    sunCol: "#b8d0ff", sunI: 2.9, sky: "#5a6aa8", ground: "#2e2848", hemiI: 0.42,
+    bias: -0.0004, normalBias: 0.02,
+    albFloor: [0.045, 0.05, 0.095], gobo: 0, goboScale: 4, rim: [0.12, 0.16, 0.34], ao: 0.2, aoR: 0.8, prac: 3.0, pracCol: "#ffb860",
+    bloomI: 0.95, bloomR: 0.7, softM: 0.08,
+    haze: H("#1a2048", 30, 200, 40, 0), glowCol: "#8a9ac8", glowK: 0, bg: "#10163a",
+    cardGain: 0.92, cardRim: [0.5, 0.64, 1.1], cardRimK: 1,
   },
   interior: {
-    // warm hall / office: a sunny window key from screen right, lamps, warm walls, cool-grey shade (not brown)
+    // warm workshop: a golden window key from screen right, lamps, warm walls, cool blue-violet shade (not brown)
     az: 118, el: 38,
-    lit: [1.5, 1.24, 0.9], shade: [0.27, 0.25, 0.33], lift: [0.04, 0.04, 0.07], lambert: 0.4, sideK: 0.86, term: 0.25,
+    lit: [1.5, 1.24, 0.9], shade: [0.26, 0.26, 0.38], lift: [0.04, 0.045, 0.085], lambert: 0.4, sideK: 0.86, term: 0.25,
     charTint: [1.0, 0.92, 0.82], charShade: 0.88, charGrad: 0.08, bodyGrad: 0.22, sideTint: [0.88, 0.88, 0.98],
     blob: [0.6, 0.58, 0.64], actorShadow: true,
     top: "#3a2a24", hor: "#3a2a24", skyCurve: [0, 0.5, 0.6], fog: "#4a3a34", fogNear: 40, fogFar: 300, sunDisc: "#000000",
-    sunCol: "#ffe2b8", sunI: 2.6, sky: "#f0d8b8", ground: "#6a4a3a", hemiI: 0.5,
+    sunCol: "#ffd9a0", sunI: 2.7, sky: "#f0d8b8", ground: "#6a4a3a", hemiI: 0.45,
     bias: -0.0004, normalBias: 0.012,
-    albFloor: [0.035, 0.03, 0.035], gobo: 0, goboScale: 4, rim: [0, 0, 0], ao: 0.22, aoR: 0.8, prac: 1.6, pracCol: "#ffc878",
-    bloomI: 0.75, bloomR: 0.65, softM: 0.06,
+    albFloor: [0.035, 0.03, 0.04], gobo: 0, goboScale: 4, rim: [0, 0, 0], ao: 0.22, aoR: 0.8, prac: 1.8, pracCol: "#ffc070",
+    bloomI: 0.8, bloomR: 0.65, softM: 0.06,
     haze: H("#5a4438", 30, 200, 40, 0), glowCol: "#ffe0b0", glowK: 0, bg: "#2e221e",
   },
-  warm: {
-    // the cutaway dollhouse in the street: a bright warm key from the front (the rooms are open to the lens), blue sky
-    az: 128, el: 44,
-    lit: [1.5, 1.3, 0.98], shade: [0.34, 0.32, 0.4], lift: [0.05, 0.05, 0.08], lambert: 0.3, sideK: 0.86, term: 0.22,
-    charTint: [1.0, 0.94, 0.84], charShade: 0.88, charGrad: 0.06, bodyGrad: 0.18, sideTint: [0.92, 0.9, 0.98],
-    blob: [0.64, 0.6, 0.62], actorShadow: false,
-    top: "#3e7fd2", hor: "#dfe8ee", skyCurve: [0.0, 0.5, 0.6], fog: "#d9e4ec", fogNear: 25, fogFar: 300, sunDisc: "#000000",
-    sunCol: "#fff3e0", sunI: 2.8, sky: "#dcecff", ground: "#c9a070", hemiI: 0.45,
-    bias: -0.00025, normalBias: 0.015,
-    albFloor: [0.04, 0.035, 0.045], gobo: 0, goboScale: 6, rim: [0, 0, 0], ao: 0.14, aoR: 0.7, prac: 1.4, pracCol: "#ffc070",
-    bloomI: 0.75, bloomR: 0.65, softM: 0.16,
-    haze: H("#e4e4dc", 60, 260, 60, 0.5), glowCol: "#fff2d0", glowK: 0.2,
-  },
-  golden: {
-    // golden dusk: low amber key from behind the train, peach haze, BLUE shade (no rose), warm rim on the cards
-    az: 30, el: 9,
-    lit: [1.7, 1.2, 0.68], shade: [0.2, 0.25, 0.42], lift: [0.03, 0.06, 0.12], lambert: 0.35, sideK: 0.82, term: 0.08,
-    charTint: [1.0, 0.84, 0.66], charShade: 0.86, charGrad: 0.1, bodyGrad: 0.25, sideTint: [0.8, 0.84, 1.0],
-    blob: [0.7, 0.74, 0.92], actorShadow: true,
-    top: "#3d5ca0", hor: "#ffc46e", skyCurve: [0.05, 0.6, 1.0], fog: "#f2b882", fogNear: 40, fogFar: 380, sunDisc: "#ffd49a",
-    sunCol: "#ffab5e", sunI: 5.5, sky: "#a8b4d0", ground: "#7a6050", hemiI: 0.5,
-    bias: -0.0006, normalBias: 0.03,
-    albFloor: [0.03, 0.03, 0.05], gobo: 0, goboScale: 9, rim: [1.0, 0.62, 0.32], ao: 0.12, aoR: 0.8, prac: 1.8, pracCol: "#ffa040",
-    bloomI: 0.85, bloomR: 0.7, softM: 0.26,
-    haze: H("#f0b886", 40, 220, 40, 0.45), glowCol: "#ffd890", glowK: 0.45, bg: "#3a2630",
+  modern: {
+    // the gleaming modern vault: bright cool-white light, soft blue shade, crisp
+    az: 110, el: 50,
+    lit: [1.3, 1.34, 1.42], shade: [0.34, 0.4, 0.58], lift: [0.05, 0.06, 0.1], lambert: 0.4, sideK: 0.9, term: 0.25,
+    charTint: [0.96, 0.98, 1.0], charShade: 0.9, charGrad: 0.08, bodyGrad: 0.2, sideTint: [0.88, 0.92, 1.0],
+    blob: [0.6, 0.64, 0.74], actorShadow: true,
+    top: "#2a3a4a", hor: "#2a3a4a", skyCurve: [0, 0.5, 0.6], fog: "#c8d6e4", fogNear: 40, fogFar: 300, sunDisc: "#000000",
+    sunCol: "#f4f8ff", sunI: 2.8, sky: "#dce8f8", ground: "#b8c4d4", hemiI: 0.6,
+    bias: -0.0004, normalBias: 0.012,
+    albFloor: [0.05, 0.055, 0.07], gobo: 0, goboScale: 4, rim: [0, 0, 0], ao: 0.18, aoR: 0.8, prac: 1.4, pracCol: "#d8f0ff",
+    bloomI: 0.9, bloomR: 0.65, softM: 0.08,
+    haze: H("#c8d6e4", 30, 200, 40, 0), glowCol: "#ffffff", glowK: 0, bg: "#c8d6e4",
   },
 };
 
-/** which preset each shot uses (story.ts SHOTS[].light is the source; this table may refine it) */
+/** which preset each shot uses (story.ts lightAt is the source; this table may refine it) */
 export const SHOT_LIGHT: Record<number, LightName> = {};
-/** per-shot sun (camera-relative az / el, degrees): a warm key from behind the lens' shoulder; the wides side-lit */
-export const SHOT_SUN: Record<number, { az: number; el: number }> = {
-  1: { az: 128, el: 46 }, 2: { az: 125, el: 52 }, 3: { az: 130, el: 54 }, 4: { az: 125, el: 52 }, 5: { az: 120, el: 40 },
-  6: { az: 125, el: 46 }, 7: { az: 128, el: 44 }, 8: { az: 125, el: 38 }, 9: { az: 140, el: 50 }, 10: { az: 135, el: 48 },
-  11: { az: 135, el: 46 }, 12: { az: 128, el: 44 }, 13: { az: 125, el: 44 }, 14: { az: 150, el: 12 },
+/** the key (sun / moon) of a shot, from a frame on. az / el are CAMERA-RELATIVE degrees (az 0 = straight ahead = backlight,
+ *  +90 = screen right, 180 = behind the lens), or `dir` = an absolute world direction TOWARD the light. The last key whose
+ *  `from` <= f is used; each key is frozen over its range. */
+export type SunKey = { from: number; az?: number; el?: number; dir?: [number, number, number] };
+export const SUN_KEYS: Record<number, SunKey[]> = {
+  1: [{ from: 0, dir: [-0.62, 0.52, 0.5] }, { from: 150, dir: [-0.7, 0.5, 0.55] }],         // street: moon behind-left of the lens; bedroom: window moon
+  2: [{ from: 183, dir: [-0.7, 0.5, 0.55] }, { from: 275, dir: [0.2, 0.4, 0.9] }],         // the march: the moon ahead, backlit
+  3: [{ from: 330, dir: [-0.62, 0.52, 0.55] }],
+  4: [{ from: 455, dir: [-0.62, 0.52, 0.55] }],
+  5: [{ from: 522, dir: [0.75, 0.42, 0.5] }],
+  6: [{ from: 695, dir: [0.7, 0.5, 0.6] }],
+  7: [{ from: 775, dir: [0.7, 0.55, 0.55] }],
+  8: [{ from: 935, az: 125, el: 46 }, { from: 1004, az: 118, el: 48 }, { from: 1055, az: 120, el: 44 }],
+  9: [{ from: 1114, dir: [-0.62, 0.52, 0.55] }],
+  10: [{ from: 1241, dir: [-0.62, 0.52, 0.55] }],
+  11: [{ from: 1373, az: 128, el: 46 }],
+  12: [{ from: 1430, dir: [-0.35, 0.75, 0.55] }],
 };
-/** a second, later sun for a shot: from frame [0] on (a cut to another set / a reverse angle) the sun is re-frozen
- *  camera-relative */
-export const SHOT_SUN_FROM: Record<number, [number, { az: number; el: number }]> = {
-  14: [1619, { az: 110, el: 16 }],
-};
-/** absolute world direction TOWARD the sun for a shot (overrides SHOT_SUN) */
-export const SHOT_SUN_DIR: Record<number, [number, number, number]> = {};
 /** per-shot sky stops overriding LOOK[light].sky */
 export const SHOT_SKY: Record<number, { c: string[]; e: number[] }> = {};
-/** the shot world.ts posed last (read by grade.ts gradeFor, which is called right after world.update for the same layer) */
-export const CUR = { id: 0 };
-export const lightOf = (id: number): LightName => SHOT_LIGHT[id] ?? SHOTS[id - 1].light;
+/** the shot / frame world.ts posed last (read by grade.ts gradeFor, which is called right after world.update for the same layer) */
+export const CUR = { id: 0, f: 0 };
+export const lightOf = (id: number, f?: number): LightName => SHOT_LIGHT[id] ?? lightAt(id, f ?? SHOTS[id - 1].a);
 
 /** world-only look per light (sky stops by elevation in degrees, cloud palette). All colours are
  *  ON-SCREEN targets under the current PBR-Neutral tone map; world.ts pre-inverts the tone map (shade.ts untone). */
@@ -138,36 +149,24 @@ export type WorldLook = {
   cloud: { lit: string; mid: string; shade: string };
   skyTex: number;                                             // painted sky noise amplitude (depth.md 3.3)
 };
+const IND = { sky: { c: ["#3a2a24", "#3a2a24", "#3a2a24", "#3a2a24", "#3a2a24"], e: [0, 3, 9, 18, 40] }, cloud: { lit: "#ffffff", mid: "#ffffff", shade: "#ffffff" }, skyTex: 0 };
 export const LOOK: Record<LightName, WorldLook> = {
   day: {
     // warm cream horizon -> deep blue top
     sky: { c: ["#f2ead8", "#cfe0ee", "#86b3e4", "#4f8cdc", "#2f6fd0"], e: [0, 3, 9, 18, 40] },
     cloud: { lit: "#fffcf4", mid: "#e6e9f3", shade: "#bcc6ea" },
     bounce: [0.04, 0.022, 0],
-    sat: 1.06,
+    sat: 1.08,
     skyTex: 0.05,
   },
-  overcast: {
-    sky: { c: ["#d6dde0", "#bcccdc", "#7ea6d6", "#5a8ccc", "#4278c4"], e: [0, 3, 9, 18, 40] },
-    cloud: { lit: "#eef0f2", mid: "#c3ccd8", shade: "#97a4bc" },
-    bounce: [0.03, 0.025, 0.01],
-    sat: 1.1,
-    skyTex: 0.07,
-  },
-  interior: { sky: { c: ["#3a2a24", "#3a2a24", "#3a2a24", "#3a2a24", "#3a2a24"], e: [0, 3, 9, 18, 40] }, cloud: { lit: "#ffffff", mid: "#ffffff", shade: "#ffffff" }, bounce: [0.04, 0.025, 0.01], sat: 1.06, skyTex: 0 },
-  warm: {
-    sky: { c: ["#f2ead8", "#cfe0ee", "#86b3e4", "#4f8cdc", "#2f6fd0"], e: [0, 3, 9, 18, 40] },
-    cloud: { lit: "#fffcf4", mid: "#e6e9f3", shade: "#bcc6ea" },
-    bounce: [0.05, 0.03, 0],
+  night: {
+    sky: { c: ["#34508c", "#223a78", "#162a60", "#0e1c4c", "#08123a"], e: [0, 4, 10, 22, 48] },
+    cloud: { lit: "#6a78a8", mid: "#44507e", shade: "#262e58" },
+    bounce: [0.0, 0.012, 0.035],
     sat: 1.06,
-    skyTex: 0.05,
+    skyTex: 0.06,
   },
-  golden: {
-    // amber horizon, peach band, then straight into clean blue (no rose / lilac stop)
-    sky: { c: ["#ffc27c", "#f4a878", "#a88ab8", "#4a5aa0", "#1f2f78"], e: [0, 5, 14, 28, 55] },
-    cloud: { lit: "#ffd49a", mid: "#e8a874", shade: "#6f7eae" },
-    bounce: [0.05, 0.025, 0.0],
-    sat: 1.06,
-    skyTex: 0.07,
-  },
+  candle: { ...IND, bounce: [0.0, 0.01, 0.03], sat: 1.06 },
+  interior: { ...IND, bounce: [0.04, 0.025, 0.01], sat: 1.06 },
+  modern: { ...IND, bounce: [0.02, 0.03, 0.05], sat: 1.0 },
 };

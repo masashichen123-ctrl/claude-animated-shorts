@@ -2,7 +2,7 @@
 # Resumable chunked render for shots that keep getting interrupted: 40-frame chunks -> out/vault/chunks/, then joined into out/vault/final/shot_XX.mp4
 cd "$(dirname "$0")/.."
 export REMOTION_TMP=$PWD/.rtmp TMPDIR=$PWD/.rtmp
-R=(0 198 300 389 469 618 715 817 937 1072 1223 1301 1489 1570 1770)
+R=(0 183 330 455 522 695 775 935 1114 1241 1373 1430 1590)
 mkdir -p out/vault/chunks out/vault/final
 for s in "$@"; do
   o=out/vault/final/shot_$(printf %02d $s).mp4; [ -f "$o" ] && continue

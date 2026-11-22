@@ -201,16 +201,30 @@ export const GRADE_INTERIOR: GradeParams = {
   ky: [0.035, 0.1, 0.26, 0.545, 0.8, 0.93, 1], sat: [0.9, 1.08, 1.06],
   tintS: [0.012, -0.004], tintM: [-0.008, 0.006], tintH: [-0.016, 0.008], vig: [0.26, 0.4], hueSat: HUE_WARM,
 };
+export const GRADE_NIGHT: GradeParams = {   // moonlight: blue darks kept coloured (not crushed), silver highlights, framing vignette
+  ky: [0.04, 0.105, 0.245, 0.5, 0.76, 0.91, 1], sat: [1.05, 1.14, 1.04],
+  tintS: [0.05, -0.006], tintM: [0.03, -0.004], tintH: [-0.006, 0.004], vig: [0.32, 0.34],
+  hueSat: [1.15, 1.18, 1.08, 0.8, 0.8, 0.85, 0.95, 1.05, 1.12, 1.05, 1.0, 1.05],
+};
+export const GRADE_CANDLE: GradeParams = {  // candle-lit night room: indigo darks, warm cream highlights, hero amber kept saturated
+  ky: [0.042, 0.108, 0.25, 0.51, 0.77, 0.915, 1], sat: [1.04, 1.16, 1.08],
+  tintS: [0.046, -0.004], tintM: [0.02, 0.004], tintH: [-0.016, 0.012], vig: [0.34, 0.34],
+  hueSat: [1.12, 1.22, 1.1, 0.8, 0.8, 0.85, 0.95, 1.05, 1.12, 1.05, 1.0, 1.05],
+};
+export const GRADE_MODERN: GradeParams = {  // crisp bright cool-white vault: gentle S, steel-blue shadows, clean highlights
+  ky: [0.03, 0.1, 0.26, 0.54, 0.8, 0.935, 1], sat: [0.96, 1.08, 1.04],
+  tintS: [0.02, -0.01], tintM: [0.008, -0.004], tintH: [-0.006, 0.0], vig: [0.18, 0.46],
+  hueSat: [1.08, 1.05, 1.0, 0.9, 0.95, 1.0, 1.05, 1.05, 1.08, 1.0, 1.0, 1.05],
+};
 export type GradeName = LightName;
 export const GRADES: Record<GradeName, GradeParams> = {
-  day: GRADE_DAY2, overcast: { ...GRADE_DAY2, sat: [0.92, 1.16, 1.12], vig: [0.2, 0.45] }, interior: GRADE_INTERIOR,
-  warm: { ...GRADE_INTERIOR, vig: [0.2, 0.42] }, golden: GRADE_GOLDEN2,
+  day: GRADE_DAY2, night: GRADE_NIGHT, candle: GRADE_CANDLE, interior: GRADE_INTERIOR, modern: GRADE_MODERN,
 };
-export const GRADE_STRENGTH: Record<GradeName, number> = { day: 1, overcast: 1, interior: 1, warm: 1, golden: 1 };
+export const GRADE_STRENGTH: Record<GradeName, number> = { day: 1, night: 1, candle: 1, interior: 1, modern: 1 };
 /** Apply the preset of a light to the effect (only touches uniforms when the light changes). */
 export function gradeFor(fx: GradeEffect, light0: GradeName) {
-  // the caller passes story.ts SHOTS[].light; lights.ts SHOT_LIGHT may refine it (world.update just ran for this layer)
-  const light = CUR.id ? lightOf(CUR.id) : light0;
+  // the caller passes the shot's light at this frame; lights.ts SHOT_LIGHT may refine it (world.update just ran for this layer)
+  const light = CUR.id ? lightOf(CUR.id, CUR.f) : light0;
   const tag = fx as unknown as { _light?: string };
   if (tag._light !== light) { fx.set(GRADES[light]); tag._light = light; }
   fx.amount = GRADE_STRENGTH[light];

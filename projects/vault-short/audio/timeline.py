@@ -75,18 +75,28 @@ GASP_T = 6.22              # the banker's gasp in the gap after 'banker.' (frame
 FLASH_T = 6.10             # the flash itself (frame 183 = 6.10), a dark 'pfoomf' at the very start of the gap
 SCOOP_T = 7.68             # the cloth scoop whoosh in the gap before 'Grab' (frame 239 = 7.97)
 KEYJ_T = 14.82             # the key jingle in the gap after 'key,' (frames 438-462 = 14.6-15.4)
-OPEN_T = 16.93             # the door's golden shimmer in the gap after 'anything.' (frame 493 = 16.43)
-SPARK_T = 20.53            # the spark's ping in the gap after 'idea.' (frame 594 = 19.8; a tiny dark pre-spark sits on the frame)
+OPEN_T = 16.98             # the door's golden shimmer in the gap after 'anything.' (frame 493 = 16.43)
+SPARK_T = 20.61            # the spark's ping in the gap after 'idea.' (frame 594 = 19.8; a tiny dark pre-spark sits on the frame)
 CLATTER_T = 25.52          # the last springs rolling off the bench in the gap after 'clocks.'
 SIGH_T = 30.82             # the sigh in the gap after 'asking.' (frame 910 = 30.33)
 BELL_T = 33.03             # the far church bell in the gap after '1874,'
-SNIP_T = 36.66             # the ribbon snip's bright 'snik' in the gap after 'Illinois.' (frame 1087 = 36.23)
-PALM_T = 40.93             # the face-palm slaps in the gap after 'he.' (frame 1210 = 40.33; a dark pap sits on the frame)
+SNIP_T = 36.15             # the ribbon snip in the micro-gap 36.09-36.22 right before 'Illinois' (frame 1087 = 36.23)
+PALM_T = 40.19             # the face-palm slaps in the micro-gap 40.16-40.30 before 'neither' (frame 1210 = 40.33; a dark pap sits on the frame)
 SMUG_T2 = 45.12            # the clock's second, even smugger tick in the gap after 'care.'
-COIN_T = 47.15             # the coin-bag chinks in the gap after 'one.'
+COIN_T = 47.26             # the coin-bag chinks in the gap after 'one.'
 WINK_T = 51.98             # the wink 'ting' right after 'clock.' (frame 1551 = 51.70)
 GRID0 = 25.0               # the clock groove grid (music woodblock + SFX ticks), beat = 60 / BPM
 BPM = 96.0
+
+
+def acc_times():
+    """the waiting time-lapse's accelerating clock ticks (1303-1325 f and on): intervals shrink 0.30 s -> 0.045 s, ending before the smug tick"""
+    out, t, iv = [], fr(1303), 0.2
+    while t < fr(SMUG) - 0.1:
+        out.append(t)
+        t += iv
+        iv = max(iv * 0.88, 0.04)
+    return out
 
 
 def shot_t(i):

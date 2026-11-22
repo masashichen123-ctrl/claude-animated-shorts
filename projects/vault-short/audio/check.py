@@ -1,4 +1,4 @@
-# Verification for the Chicago short's mix: exact sample count, loudness (ffmpeg ebur128), and intelligibility - faster-whisper
+# Verification for The Time Lock's mix: exact sample count, loudness (ffmpeg ebur128), and intelligibility - faster-whisper
 # small.en transcribes voice.wav alone and the final mix; every narration word of SCRIPT.md must come through the mix
 # exactly as it does on the voice alone (word-level diff), on the whole file AND on ~3.5 s windows around each key word
 # (poison, Lorz, car, rotten, nap, fourth, dogs, strychnine, Unluckily, carry, fourteen, foot, ...). Appends a report to audio/cues.md.
@@ -12,9 +12,9 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-MIX = os.path.join(ROOT, "public", "chicago", "mix.wav")
+MIX = os.path.join(ROOT, "public", "vault", "mix.wav")
 FINAL = os.path.join(ROOT, "voice", "mix_final.wav")
-NSAMP = 2832000                     # 59.000 s at 48 kHz
+NSAMP = 2544000                     # 53.000 s at 48 kHz
 VOICE = os.path.join(ROOT, "voice", "voice.wav")
 
 
@@ -32,7 +32,7 @@ def norm_words(text):
     return out
 
 
-NUM = {"1861": "eighteen sixty one", "5,000": "five thousand", "5": "five", "000": "thousand", "6": "six"}
+NUM = {"1860s": "eighteen sixties", "1874": "eighteen seventy four"}
 
 
 def transcribe(model, path_or_pcm):
@@ -46,7 +46,7 @@ def transcribe(model, path_or_pcm):
     return words
 
 
-KEYS = ("lifted", "guests", "swamp", "sewage", "cholera", "wild", "sewers", "tremont", "pullman", "jackscrews", "signal", "another", "six", "closed", "window", "railway", "beneath")
+KEYS = ("kidnapped", "banker", "key", "scared", "sargent", "clocks", "release", "morrison", "unluckily", "neither", "clock", "care", "security", "guard")
 
 
 def main():
@@ -59,7 +59,7 @@ def main():
     w(f"- Mix stream: `{dur}`")
     same = open(MIX, "rb").read() == open(FINAL, "rb").read()
     ok_len = f"duration_ts={NSAMP}" in dur and "channels=2" in dur
-    w(f"- exact length {NSAMP:,} samples, stereo: {'OK' if ok_len else 'FAIL'}; voice/mix_final.wav identical to public/chicago/mix.wav: {'OK' if same else 'FAIL'}")
+    w(f"- exact length {NSAMP:,} samples, stereo: {'OK' if ok_len else 'FAIL'}; voice/mix_final.wav identical to public/vault/mix.wav: {'OK' if same else 'FAIL'}")
     tv = transcribe(model, VOICE)
     tm = transcribe(model, MIX)
     ts = transcribe(model, os.path.join(HERE, "out", "stem_voice.wav"))     # the same voice at mix gain + master limiter

@@ -15,7 +15,7 @@ process.env.REMOTION_TMP = tmp; process.env.TMPDIR = tmp;
 const [prefix = "out/vault/s_", framesArg = "shots", scaleArg = "0.5", comp = "VaultShort"] = process.argv.slice(2);
 const scale = Number(scaleArg);
 // mid-frame of each shot (story.ts SHOTS / SHOTS.md)
-const SHOT_RANGES = [[0, 198], [198, 300], [300, 389], [389, 469], [469, 618], [618, 715], [715, 817], [817, 937], [937, 1072], [1072, 1223], [1223, 1301], [1301, 1489], [1489, 1570], [1570, 1770]];
+const SHOT_RANGES = [[0, 183], [183, 330], [330, 455], [455, 522], [522, 695], [695, 775], [775, 935], [935, 1114], [1114, 1241], [1241, 1373], [1373, 1430], [1430, 1590]];
 const frames = framesArg === "shots" ? SHOT_RANGES.map(([a, b]) => Math.floor((a + b) / 2)) : framesArg.split(",").map(Number);
 const inputProps = process.env.STILLS_PROPS ? JSON.parse(process.env.STILLS_PROPS) : { post: { dpr: scale } };
 const browserExecutable = process.env.STILLS_BROWSER ?? "/opt/pw-browsers/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell";

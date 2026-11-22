@@ -421,4 +421,4 @@ export const FAR = 900;
 export const M = M4;
 /** a sub-group built from its own batch (toggled / posed per frame by the set's tick) */
 export const sub = (parent: THREE.Object3D, b: Batch, cast = true) => { const g = new THREE.Group(); b.build(g, cast); parent.add(g); return g; };
-export type SetRig = { name: string; group: THREE.Group; tick?: (t: number, id: number) => void };
+export type SetRig = { name: string; group: THREE.Group; tick?: (t: number, id: number, f: number) => void };

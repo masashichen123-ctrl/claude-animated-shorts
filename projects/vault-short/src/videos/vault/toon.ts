@@ -1,9 +1,9 @@
 // Our own flat 2D cartoon cast + 2D effects, drawn on a canvas (owner: characters, with cast.ts / stage.ts / cardshade.ts).
-// "Chicago Lifts a Hotel" cast (outfits in stage.ts): George Pullman (young: derby, emerald waistcoat; old: top hat, watch chain),
-// partners and workers (flat caps, braces), the mayor and council (frock coats, top hats), townsfolk (bonnets, bowlers), the sick
-// (green faces, thermometers), the doctor, hotel guests and staff, a carthorse, dogs, frogs. Props: blueprint, gavel, whistle,
-// signal flag, magnifier, desk bell, spoon, trunk, gold coin, thermometer, doctor's bag, candle, crossbar, tray, key, watch, chart.
-// Effects: mud, bubbles, cough puffs, swirls, steam, stink lines, sparkles, bursts.
+// "The Time Lock" cast (outfits in stage.ts): the banker (day: waistcoat, watch chain, garters, big moustache; night: nightcap and
+// long nightshirt), three bumbling robbers (bandana masks, flat caps, striped shirts, no weapons), James Sargent (goggles up,
+// apron full of tools, thin moustache), townsfolk of Morrison (bonnets, bowlers), the guard clock mascot (a wall clock with arms
+// and legs in a security cap). Props: crowbar, candle, key on a string, rope, playing cards, knitting, screwdriver, wrench,
+// scissors, money bags, the plan with pictograms, the blueprint. Effects: sparkles, the idea spark, puffs, light spill, zzz.
 // Construction v2 (characters.md, our own cast): superellipse heads (pointed crown 1.75 / full jaw 2.3, chin taper,
 // seeded side bulge + tilt), bean torsos, single-stroke limbs with ink-dot hands, a thick-thin plum outline weighted
 // away from the light, soft painted crescents, deadpan lidded eyes, no blush, no catchlights.
@@ -39,6 +39,9 @@ export type Outfit = {
   /** marathon: sleeveless singlet (scoop neck), baggy knee shorts colour, bib pattern ink colour (dots / stripes, no
    *  digits), waistcoat colour, a floor-length dress, a diagonal sash stripe on the singlet */
   singlet?: boolean; shorts?: string; bib?: string; waistcoat?: string; longDress?: boolean; stripe?: string;
+  /** vault short: bandana mask colour (over the lower face), horizontal shirt stripe colour, workshop apron colour (with tools),
+   *  stubble 0..1, cobweb 0..1 on the hat, bird's nest 0..1 on the head, watch chain + sleeve garters (the banker) */
+  mask?: string; hstripe?: string; apron?: string; stubble?: number; cobweb?: number; nest?: number; chain?: boolean; garters?: string;
 };
 type P2 = [number, number];
 
@@ -691,7 +694,8 @@ export type Arms = [P2[], P2[]];
 /** held prop; for the hammer the number is the strike 0 (raised) .. 1 (struck) */
 export type Prop = null | "icecream" | "shako" | ["hammer", number] | "stick" | "pen" | "bucket" | "folder" | "clipboard" | "shovel" | "mic" | "filmcam" | "basket"
   | "poison" | "flask" | "eggcup" | "egg" | "apple" | "appleRot" | "pistol" | "parasol" | "boaterHand"
-  | "blueprint" | "gavel" | "whistle" | "flagPole" | "magnifier" | "bell" | "spoon" | "trunk" | "coin" | "thermo" | "bag" | "candle" | "bar" | "tray" | "keyfob" | "watch" | "chart" | "broom";
+  | "blueprint" | "gavel" | "whistle" | "flagPole" | "magnifier" | "bell" | "spoon" | "trunk" | "coin" | "thermo" | "bag" | "candle" | "bar" | "tray" | "keyfob" | "watch" | "chart" | "broom"
+  | "crowbar" | "keystring" | "cards" | "knitting" | "moneybag" | "screwdriver" | "wrench" | "scissors";
 
 const BUILD: Record<Build, { a: number; torso: number; legs: number; tw: number }> = {
   adult: { a: 118, torso: 1.1, legs: 1.4, tw: 0.7 },
@@ -702,7 +706,7 @@ const BUILD: Record<Build, { a: number; torso: number; legs: number; tw: number 
 
 /** arm poses (motion.md 3.3); "wave" uses the wave amount, "point" adds an index finger */
 export type ArmPose = "hang" | "wave" | "point" | "hip" | "up" | "out" | "shrug" | "hold" | "ears" | "crank" | "salute" | "pull" | "palm" | "pinch"
-  | "drink" | "four" | "behindHead" | "offer" | "lift" | "raise" | "flail" | "show";
+  | "drink" | "four" | "behindHead" | "offer" | "lift" | "raise" | "flail" | "show" | "thumb" | "rub" | "cross" | "fist";
 /** a pose, or [from, to, k]: blend from one pose to another (k 0..1, eased by the caller) */
 export type ArmSpec = ArmPose | [ArmPose, ArmPose, number];
 export type FrontOpts = {
@@ -751,6 +755,32 @@ const collarFront = (p: Pen, o: Outfit, tcx: number, chin: number, torsoBot: num
   } else if (o.collar === "shirt") {
     for (const s of [-1, 1]) p.poly([[tcx, chin + 0.04 * HH], [tcx + s * 0.34 * Ta, chin - 0.1 * HH], [tcx + s * 0.3 * Ta, chin + 0.1 * HH]], "#fbf8f0", 1.3 * u);
     if (o.tie) p.poly([[tcx - 3.5 * u, chin + 0.04 * HH], [tcx + 3.5 * u, chin + 0.04 * HH], [tcx + 5.5 * u, chin + 0.42 * HH], [tcx, chin + 0.5 * HH], [tcx - 5.5 * u, chin + 0.42 * HH]], o.tie, 1.3 * u);
+  }
+  if (o.hstripe) for (let k = 0; k < 7; k++) { // horizontal shirt stripes (the robbers)
+    const y = chin + (0.06 + 0.17 * k) * HH;
+    p.band([[tcx - 1.4 * Ta, y], [tcx + 1.4 * Ta, y]], o.hstripe, 0.075 * HH, 0);
+  }
+  if (o.apron) { // a leather workshop apron: bib, two big pockets, tools poking out (a screwdriver, pliers, a brass cog)
+    const a = o.apron;
+    p.poly([[tcx - 0.52 * Ta, chin + 0.12 * HH], [tcx + 0.52 * Ta, chin + 0.12 * HH], [tcx + 1.3 * Ta, chin + 0.42 * HH], [tcx + 1.3 * Ta, torsoBot + 0.06 * HH], [tcx - 1.3 * Ta, torsoBot + 0.06 * HH], [tcx - 1.3 * Ta, chin + 0.42 * HH]], a, 1.8 * u);
+    p.band([[tcx - 0.5 * Ta, chin + 0.12 * HH], [tcx - 1.0 * Ta, chin - 0.14 * HH]], mul(a, [0.7, 0.7, 0.7]), 4.5 * u, 1.2 * u);
+    p.band([[tcx + 0.5 * Ta, chin + 0.12 * HH], [tcx + 1.0 * Ta, chin - 0.14 * HH]], mul(a, [0.7, 0.7, 0.7]), 4.5 * u, 1.2 * u);
+    for (const sd of [-1, 1]) {
+      const px = tcx + sd * 0.55 * Ta, py = chin + 0.6 * HH;
+      p.poly(rrect(px - 0.4 * Ta, py, px + 0.4 * Ta, py + 0.34 * HH, 3 * u), mul(a, [0.86, 0.84, 0.8]), 1.6 * u);
+      p.stroke([[px - 0.4 * Ta, py + 0.04 * HH], [px + 0.4 * Ta, py + 0.04 * HH]], 1.4 * u, mul(a, [0.5, 0.5, 0.5]));
+    }
+    // tools in the pockets
+    p.band([[tcx - 0.62 * Ta, chin + 0.64 * HH], [tcx - 0.7 * Ta, chin + 0.36 * HH]], "#9aa2ac", 3.2 * u, 1.1 * u);
+    p.band([[tcx - 0.66 * Ta, chin + 0.58 * HH], [tcx - 0.72 * Ta, chin + 0.46 * HH]], "#c0352e", 6 * u, 1.3 * u);
+    p.band([[tcx + 0.46 * Ta, chin + 0.64 * HH], [tcx + 0.4 * Ta, chin + 0.38 * HH]], "#7a5a3a", 5 * u, 1.2 * u);
+    p.band([[tcx + 0.62 * Ta, chin + 0.64 * HH], [tcx + 0.68 * Ta, chin + 0.4 * HH]], "#b8bec6", 4 * u, 1.2 * u);
+    p.ell(tcx + 0.68 * Ta, chin + 0.37 * HH, 5.5 * u, 5.5 * u, "#e2c45a", 1.5 * u);
+  }
+  if (o.chain) { // watch chain: a swag of gold across the waistcoat and a fob
+    const y0 = chin + 0.42 * HH;
+    p.stroke(curve([tcx - 0.5 * Ta, y0 - 0.02 * HH], [tcx, y0 + 0.2 * HH], [tcx + 0.5 * Ta, y0 - 0.02 * HH], 10), 3 * u, "#d9a83a");
+    p.ell(tcx, y0 + 0.24 * HH, 7 * u, 7 * u, "#f2c23a", 1.8 * u); p.ell(tcx, y0 + 0.24 * HH, 4.2 * u, 4.2 * u, "#fbf6e8", 1.1 * u);
   }
   if (o.samBrowne) { // Sam Browne: waist belt with a brass buckle + the cross strap over the right shoulder
     p.band([[tcx - 1.3 * Ta, torsoBot - 0.36 * HH], [tcx + 1.3 * Ta, torsoBot - 0.36 * HH]], o.samBrowne, 0.1 * HH, 1.5 * u);
@@ -814,7 +844,96 @@ const drawHead = (p: Pen, o: Outfit, hd: Head, light: number, thick: number, see
     hatOn(p, o, hd, light, thick, seed, side);
     g.restore();
   } else hatOn(p, o, hd, light, thick, seed, side);
+  if (o.cobweb) cobwebOn(p, hd, o.cobweb);
+  if (o.nest) nestOn(p, hd, o.nest, seed);
   face();
+  maskOn(p, o, hd, side);
+};
+
+/** a bandana over the lower face (nose to chin), a knot at the back, paisley dots; stubble on a bare lower face */
+const maskOn = (p: Pen, o: Outfit, hd: Head, side: boolean) => {
+  const u = hd.W / 100, f = hd.f, cx = hd.cx, cy = hd.wy;
+  if (o.stubble && !o.mask) { // short ink dashes on the cheeks + chin
+    const n = Math.round(o.stubble * 90), g = p.g;
+    p.clip(hd.pts, () => {
+      g.save(); g.globalAlpha = 0.35 + 0.4 * o.stubble!;
+      for (let k = 0; k < n; k++) {
+        const x = cx + f * (-42 + 96 * rnd(k, 51)) * u + (side ? 18 * u : 0), y = cy + (12 + 40 * rnd(k, 52)) * u;
+        if (y > hd.chin - 3 * u) continue;
+        const [qx, qy] = p.P(x, y);
+        g.fillStyle = "#3a2e34"; g.beginPath(); g.arc(qx, qy, (1.3 + 0.8 * rnd(k, 53)) * u, 0, Math.PI * 2); g.fill();
+      }
+      g.restore();
+    });
+  }
+  if (!o.mask) return;
+  const col = o.mask, dk = mul(col, [0.62, 0.62, 0.7]);
+  if (side) {
+    const x0 = cx - 6 * u;
+    p.poly([[cx - 40 * u, cy + 10 * u], [cx - 66 * u, cy + 22 * u], [cx - 52 * u, cy + 34 * u]], dk, 2 * u); // the knot's tails behind the head
+    p.clip(hd.pts, () => {
+      p.poly([[x0, cy + 7 * u], [cx + 24 * u, cy + 5 * u], [cx + 70 * u, cy + 9 * u], [cx + 70 * u, hd.chin + 24 * u], [x0 - 12 * u, hd.chin + 24 * u]], col, 0);
+      for (let k = 0; k < 5; k++) p.dot(x0 + (14 + 14 * k) * u, cy + (20 + 11 * (k % 3)) * u, 2.6 * u, "#f4efe6");
+    });
+    p.stroke([[x0, cy + 7 * u], [cx + 24 * u, cy + 5 * u], [cx + 60 * u, cy + 8 * u]], 3.4 * u, INK);
+    p.stroke([[x0, cy + 7 * u], [x0 - 12 * u, hd.chin - 10 * u]], 3 * u, INK);
+    return;
+  }
+  const fx = cx + 10 * u * f;
+  for (const sd of [-1, 1]) p.poly([[cx + sd * 40 * u, cy + 12 * u], [cx + sd * 68 * u, cy + 20 * u + sd * 3 * u], [cx + sd * 54 * u, cy + 34 * u]], dk, 2 * u); // knot tails
+  p.clip(hd.pts, () => {
+    p.poly([[cx - 80 * u, cy + 9 * u], [fx - 24 * u, cy + 8 * u], [fx, cy + 2 * u], [fx + 24 * u, cy + 8 * u], [cx + 80 * u, cy + 9 * u], [cx + 80 * u, hd.chin + 24 * u], [cx - 80 * u, hd.chin + 24 * u]], col, 0);
+    for (let k = 0; k < 9; k++) p.dot(cx + (-40 + 10 * k + 5 * (k % 2)) * u, cy + (20 + 9 * ((k * 5) % 4)) * u, 2.8 * u, "#f4efe6");
+    p.stroke(curve([fx - 40 * u, hd.chin - 4 * u], [fx, hd.chin - 14 * u], [fx + 44 * u, hd.chin - 4 * u], 8), 2 * u, dk);
+  });
+  p.stroke([[cx - 62 * u, cy + 10 * u], [fx - 24 * u, cy + 8 * u], [fx, cy + 2 * u], [fx + 24 * u, cy + 8 * u], [cx + 62 * u, cy + 10 * u]], 3.6 * u, INK);
+  if (o.moustache) { // a huge moustache bristling over the bandana
+    const pts = scallop(fx, cy + 7 * u, 27 * u, 8 * u, 10, 0.12);
+    p.poly(pts, o.moustache, 2.4 * u);
+    p.stroke([[fx, cy + 1 * u], [fx, cy + 5 * u]], 1.6 * u);
+  }
+};
+/** a spider web over the crown (grows with k 0..1): spokes + sagging arcs + a little spider */
+const cobwebOn = (p: Pen, hd: Head, k: number) => {
+  const u = hd.W / 100, [wx, wy] = hu(hd, 0.1 * hd.f, -1.05), R = (30 + 70 * k) * u, g = p.g;
+  g.save(); g.globalAlpha = 0.5 + 0.4 * k; g.lineCap = "round";
+  const spokes = 7;
+  for (let i = 0; i < spokes; i++) {
+    const a = Math.PI * (0.95 + 1.1 * (i / (spokes - 1)));
+    p.stroke([[wx, wy], [wx + Math.cos(a) * R * 1.6, wy + Math.sin(a) * R * 0.9]], 1.6 * u, "#f4f6fa");
+  }
+  for (let r = 1; r <= 3; r++) {
+    const pts: P2[] = [];
+    for (let i = 0; i < spokes; i++) {
+      const a = Math.PI * (0.95 + 1.1 * (i / (spokes - 1))), rr = (r / 3) * R * 1.6 * Math.min(1, k * 1.6 - (3 - r) * 0.12);
+      if (rr <= 0) continue;
+      pts.push([wx + Math.cos(a) * rr, wy + Math.sin(a) * rr * 0.56 + 3 * u * Math.sin(i * 2)]);
+    }
+    if (pts.length > 1) p.stroke(pts, 1.4 * u, "#f4f6fa");
+  }
+  g.restore();
+  if (k > 0.7) { p.dot(wx + R * 0.5, wy + R * 0.45, 3.4 * u, INK); for (const sd of [-1, 1]) p.stroke([[wx + R * 0.5, wy + R * 0.45], [wx + R * 0.5 + sd * 6 * u, wy + R * 0.45 + 4 * u]], 1.2 * u); }
+};
+/** a bird's nest on the crown (scale k 0..1): twiggy bowl, two eggs, a small blue bird with an open beak */
+const nestOn = (p: Pen, hd: Head, k: number, seed: number) => {
+  const u = hd.W / 100, [nx, ny0] = hu(hd, 0.05 * hd.f, -1.12), ny = ny0 - 6 * u * k, s = Math.min(1, k * 1.4), g = p.g;
+  void seed;
+  g.save(); g.globalAlpha = Math.min(1, k * 3);
+  p.ell(nx, ny, 60 * u * s, 17 * u * s, "#8a6a3a", 2.8 * u);
+  p.ell(nx, ny - 5 * u * s, 48 * u * s, 10 * u * s, "#5a4226", 0);
+  for (let i = 0; i < 14; i++) {
+    const a = (i / 14) * Math.PI * 2, x = nx + Math.cos(a) * 54 * u * s, y = ny + Math.sin(a) * 12 * u * s;
+    p.stroke([[x, y], [x + Math.cos(a + 1.2) * 22 * u * s, y - 10 * u * s]], 2.2 * u, i % 2 ? "#b8924e" : "#6a4a26");
+  }
+  if (k > 0.45) {
+    const bx = nx + 6 * u, by = ny - 18 * u * s;
+    p.ell(bx - 22 * u, ny - 8 * u, 8 * u, 10 * u, "#f4f0e0", 2 * u); p.ell(bx + 26 * u, ny - 8 * u, 8 * u, 10 * u, "#f4f0e0", 2 * u);
+    p.ell(bx, by, 22 * u, 20 * u, "#4a9ae0", 2.6 * u); p.ell(bx + 4 * u, by + 4 * u, 14 * u, 11 * u, "#cfe6fa", 0);
+    p.poly([[bx + 20 * u, by - 3 * u], [bx + 38 * u, by + 1 * u], [bx + 20 * u, by + 5 * u]], "#f2a82a", 2 * u);
+    p.dot(bx + 8 * u, by - 6 * u, 2.8 * u);
+    p.poly([[bx - 18 * u, by - 14 * u], [bx - 10 * u, by - 28 * u], [bx - 4 * u, by - 16 * u]], "#4a9ae0", 2 * u);
+  }
+  g.restore();
 };
 
 export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
@@ -917,6 +1036,10 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
       case "offer": return [S, X(0.46, 0.14), X(0.92, 0.0)];
       case "show": return [S, X(0.7, 0.2), [tcx + side * 2.45 * T.a, chin - 0.12 * HH]];
       case "lift": return [S, X(0.38, 0.12), X(0.62, -0.16)];
+      case "thumb": return [S, X(0.5, 0.0), X(0.66, -0.34)];
+      case "fist": return [S, X(0.46, -0.3), X(0.58, -0.78 + 0.07 * Math.sin(two * wv))];
+      case "rub": return [S, X(0.3, 0.4), [tcx + side * (0.1 + 0.16 * (0.5 + 0.5 * Math.sin(two * wv))) * T.a, S[1] + 0.5 * HH]];
+      case "cross": return [S, X(0.1, 0.5), [tcx - side * 0.62 * T.a, S[1] + 0.34 * HH]];
       case "raise": return [S, X(0.4, -0.18), X(0.62, -0.58)];
       case "flail": { const a = two * wv; return [S, X(0.4 + 0.12 * Math.cos(a), -0.3 + 0.1 * Math.sin(a)), X(0.56 + 0.16 * Math.cos(a + 1), -0.72 + 0.16 * Math.sin(a + 1))]; }
       default: {
@@ -930,13 +1053,13 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
       }
     }
   };
-  type Arm = { pts: [P2, P2, P2]; front: boolean; finger?: number; over?: number; four?: boolean };
+  type Arm = { pts: [P2, P2, P2]; front: boolean; finger?: number; over?: number; four?: boolean; thumb?: boolean };
   const spec = (sp: ArmSpec, side: number): Arm => {
     const [a0, a1, k] = typeof sp === "string" ? [sp, sp, 1] : sp, P0 = pose(a0, side), P1 = pose(a1, side), kk = clamp(k, 0, 1);
     const pts = P0.map((q, i) => lerp2(q, P1[i], kk)) as [P2, P2, P2];
     const fin = (a0 === "point" ? 1 - kk : 0) + (a1 === "point" ? kk : 0);
     const ov = kk > 0.5 && (a1 === "palm" || a1 === "pinch" || a1 === "drink" || a1 === "show") ? (a1 === "palm" ? 12 : 7) : undefined;
-    return { pts, front: a1 === "hold" && kk > 0.5, finger: fin > 0.3 ? fin : undefined, over: ov, four: a1 === "four" && kk > 0.5 };
+    return { pts, front: (a1 === "hold" || a1 === "cross" || a1 === "rub") && kk > 0.5, finger: fin > 0.3 ? fin : undefined, over: ov, four: a1 === "four" && kk > 0.5, thumb: a1 === "thumb" && kk > 0.5 };
   };
   // rifle at the order: butt by the right hip, held by the hanging right hand, muzzle past the crown
   const R0: P2 = [300 + 47 * u, torsoBot + 0.12 * HH], R1: P2 = [300 + 64 * u, crown - 0.32 * HH];
@@ -993,7 +1116,8 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
       const [E, Hh] = [a.pts[1], a.pts[2]], dx = Hh[0] - E[0], dy = Hh[1] - E[1], l = Math.hypot(dx, dy) || 1;
       p.stroke([Hh, [Hh[0] + (dx / l) * 12 * u * a.finger, Hh[1] + (dy / l) * 12 * u * a.finger]], 3.4 * u);
     }
-    p.dot(a.pts[2][0], a.pts[2][1], (a.over ?? 5.5) * u);
+    p.dot(a.pts[2][0], a.pts[2][1], (a.over ?? (a.thumb ? 7.5 : 5.5)) * u);
+    if (a.thumb) { const [hx, hy] = a.pts[2]; p.stroke([[hx - 1 * u, hy - 4 * u], [hx - 3 * u, hy - 17 * u]], 5 * u, INK); p.stroke([[hx - 1 * u, hy - 4 * u], [hx - 3 * u, hy - 15 * u]], 2.6 * u, SKIN); }
     if (a.four) { const [hx, hy] = a.pts[2]; for (let k = 0; k < 4; k++) { const an = rad(-128 + k * 22); p.stroke([[hx, hy], [hx + Math.cos(an) * 15 * u, hy + Math.sin(an) * 15 * u]], 3.2 * u); } p.stroke([[hx, hy], [hx + 7 * u, hy + 3 * u]], 3 * u); }
   };
   // behind the body: rifle, sword, arms
@@ -1236,6 +1360,68 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
       p.poly(rrect(hx - 24 * u, hy - 40 * u, hx + 24 * u, hy + 14 * u, 3 * u), "#fbf8ee", 2.4 * u);
       p.stroke([[hx - 16 * u, hy - 8 * u], [hx - 6 * u, hy - 22 * u], [hx + 4 * u, hy - 12 * u], [hx + 16 * u, hy - 32 * u]], 2.6 * u, "#c0352e"); p.dot(hx, hy, 5.5 * u);
     } else if (prop === "broom") { p.band([[hx, hy + 40 * u], [hx + 4 * u, hy - 70 * u]], "#8a5a34", 4 * u, 1.4 * u, "round"); p.dot(hx, hy, 5.5 * u);
+    } else if (prop === "crowbar") { // an iron crowbar resting on the shoulder: a long dark bar, a hooked claw at the top
+      const t0: P2 = [hx + 8 * u * f, hy + 40 * u], t1: P2 = [hx - 34 * u * f, hy - 170 * u];
+      p.band([t0, t1], "#3d424c", 8.5 * u, 2 * u, "round");
+      p.band([lerp2(t0, t1, 0.1), lerp2(t0, t1, 0.9)], "#6a7280", 2.4 * u, 0, "round");
+      p.stroke(curve(t1, [t1[0] - 20 * u * f, t1[1] - 14 * u], [t1[0] - 28 * u * f, t1[1] + 6 * u], 6), 8 * u, INK);
+      p.stroke(curve(t1, [t1[0] - 20 * u * f, t1[1] - 14 * u], [t1[0] - 28 * u * f, t1[1] + 6 * u], 6), 5.4 * u, "#3d424c");
+      p.dot(hx, hy, 5.5 * u);
+    } else if (prop === "keystring") { // a big brass key dangling on a string from the fingers, swinging with the phase
+      const sw = 10 * u * Math.sin(two * phase * 2), k0: P2 = [hx, hy + 2 * u], k1: P2 = [hx + sw, hy + 64 * u];
+      p.stroke([k0, [hx + sw * 0.4, hy + 30 * u], k1], 2.4 * u, "#e8e0cc");
+      const ang = sw * 0.012, cs = Math.cos(ang), sn = Math.sin(ang);
+      const R2 = (x: number, y: number): P2 => [k1[0] + x * cs - y * sn, k1[1] + x * sn + y * cs];
+      p.ell(R2(0, 8 * u)[0], R2(0, 8 * u)[1], 11 * u, 11 * u, null, 3.4 * u); p.ell(R2(0, 8 * u)[0], R2(0, 8 * u)[1], 11 * u, 11 * u, "#e8b830", 2.4 * u);
+      p.ell(R2(0, 8 * u)[0], R2(0, 8 * u)[1], 5 * u, 5 * u, "#3a2e34", 0);
+      p.band([R2(0, 19 * u), R2(0, 66 * u)], "#e8b830", 6 * u, 1.8 * u);
+      p.band([R2(0, 54 * u), R2(11 * u, 54 * u)], "#e8b830", 5 * u, 1.6 * u); p.band([R2(0, 62 * u), R2(9 * u, 62 * u)], "#e8b830", 5 * u, 1.6 * u);
+      p.dot(hx, hy, 5.5 * u);
+    } else if (prop === "cards") { // a fan of playing cards: white faces with red / black suit pips (no digits)
+      for (let k = 0; k < 5; k++) {
+        const a2 = rad(-34 + 17 * k), cx2 = hx + Math.sin(a2) * 8 * u, cy2 = hy - 26 * u;
+        const pts = rotPts(rrect(cx2 - 15 * u, cy2 - 28 * u, cx2 + 15 * u, cy2 + 24 * u, 3 * u), a2, hx, hy + 4 * u);
+        p.poly(pts, "#fbf8ee", 2 * u);
+        const [px, py] = rotAbout([cx2, cy2 - 8 * u], a2, [hx, hy + 4 * u]);
+        if (k % 2) p.poly([[px, py - 8 * u], [px + 6 * u, py], [px, py + 8 * u], [px - 6 * u, py]], "#d8282e", 1.2 * u);
+        else { p.ell(px - 3.4 * u, py, 4 * u, 4 * u, "#241726", 0); p.ell(px + 3.4 * u, py, 4 * u, 4 * u, "#241726", 0); p.poly([[px, py - 8 * u], [px + 5 * u, py + 6 * u], [px - 5 * u, py + 6 * u]], "#241726", 0); }
+      }
+      p.dot(hx, hy, 5.5 * u);
+    } else if (prop === "knitting") { // two wooden needles crossing, a red-and-cream knitted strip hanging from them
+      const sw = 4 * u * Math.sin(two * phase * 3);
+      p.band([[hx - 40 * u, hy - 36 * u + sw], [hx + 34 * u, hy + 10 * u]], "#d8b878", 4 * u, 1.3 * u, "round");
+      p.band([[hx + 40 * u, hy - 36 * u - sw], [hx - 34 * u, hy + 10 * u]], "#d8b878", 4 * u, 1.3 * u, "round");
+      p.dot(hx - 40 * u, hy - 36 * u + sw, 4.2 * u, "#8a5a34"); p.dot(hx + 40 * u, hy - 36 * u - sw, 4.2 * u, "#8a5a34");
+      const x0 = hx - 30 * u, x1 = hx + 30 * u;
+      p.poly([[x0, hy - 2 * u], [x1, hy - 2 * u], [x1 - 3 * u, hy + 92 * u], [x0 + 3 * u, hy + 92 * u]], "#e04a4a", 2.2 * u);
+      for (let k = 0; k < 6; k++) p.band([[x0 + 2 * u, hy + 8 * u + k * 14 * u], [x1 - 2 * u, hy + 8 * u + k * 14 * u]], k % 2 ? "#f4e8d0" : "#b8302e", 6 * u, 0);
+      p.dot(hx, hy, 5.5 * u);
+    } else if (prop === "moneybag") { // a fat sack tied at the neck with a gold coin mark (a plain disc, no figures)
+      const bx = hx, by = hy + 40 * u;
+      p.poly([[bx - 6 * u, by - 34 * u], [bx - 30 * u, by - 14 * u], [bx - 36 * u, by + 14 * u], [bx - 20 * u, by + 34 * u], [bx + 20 * u, by + 34 * u], [bx + 36 * u, by + 14 * u], [bx + 30 * u, by - 14 * u], [bx + 6 * u, by - 34 * u]], "#c9a96a", 2.6 * u);
+      p.ell(bx - 12 * u, by - 4 * u, 6 * u, 14 * u, "rgba(255,240,200,0.45)", 0, 0, 360, 20);
+      p.poly([[bx - 12 * u, by - 38 * u], [bx - 18 * u, by - 52 * u], [bx - 7 * u, by - 40 * u], [bx, by - 54 * u], [bx + 7 * u, by - 40 * u], [bx + 18 * u, by - 52 * u], [bx + 12 * u, by - 38 * u]], "#c9a96a", 2 * u);
+      p.band([[bx - 9 * u, by - 34 * u], [bx + 9 * u, by - 34 * u]], "#7a4a26", 5 * u, 1.2 * u);
+      p.ell(bx, by + 6 * u, 13 * u, 13 * u, "#f2c23a", 2.4 * u); p.ell(bx, by + 6 * u, 8 * u, 8 * u, null, 1.6 * u);
+      p.dot(hx, hy, 5.5 * u);
+    } else if (prop === "screwdriver") { // a screwdriver: red wooden handle, a long steel shaft, pointing up and forward
+      const h0: P2 = [hx - 6 * u * f, hy + 14 * u], h1: P2 = [hx + 8 * u * f, hy - 18 * u], tip: P2 = [hx + 40 * u * f, hy - 88 * u];
+      p.band([h1, tip], "#aeb6c0", 3.6 * u, 1.3 * u, "round");
+      p.band([h0, h1], "#c8402e", 11 * u, 2 * u, "round");
+      p.dot(hx, hy, 5.5 * u);
+    } else if (prop === "wrench") { // a big adjustable spanner: grey handle, an open jaw at the top
+      const w0: P2 = [hx - 4 * u * f, hy + 30 * u], w1: P2 = [hx + 18 * u * f, hy - 56 * u];
+      p.band([w0, w1], "#9aa2ac", 9 * u, 1.8 * u, "round");
+      p.poly([[w1[0] - 16 * u, w1[1] - 6 * u], [w1[0] - 12 * u, w1[1] - 34 * u], [w1[0] - 2 * u, w1[1] - 34 * u], [w1[0] - 2 * u, w1[1] - 20 * u], [w1[0] + 8 * u, w1[1] - 20 * u], [w1[0] + 8 * u, w1[1] - 34 * u], [w1[0] + 18 * u, w1[1] - 34 * u], [w1[0] + 22 * u, w1[1] - 6 * u]], "#9aa2ac", 2.4 * u);
+      p.dot(hx, hy, 5.5 * u);
+    } else if (prop === "scissors") { // big ceremonial scissors, the blades snipping with the phase
+      const op = 0.18 + 0.5 * Math.abs(Math.sin(two * phase)), c0: P2 = [hx, hy - 6 * u];
+      for (const sd of [-1, 1]) {
+        const a2 = sd * op, ex = c0[0] + Math.sin(a2) * 62 * u * f, ey = c0[1] - Math.cos(a2) * 62 * u;
+        p.band([c0, [ex, ey]], "#c9ced6", 8 * u, 1.6 * u, "round");
+        p.ell(c0[0] - Math.sin(a2) * 18 * u * f, c0[1] + Math.cos(a2) * 18 * u + 6 * u, 8 * u, 8 * u, null, 3 * u); p.ell(c0[0] - Math.sin(a2) * 18 * u * f, c0[1] + Math.cos(a2) * 18 * u + 6 * u, 8 * u, 8 * u, "#e8b830", 1.8 * u);
+      }
+      p.dot(hx, hy, 5.5 * u);
     } else if (Array.isArray(prop)) {
       const ang = rad(-70 + 105 * clamp(prop[1], 0, 1));
       const Rh = (pts: P2[]) => rotPts(pts, ang, hx, hy);
@@ -1902,4 +2088,175 @@ export const fxMist = (p: Pen, seed = 0) => {
     const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, "rgba(236,242,244,0.55)"); gr.addColorStop(1, "rgba(236,242,244,0)");
     g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2);
   }
+};
+
+// =================================================================================================================
+// The Time Lock: items, effects and the guard clock (all pictures, never words or digits)
+// =================================================================================================================
+/** the robbers' plan on a 600 x 600 item card: a parchment strip with five pictograms (banker, arrow, vault, arrow, open door) */
+export const fxPlan = (p: Pen, shown = 1) => {
+  const g = p.g, x0 = 36, x1 = 564, y0 = 190, y1 = 410;
+  p.poly([[x0, y0], [x1, y0 + 4], [x1 - 4, y1], [x0 + 3, y1 - 4]], "#f1dfae", 4.5);
+  p.ell(x0 - 2, (y0 + y1) / 2, 18, 112, "#e0c88e", 4); p.ell(x1 + 2, (y0 + y1) / 2, 18, 112, "#e0c88e", 4);
+  for (let k = 0; k < 18; k++) { g.fillStyle = "rgba(150,110,50,0.12)"; g.beginPath(); g.arc(60 + 480 * rnd(k, 5), 200 + 200 * rnd(k, 6), 8 + 10 * rnd(k, 7), 0, 7); g.fill(); }
+  const K = "#3a2a22", cy = 300;
+  const a = (i: number) => Math.min(1, Math.max(0, shown * 5.2 - i));
+  const ga = (i: number) => (g.globalAlpha = a(i));
+  // 1: the banker (round head, nightcap, moustache)
+  ga(0); p.ell(100, cy + 8, 40, 46, "#fbf7f2", 5); p.poly([[70, cy - 28], [100, cy - 84], [138, cy - 40], [118, cy - 26]], "#c8403a", 4); p.dot(100, cy - 86, 8, "#fbf7f2"); p.ell(86, cy + 4, 4, 5, K, 0); p.ell(112, cy + 4, 4, 5, K, 0); p.stroke([[80, cy + 24], [100, cy + 20], [120, cy + 24]], 5, K);
+  // 2: arrow
+  ga(1); p.stroke([[170, cy], [226, cy]], 9, K); p.poly([[222, cy - 20], [252, cy], [222, cy + 20]], K, 0);
+  // 3: the vault: round door, wheel, rivets
+  ga(2); p.ell(318, cy, 54, 54, "#9aa4b2", 6); p.ell(318, cy, 38, 38, null, 4); for (let k = 0; k < 6; k++) { const an = (k * Math.PI) / 3; p.stroke([[318, cy], [318 + 34 * Math.cos(an), cy + 34 * Math.sin(an)]], 5, K); } p.dot(318, cy, 8, "#e2c45a");
+  // 4: arrow
+  ga(3); p.stroke([[392, cy], [444, cy]], 9, K); p.poly([[440, cy - 20], [470, cy], [440, cy + 20]], K, 0);
+  // 5: an open door (a round door ajar, golden light)
+  ga(4); p.ell(520, cy, 40, 52, "#f2c23a", 5); p.poly([[498, cy - 50], [550, cy - 36], [550, cy + 36], [498, cy + 50]], "#9aa4b2", 5); p.dot(534, cy, 6, K);
+  g.globalAlpha = 1;
+};
+/** the blueprint on a 600 x 600 item card: blue paper, white chalk lines; a = the vault door with a clock face (0..1), b = the
+ *  keyhole crossed out over a banker's face (0..1) */
+export const fxBlueprint = (p: Pen, a: number, b: number) => {
+  const g = p.g, W = "#eaf4ff";
+  p.poly([[30, 60], [570, 52], [575, 548], [26, 556]], "#2f62b4", 5);
+  g.save(); g.strokeStyle = "rgba(234,244,255,0.14)"; g.lineWidth = 2;
+  for (let k = 1; k < 11; k++) { g.beginPath(); g.moveTo(30 + k * 50, 60); g.lineTo(30 + k * 50, 550); g.moveTo(30, 60 + k * 45); g.lineTo(572, 56 + k * 45); g.stroke(); }
+  g.restore();
+  const arc = (cx: number, cy: number, r: number, k: number, w = 6) => { if (k <= 0) return; g.strokeStyle = W; g.lineWidth = w; g.lineCap = "round"; g.beginPath(); g.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, k)); g.stroke(); };
+  const seg = (x0: number, y0: number, x1: number, y1: number, k: number, w = 6) => { if (k <= 0) return; g.strokeStyle = W; g.lineWidth = w; g.lineCap = "round"; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x0 + (x1 - x0) * Math.min(1, k), y0 + (y1 - y0) * Math.min(1, k)); g.stroke(); };
+  // left half: a round vault door with a clock face in the middle
+  const cx = 170, cy = 200;
+  arc(cx, cy, 102, a * 2.2); arc(cx, cy, 84, a * 2.2 - 0.3, 4);
+  for (let k = 0; k < 12; k++) { const an = (k / 12) * Math.PI * 2; if (a * 3 - 0.6 > k / 12) { g.fillStyle = W; g.beginPath(); g.arc(cx + 93 * Math.cos(an), cy + 93 * Math.sin(an), 4.5, 0, 7); g.fill(); } }
+  const c2 = Math.min(1, Math.max(0, a * 2.4 - 1.1));
+  arc(cx, cy, 52, c2 * 1.4); 
+  for (let k = 0; k < 12; k++) { const an = (k / 12) * Math.PI * 2; if (c2 * 1.3 > k / 12) seg(cx + 40 * Math.sin(an), cy - 40 * Math.cos(an), cx + 48 * Math.sin(an), cy - 48 * Math.cos(an), 1, 4); }
+  seg(cx, cy, cx, cy - 34, c2 * 2 - 0.8, 6); seg(cx, cy, cx + 24, cy + 8, c2 * 2 - 1.1, 6);
+  // right half: a keyhole in a circle, a cross over it, and a banker's worried face
+  const bx = 440, by = 200;
+  arc(bx, by, 74, b * 1.8, 6);
+  if (b > 0.35) { g.fillStyle = W; g.beginPath(); g.arc(bx, by - 12, 15, 0, 7); g.fill(); g.beginPath(); g.moveTo(bx - 8, by); g.lineTo(bx + 8, by); g.lineTo(bx + 14, by + 42); g.lineTo(bx - 14, by + 42); g.closePath(); g.fill(); }
+  const x2 = Math.min(1, Math.max(0, b * 3 - 1.6));
+  seg(bx - 70, by - 70, bx + 70, by + 70, x2 * 2, 12); seg(bx + 70, by - 70, bx - 70, by + 70, x2 * 2 - 1, 12);
+  // the banker's face below: round head, moustache, two eyes, a worried mouth
+  const f2 = Math.min(1, Math.max(0, b * 3 - 2.0));
+  if (f2 > 0) { g.globalAlpha = Math.min(1, f2 * 2); arc(bx, 438, 66, 1, 6); seg(bx - 34, 424, bx - 14, 424, 1, 6); seg(bx + 14, 424, bx + 34, 424, 1, 6); for (const sx of [-24, 24]) { g.fillStyle = W; g.beginPath(); g.arc(bx + sx, 440, 6, 0, 7); g.fill(); }
+    seg(bx - 30, 466, bx - 2, 458, 1, 7); seg(bx + 30, 466, bx + 2, 458, 1, 7); g.strokeStyle = W; g.lineWidth = 5; g.beginPath(); g.arc(bx, 494, 16, Math.PI * 1.15, Math.PI * 1.85); g.stroke(); g.globalAlpha = 1; }
+  // the third line: a little arrow between the two drawings
+  if (b > 0.05) { seg(272, 200, 340, 200, Math.min(1, b * 6), 6); }
+};
+/** a crowbar (tumbling when tossed) on a 600 x 600 item card */
+export const fxCrowbar = (p: Pen) => {
+  p.band([[110, 520], [430, 130]], "#3d424c", 28, 4, "round");
+  p.band([[140, 480], [410, 150]], "#6a7280", 8, 0, "round");
+  p.stroke(curve([430, 130], [480, 90], [498, 160], 8), 30, INK); p.stroke(curve([430, 130], [480, 90], [498, 160], 8), 22, "#3d424c");
+  p.poly([[96, 530], [126, 540], [118, 500]], "#3d424c", 4);
+};
+/** rope wrapped round a seated person's chest (480 x 220 canvas, centre 240, 110): three tan turns + a knot with two tails */
+export const fxRopeWrap = (p: Pen) => {
+  const turn = (y: number, sag: number) => {
+    const pts = curve([20, y - 6], [240, y + sag], [460, y - 6], 18);
+    p.stroke(pts, 26, INK); p.stroke(pts, 19, "#d8b878");
+    for (let k = 1; k < 18; k++) { const [x, yy] = pts[k]; p.stroke([[x - 4, yy - 10], [x + 4, yy + 10]], 3, "#9a7a48"); }
+  };
+  turn(54, 26); turn(100, 28); turn(146, 26);
+  p.ell(240, 100, 26, 22, "#d8b878", 4);
+  p.stroke(curve([240, 112], [226, 160], [206, 200], 8), 14, INK); p.stroke(curve([240, 112], [226, 160], [206, 200], 8), 8, "#d8b878");
+  p.stroke(curve([244, 112], [266, 152], [276, 196], 8), 14, INK); p.stroke(curve([244, 112], [266, 152], [276, 196], 8), 8, "#d8b878");
+};
+/** the idea spark above Sargent's head (600 x 600): a yellow five-point star with short rays (no bulb) */
+export const fxIdea = (p: Pen, t: number) => {
+  const k = Math.sin(Math.PI * Math.min(1, t * 1.1)) ** 0.6, R = 120 * (0.35 + 0.65 * Math.min(1, t * 3)), pts: P2[] = [];
+  for (let j = 0; j < 10; j++) { const a = -Math.PI / 2 + (j * Math.PI) / 5, rr = j % 2 ? R * 0.46 : R; pts.push([300 + rr * Math.cos(a), 300 + rr * Math.sin(a)]); }
+  p.poly(chaikin(pts, pts.map((_, j) => j % 2 === 0), 1), "#ffd93a", 12 * k + 3);
+  for (let j = 0; j < 10; j++) { const a = (j * Math.PI) / 5 + 0.15, r0 = R * 1.2, r1 = R * (1.45 + 0.35 * (j % 2)) * (0.6 + 0.4 * k); p.stroke([[300 + r0 * Math.cos(a), 300 + r0 * Math.sin(a)], [300 + r1 * Math.cos(a), 300 + r1 * Math.sin(a)]], 14, "#ffd93a"); }
+};
+/** a tiny smug clock-face (300 x 300, drawn over a dial): half-lidded eyes, one raised brow, a smirk */
+export const fxSmug = (p: Pen, blink = 0) => {
+  for (const sx of [-1, 1]) {
+    const x = 150 + sx * 52, y = 140;
+    p.ell(x, y, 26, 24, "#fbf7f2", 7);
+    if (blink > 0.5) p.stroke([[x - 22, y + 2], [x + 22, y + 2]], 7); else { p.ell(x + 4, y + 6, 11, 11, INK, 0); p.poly([[x - 28, y - 4], [x + 28, y - 4], [x + 28, y - 30], [x - 28, y - 30]], "#c9a040", 0); p.stroke([[x - 27, y - 3], [x + 27, y - 3]], 7); }
+    p.stroke([[x - 24, y - 44 - (sx > 0 ? 12 : 0)], [x + 24, y - 38 - (sx > 0 ? 4 : 0)]], 8);
+  }
+  p.stroke(curve([86, 214], [160, 246], [236, 206], 10), 9);
+  p.stroke([[236, 206], [248, 192]], 8);
+};
+/** a hand-and-sleeve reaching in from the lower right to a wheel spoke (400 x 600): dark sleeve, white cuff, ink-dot hand */
+export const fxHandSleeve = (p: Pen, grip = 1) => {
+  p.band([[360, 640], [230, 330]], "#4a3a4e", 74, 3.5, "round");
+  p.band([[246, 366], [212, 290]], "#f4efe6", 84, 3, "butt");
+  p.stroke([[220, 300], [196, 226]], 26, INK);
+  p.ell(190, 210, 36, 36, "#fbf7f2", 6);
+  for (let k = 0; k < 4; k++) p.stroke([[170 + 14 * k, 186], [172 + 14 * k, 160 + 6 * Math.abs(k - 1.5) - 14 * grip]], 12, INK);
+  p.stroke([[160, 220], [138, 230]], 11, INK);
+};
+/** warm light spilling from an opened vault (pixel canvas): a long soft trapezoid, bright at the door, fading out */
+export const fxLightSpill = (p: Pen, w = 400, h = 700) => {
+  const g = p.g;
+  g.clearRect(0, 0, w, h);
+  const lg = g.createLinearGradient(0, 0, 0, h);
+  lg.addColorStop(0, "rgba(255,196,86,0.95)"); lg.addColorStop(0.35, "rgba(255,176,70,0.5)"); lg.addColorStop(1, "rgba(255,160,60,0)");
+  g.filter = "blur(18px)"; g.fillStyle = lg;
+  g.beginPath(); g.moveTo(w * 0.34, 0); g.lineTo(w * 0.66, 0); g.lineTo(w * 0.98, h); g.lineTo(w * 0.02, h); g.closePath(); g.fill();
+};
+/** the banker's tiny shadow on the door (pixel canvas 200 x 400, soft, dark blue) */
+export const fxSilhouette = (p: Pen) => {
+  const g = p.g;
+  g.clearRect(0, 0, 200, 400);
+  g.filter = "blur(5px)"; g.fillStyle = "rgba(8,12,36,0.7)";
+  g.beginPath(); g.ellipse(100, 74, 40, 46, 0, 0, 7); g.fill();
+  g.beginPath(); g.moveTo(66, 118); g.bezierCurveTo(40, 190, 50, 290, 56, 330); g.lineTo(146, 330); g.bezierCurveTo(152, 290, 160, 190, 134, 118); g.closePath(); g.fill();
+  g.fillRect(70, 320, 22, 70); g.fillRect(108, 320, 22, 70);
+};
+/** loose papers (Sargent's overwhelmed): a sheet with ink squiggles on a 300 x 300 card */
+export const fxPaper = (p: Pen, seed = 0) => {
+  p.poly([[50, 70], [250, 50], [262, 250], [60, 262]], "#fbf6e6", 5);
+  for (let k = 0; k < 5; k++) p.stroke([[84, 110 + k * 30], [84 + 100 + 40 * rnd(seed + k, 3), 106 + k * 30 + 6 * rnd(seed + k, 4)]], 6, "#4a5a7a");
+  p.ell(214, 214, 22, 22, null, 5);
+};
+/** a sack of money (600 x 600 item card) */
+export const fxMoneyBag = (p: Pen) => {
+  p.poly([[260, 130], [170, 230], [138, 360], [190, 470], [410, 470], [462, 360], [430, 230], [340, 130]], "#c9a96a", 8);
+  p.ell(230, 330, 22, 56, "rgba(255,240,200,0.45)", 0, 0, 360, 15);
+  p.poly([[236, 150], [196, 94], [262, 132], [300, 80], [338, 132], [404, 94], [364, 150]], "#c9a96a", 7);
+  p.band([[246, 136], [354, 136]], "#7a4a26", 22, 4);
+  p.ell(300, 340, 62, 62, "#f2c23a", 8); p.ell(300, 340, 38, 38, null, 6);
+};
+/** the guard clock (character card, 600 x 1000 design, soles at y = 975): a wall clock with arms and legs in a security cap, arms
+ *  crossed. lid 0..1 (blink), wink = right eye shut with a smile, stare 0..1 = brows down */
+export const guardClock = (p: Pen, o: { lid?: number; wink?: boolean; stare?: number; light?: number; ph?: number } = {}) => {
+  const lid = o.lid ?? 0, stare = o.stare ?? 0.5, g = p.g, cx = 300, cy = 470, R = 190;
+  // legs: two stub legs with big dark boots
+  for (const sx of [-1, 1]) {
+    p.stroke([[cx + sx * 56, cy + R - 20], [cx + sx * 56, 940]], 24, INK); p.stroke([[cx + sx * 56, cy + R - 20], [cx + sx * 56, 940]], 15, "#e8e4da");
+    p.poly([[cx + sx * 56 - 34, 975], [cx + sx * 56 + 34, 975], [cx + sx * 56 + 30, 928], [cx + sx * 56 - 30, 928]], "#26303e", 7);
+    p.stroke([[cx + sx * 56 - 34, 970], [cx + sx * 56 + 34, 970]], 12, INK);
+  }
+  // the case: a brass-red round clock body with a white face
+  p.ell(cx, cy, R + 4, R + 4, "#b8302a", 11);
+  p.ell(cx, cy, R - 22, R - 22, "#fbf6e6", 8);
+  p.ell(cx, cy, R - 12, R - 12, null, 3, 200, 330);
+  for (let k = 0; k < 12; k++) { const a = (k * Math.PI) / 6, len = k % 3 === 0 ? 24 : 12; p.stroke([[cx + (R - 36) * Math.sin(a), cy - (R - 36) * Math.cos(a)], [cx + (R - 36 - len) * Math.sin(a), cy - (R - 36 - len) * Math.cos(a)]], k % 3 === 0 ? 11 : 7); }
+  // hands at ten past ten: they read as stern brows
+  p.band([[cx, cy - 8], [cx - 66, cy - 102]], "#241726", 13, 0, "round"); p.band([[cx, cy - 8], [cx + 88, cy - 82]], "#241726", 13, 0, "round"); p.dot(cx, cy - 8, 12, "#e2b830");
+  // eyes, nose-less, a flat mouth
+  const ey = cy + 40;
+  for (const sx of [-1, 1]) {
+    const x = cx + sx * 56, shut = (o.wink && sx > 0) || lid > 0.5;
+    if (shut) { if (o.wink && sx > 0) p.stroke(curve([x - 22, ey + 2], [x, ey - 14], [x + 22, ey + 2], 8), 9); else p.stroke([[x - 22, ey + 2], [x + 22, ey + 2]], 9); }
+    else { p.ell(x, ey, 26, 24, "#ffffff", 7); p.ell(x - 3 * sx, ey + 4, 11, 11, INK, 0); p.poly([[x - 30, ey - 36 + 18 * stare * 0], [x + 30, ey - 36], [x + 30, ey - 6 + (1 - stare) * 8], [x - 30, ey - 6 + (1 - stare) * 8]], "#fbf6e6", 0); p.stroke([[x - 27, ey - 6 + (1 - stare) * 8], [x + 27, ey - 6 + (1 - stare) * 8]], 8); }
+  }
+  if (o.wink) p.stroke(curve([cx - 36, cy + 100], [cx + 8, cy + 120], [cx + 52, cy + 96], 10), 9); else p.stroke([[cx - 36, cy + 106], [cx + 36, cy + 106]], 9);
+  // the little security cap: navy, peaked, a gold badge (a star) and a band
+  p.poly([[cx - 112, cy - R + 18], [cx - 100, cy - R - 44], [cx - 40, cy - R - 76], [cx + 40, cy - R - 76], [cx + 100, cy - R - 44], [cx + 112, cy - R + 18]], "#243a6a", 8);
+  p.band([[cx - 114, cy - R + 8], [cx + 114, cy - R + 8]], "#16264a", 22, 4);
+  p.poly([[cx - 120, cy - R + 18], [cx + 120, cy - R + 18], [cx + 150, cy - R + 44], [cx - 150, cy - R + 44]], "#16213c", 7);
+  const st: P2[] = []; for (let j = 0; j < 10; j++) { const a = -Math.PI / 2 + (j * Math.PI) / 5, rr = j % 2 ? 12 : 28; st.push([cx + rr * Math.cos(a), cy - R - 24 + rr * Math.sin(a)]); }
+  p.poly(st, "#f2c23a", 4);
+  // arms crossed over the lower face: two sleeves from the sides, ink-dot hands on the opposite shoulders
+  p.stroke(curve([cx - R + 6, cy + 20], [cx - 90, cy + 190], [cx + 70, cy + 128], 12), 34, INK); p.stroke(curve([cx - R + 6, cy + 20], [cx - 90, cy + 190], [cx + 70, cy + 128], 12), 25, "#243a6a");
+  p.stroke(curve([cx + R - 6, cy + 20], [cx + 90, cy + 200], [cx - 70, cy + 140], 12), 34, INK); p.stroke(curve([cx + R - 6, cy + 20], [cx + 90, cy + 200], [cx - 70, cy + 140], 12), 25, "#243a6a");
+  p.dot(cx + 70, cy + 128, 20); p.dot(cx - 70, cy + 140, 20);
+  void g;
 };

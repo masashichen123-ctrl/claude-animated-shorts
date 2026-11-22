@@ -1,5 +1,5 @@
-// "Chicago Lifts a Hotel" (the raising of the Tremont House, 1861): 59 s vertical short in the flat-characters-in-a-3D-toon-world style,
-// on the marathon / whale / emu / bat shorts' look stack (owner: post, with ink.ts / lensblur.ts / grade.ts).
+// "The Time Lock" (bank vault time locks, 1870s): 53 s vertical short in the flat-characters-in-a-3D-toon-world style,
+// on the chicago / marathon / whale / emu / bat shorts' look stack (owner: post, with ink.ts / lensblur.ts / grade.ts).
 // One three.js world (world.ts) posed per frame from the story timeline (story.ts). Post chain:
 //   InkPass (world ink lines, own pass) -> lens blur pre + main (thin-lens DOF per shot from dofAt) ->
 //   [bloom (emissive only) + NEUTRAL tone mapping + colour grade] (one merged EffectPass), MSAA 4.
@@ -19,10 +19,8 @@ import { World, loadKit } from "./world";
 import { InkPass, noInkFallback, InkOptions } from "./ink";
 import { LensBlur, GrainEffect, OpaqueEffect } from "./lensblur";
 import { GradeEffect, GRADES, GRADE_STRENGTH, gradeFor } from "./grade";
-import { TOTAL, FLASH_AT, SHOTS, layersAt, dofAt } from "./story";
-import * as LXM from "./lights";
-/** lights.ts seen loosely: lightOf / bloomI / bloomR arrive with the light owner's merge */
-const LX = LXM as unknown as { LIGHTS: Record<string, unknown>; lightOf?: (id: number) => string };
+import { TOTAL, FLASH_AT, SHOTS, layersAt, dofAt, lightAt } from "./story";
+import { LIGHTS, lightOf } from "./lights";
 
 export const VAULT_FRAMES = TOTAL;
 
@@ -40,7 +38,7 @@ const toggles = (): PostToggles => ({ ink: true, lens: true, pre: true, bloom: t
 // so saturated sources (an orange lamp: luminance < 1.3) still bloom. Emissives need k >= 1.8 to glow fully.
 const BLOOM_T = 1.45, BLOOM_S = 0.35;
 /** per light preset bloom strength / radius (lighting.md 3.4; e-fold glow ~30 px at 1080 for radius 0.6) */
-const BLOOM_LOOK: Record<string, [number, number]> = { day: [0.7, 0.65], overcast: [0.6, 0.65], interior: [0.75, 0.65], warm: [0.75, 0.65], golden: [0.85, 0.7] };
+const BLOOM_LOOK: Record<string, [number, number]> = { day: [0.7, 0.65], night: [0.95, 0.7], candle: [0.95, 0.7], interior: [0.8, 0.65], modern: [0.9, 0.65] };
 /** per-light bright-pass threshold (max channel, linear); a lights.ts preset may carry its own `bloomT`, which wins */
 const BLOOM_TH: Record<string, number> = {};
 /** per-shot bloom intensity factor */
@@ -61,7 +59,7 @@ const fwd = new THREE.Vector3(), fpt = new THREE.Vector3();
 /** waits for loadKit() (procedural world: resolves at once; kept so async assets can be added without touching the comp) */
 const useKit = () => {
   const [kit, setKit] = useState<boolean | null>(null);
-  const [handle] = useState(() => delayRender("chicago kit"));
+  const [handle] = useState(() => delayRender("vault kit"));
   useEffect(() => { loadKit().then((k) => { setKit(k); continueRender(handle); }); }, [handle]);
   return kit;
 };
@@ -108,13 +106,13 @@ const Inner: React.FC<{ id: number; kit: boolean }> = ({ id, kit }) => {
   if (d.focus) fpt.set(...d.focus(f)); else fpt.copy(target);
   fx.lens.focus = Math.max(0.3, fpt.sub(cam.position).dot(fwd));
   fx.lens.cInf = d.cInf;
-  const light = SHOTS[id - 1].light;
+  const fc = Math.min(Math.max(f, sd.a), sd.b - 1);
+  const light = lightAt(id, fc);
   gradeFor(fx.grade, light);
-  // bloom per shot: lights.ts LIGHTS[lightOf(id)].bloomI / bloomR when the light owner's version provides them,
-  // else the BLOOM_LOOK table above (optional access: compiles against both lights.ts versions)
-  const lname = (typeof LX.lightOf === "function" ? LX.lightOf(id) : light) as string;
-  const lp = (LX.LIGHTS as Record<string, { bloomI?: number; bloomR?: number; bloomT?: number } | undefined>)[lname];
-  const [bi0, br0] = BLOOM_LOOK[lname] ?? BLOOM_LOOK[light] ?? BLOOM_LOOK.day;
+  // bloom per shot / frame: lights.ts LIGHTS[light].bloomI / bloomR / bloomT, else the BLOOM_LOOK table above
+  const lname = lightOf(id, fc);
+  const lp = LIGHTS[lname] as { bloomI?: number; bloomR?: number; bloomT?: number } | undefined;
+  const [bi0, br0] = BLOOM_LOOK[lname] ?? BLOOM_LOOK.day;
   const bi = typeof lp?.bloomI === "number" ? lp.bloomI : bi0, br = typeof lp?.bloomR === "number" ? lp.bloomR : br0;
   fx.bloom.intensity = bi * (SHOT_BLOOM_K[id] ?? 1); fx.bloom.mipmapBlurPass.radius = br;
   fx.bloom.luminanceMaterial.threshold = on.bloomT ?? (typeof lp?.bloomT === "number" ? lp.bloomT : BLOOM_TH[lname] ?? BLOOM_T);
