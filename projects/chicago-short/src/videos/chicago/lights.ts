@@ -114,12 +114,12 @@ export const SHOT_LIGHT: Record<number, LightName> = {};
 export const SHOT_SUN: Record<number, { az: number; el: number }> = {
   1: { az: 128, el: 46 }, 2: { az: 125, el: 52 }, 3: { az: 130, el: 54 }, 4: { az: 125, el: 52 }, 5: { az: 120, el: 40 },
   6: { az: 125, el: 46 }, 7: { az: 128, el: 44 }, 8: { az: 125, el: 38 }, 9: { az: 140, el: 50 }, 10: { az: 135, el: 48 },
-  11: { az: 135, el: 46 }, 12: { az: 128, el: 44 }, 13: { az: 125, el: 44 }, 14: { az: 28, el: 9 },
+  11: { az: 135, el: 46 }, 12: { az: 128, el: 44 }, 13: { az: 125, el: 44 }, 14: { az: 150, el: 12 },
 };
 /** a second, later sun for a shot: from frame [0] on (a cut to another set / a reverse angle) the sun is re-frozen
  *  camera-relative */
 export const SHOT_SUN_FROM: Record<number, [number, { az: number; el: number }]> = {
-  14: [1619, { az: 70, el: 14 }],
+  14: [1619, { az: 110, el: 16 }],
 };
 /** absolute world direction TOWARD the sun for a shot (overrides SHOT_SUN) */
 export const SHOT_SUN_DIR: Record<number, [number, number, number]> = {};

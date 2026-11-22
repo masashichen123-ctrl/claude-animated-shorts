@@ -30,13 +30,14 @@ const room = (sh: Batch, x0: number, x1: number, z0: number, z1: number, H: numb
   sh.add(quad(V(x0, H, z0), V(x1, H, z0), V(x1, H, z1), V(x0, H, z1), (x1 - x0) / 2, (z1 - z0) / 2), ceil);
 };
 const archGlow = (b: Batch, x: number, y: number, z: number, hw: number, h: number, c = "#bfe0ff", k = 1.15, ry = 0) => {
-  const sh = new THREE.Shape(); sh.moveTo(-hw, 0); sh.lineTo(hw, 0); sh.lineTo(hw, h); sh.absarc(0, h, hw, 0, Math.PI, false); sh.lineTo(-hw, 0);
+  const pts: THREE.Vector2[] = [new THREE.Vector2(-hw, 0), new THREE.Vector2(hw, 0)]; for (let i = 0; i <= 12; i++) { const a = (Math.PI * i) / 12; pts.push(new THREE.Vector2(hw * Math.cos(a), h + hw * Math.sin(a))); }
+  const sh = new THREE.Shape(pts);
   b.add(new THREE.ShapeGeometry(sh, 10), glow(c, k), M4(x, y, z, ry));
 };
 const hood = (hw: number, h: number, t = 0.18, d = 0.1) => cached(`shood${hw}_${h}_${t}_${d}`, () => {
-  const s = new THREE.Shape(); s.moveTo(-hw - t, 0); s.lineTo(hw + t, 0); s.lineTo(hw + t, h); s.absarc(0, h, hw + t, 0, Math.PI, false); s.lineTo(-hw - t, 0);
-  const p = new THREE.Path(); p.moveTo(-hw, -0.01); p.lineTo(hw, -0.01); p.lineTo(hw, h); p.absarc(0, h, hw, 0, Math.PI, false); p.lineTo(-hw, -0.01); s.holes.push(p);
-  return new THREE.ExtrudeGeometry(s, { depth: d, bevelEnabled: false, curveSegments: 10 });
+  const apts = (hw2: number, y0: number) => { const p: THREE.Vector2[] = [new THREE.Vector2(-hw2, y0), new THREE.Vector2(hw2, y0)]; for (let i = 0; i <= 12; i++) { const a = (Math.PI * i) / 12; p.push(new THREE.Vector2(hw2 * Math.cos(a), h + hw2 * Math.sin(a))); } return p; };
+  const s = new THREE.Shape(apts(hw + t, -0.06)); s.holes.push(new THREE.Path(apts(hw, 0)));
+  return new THREE.ExtrudeGeometry(s, { depth: d, bevelEnabled: true, bevelThickness: 0.008, bevelSize: 0.008, bevelSegments: 1, curveSegments: 10 });
 });
 const lamp = (b: Batch, x: number, y: number, z: number, c = "#ffe0a0", k = 1.5) => { b.add(cached("lampB", () => new THREE.SphereGeometry(0.12, 10, 8)), glow(c, k), M4(x, y, z)); };
 const picture = (b: Batch, x: number, y: number, z: number, w: number, h: number, ry: number, seed: number) => {
@@ -81,7 +82,8 @@ const shopFront = (b: Batch, xf: number, dir: 1 | -1, z0: number, z1: number, h:
 };
 const buildTown = (): SetRig => {
   const b = new Batch(), r = rng(5);
-  const mud = groundM("townMud", () => P.mudHD("mudStreet", "#7a5636", 0.8)), marsh = groundM("marsh", () => P.mudHD("marshMud", "#6a6a3a", 0.3));
+  const plainG = (key: string, mk: () => THREE.Texture) => { const m = texM(key, mk); m.userData.inkId = 1100; return m; };
+  const mud = plainG("townMud", () => P.mudHD("mudStreet", "#76624a", 1.0)), marsh = plainG("marsh", () => P.mudHD("marshMud", "#665e44", 0.3));
   terrain(b, marsh, -FAR, FAR, -FAR, FAR, 4, undefined, 4, -0.02);
   terrain(b, mud, -4.8, 4.8, -90, 90, 4, undefined, 4, 0.0);
   for (const s of [-1, 1]) terrain(b, groundM("pastureM", () => P.pastureHD("pastureMarsh", "#6a9a46")), s * 20, s * FAR, -FAR, FAR, 4, undefined, 4, 0.01);
@@ -120,7 +122,7 @@ const buildTown = (): SetRig => {
   const rig: SetRig = { name: "town", group: new THREE.Group() }; rig.group.name = "town";
   b.build(rig.group, true);
   // the puddle that is the street (shot 3): murky green-brown water over the mud, z -34..-4
-  const pud = new THREE.Mesh(new THREE.PlaneGeometry(9.6, 34).rotateX(-Math.PI / 2), lam("puddleW", () => ({ map: P.waterHD("puddleW", "#7a8a4a") })));
+  const pud = new THREE.Mesh(new THREE.PlaneGeometry(9.6, 34).rotateX(-Math.PI / 2), lam("puddleW", () => ({ map: P.waterHD("puddleW", "#857c64") })));
   pud.position.set(0, 0.04, -20); pud.receiveShadow = true; pud.userData.inkId = 1201; rig.group.add(pud);
   const pud2 = new THREE.Mesh(new THREE.PlaneGeometry(5.5, 5).rotateX(-Math.PI / 2), pud.material); pud2.position.set(1.6, 0.05, 22); pud2.userData.inkId = 1201; rig.group.add(pud2);
   return rig;
@@ -195,7 +197,7 @@ const buildPit = (): SetRig => {
   terrain(b, groundM("pitDirt", () => P.mudHD("pitMud", "#8a6a44", 0.3)), -FAR, FAR, -FAR, FAR, 4, undefined, 4, -0.01);
   // old buildings, ground floors in the pit: fronts at z = +-9.6, doors at y = 0
   const WALL = [brickM("#b4513a"), plasterM("#e8d4a0"), brickM("#c8805a"), sidingM("#d8c898"), brickM("#9a4a36"), plasterM("#d8c090")];
-  for (const s of [-1, 1] as const) { let x = -60, i = 0; while (x < 60) { const w = 7 + 3 * ((i * 5 + (s > 0 ? 2 : 0)) % 3), h = 8.4 + 2.2 * ((i * 7 + 1) % 3);
+  for (const s of [-1] as const) { let x = -60, i = 0; while (x < 60) { const w = 7 + 3 * ((i * 5 + (s > 0 ? 2 : 0)) % 3), h = 8.4 + 2.2 * ((i * 7 + 1) % 3);
     const zf = s * 9.6, zb = s * 20, mat = WALL[(i + (s > 0 ? 2 : 0)) % 6];
     rb(b, mat, x, x + w - 0.3, 0, h, Math.min(zf, zb), Math.max(zf, zb), 0.05, 2);
     rb(b, col(CREAM), x - 0.2, x + w - 0.1, h, h + 0.45, Math.min(zf, zb) - 0.2 * s, Math.max(zf, zb) + 0.2 * s, 0.05);
@@ -208,11 +210,12 @@ const buildPit = (): SetRig => {
     rb(b, brickM("#9a3f2a"), x + 1.5, x + 2.3, h, h + 2.2, s * 12, s * 12.8, 0.03);
     x += w; i++; } }
   // low window with a wooden shop sign beam over the stair (bonk): hangs at head height above the stairs
-  rb(b, woodM("#8a5a34"), SPOT.PIT_STAIR_X - 1.4, SPOT.PIT_STAIR_X + 1.4, 2.05, 2.6, 7.7, 8.05, 0.03);
-  b.add(new THREE.PlaneGeometry(1.4, 0.5), texM("bonkSign", () => ctex("bonkSign", 128, 64, (g) => { g.fillStyle = "#e8c890"; g.fillRect(0, 0, 128, 64); g.fillStyle = "#5a3a1e"; g.fillRect(34, 14, 18, 30); g.fillRect(34, 34, 40, 14); })), M4(SPOT.PIT_STAIR_X, 2.33, 8.07, 0));
-  rb(b, woodM("#6a4626"), SPOT.PIT_STAIR_X - 1.5, SPOT.PIT_STAIR_X - 1.4, 1.2, 2.8, 8.0, 9.6, 0.02); rb(b, woodM("#6a4626"), SPOT.PIT_STAIR_X + 1.4, SPOT.PIT_STAIR_X + 1.5, 1.2, 2.8, 8.0, 9.6, 0.02);
-  gasLampPit(b, -12, 6.4); gasLampPit(b, 14, 6.4); gasLampPit(b, -12, -6.4); gasLampPit(b, 14, -6.4);
-  for (let i = 0; i < 10; i++) addVeg(b, "round", -50 + 11 * i, 0, 36 + 4 * r(), 6 + 2 * r(), i * 9, 1);
+  rb(b, woodM("#8a5a34"), SPOT.PIT_STAIR_X - 1.4, SPOT.PIT_STAIR_X + 1.4, 2.05, 2.6, -8.05, -7.7, 0.03);
+  b.add(new THREE.PlaneGeometry(1.4, 0.5), texM("bonkSign", () => ctex("bonkSign", 128, 64, (g) => { g.fillStyle = "#e8c890"; g.fillRect(0, 0, 128, 64); g.fillStyle = "#5a3a1e"; g.fillRect(34, 14, 18, 30); g.fillRect(34, 34, 40, 14); })), M4(SPOT.PIT_STAIR_X, 2.33, -7.67, 0));
+  rb(b, woodM("#6a4626"), SPOT.PIT_STAIR_X - 1.5, SPOT.PIT_STAIR_X - 1.4, 1.2, 2.8, -9.6, -8.0, 0.02); rb(b, woodM("#6a4626"), SPOT.PIT_STAIR_X + 1.4, SPOT.PIT_STAIR_X + 1.5, 1.2, 2.8, -9.6, -8.0, 0.02);
+  gasLampPit(b, -12, -6.4); gasLampPit(b, 14, -6.4);
+  for (let i = 0; i < 10; i++) addVeg(b, "round", -50 + 11 * i, 0, 28 + 4 * r(), 6 + 2 * r(), i * 9, 1);
+  for (let i = 0; i < 8; i++) { rb(b, WALL[(i + 1) % 6], -48 + 13 * i, -40 + 13 * i, 0, 7 + (i % 3) * 1.5, 38, 46, 0.05, 2); }
   hillRing(b, 0, 0, 800, 8, 20, 12, "#8a9a78");
   const rig: SetRig = { name: "pit", group: new THREE.Group() }; const G = rig.group; G.name = "pit"; b.build(G, true);
   // the raised street: a slab whose height follows fillAt; retaining wall faces, plank sidewalk, a stair into the trench
@@ -225,7 +228,7 @@ const buildPit = (): SetRig => {
   // wooden stair rail gap at the stair
   tb.build(top, true); G.add(top);
   const stairs = new THREE.Group(); const sb = new Batch();
-  const NS = 12; for (let k = 0; k < NS; k++) rb(sb, woodM("#b08a5a"), SPOT.PIT_STAIR_X - 1.25, SPOT.PIT_STAIR_X + 1.25, 0, unit * (1 - (k + 1) / (NS + 1)) + 0.0, 6.0 + k * (3.0 / NS), 6.0 + (k + 1) * (3.0 / NS), 0.01);
+  const NS = 12; for (let k = 0; k < NS; k++) rb(sb, woodM("#b08a5a"), SPOT.PIT_STAIR_X - 1.25, SPOT.PIT_STAIR_X + 1.25, 0, unit * (1 - (k + 1) / (NS + 1)) + 0.0, -6.0 - (k + 1) * (3.0 / NS), -6.0 - k * (3.0 / NS), 0.01);
   sb.build(stairs, true); G.add(stairs);
   // the dump wagon (its bed tilts) + gravel heaps + shovel-heaps
   const wag = new THREE.Group(), bed = new THREE.Group(); { const wb = new Batch(); rb(wb, woodM("#8a5a34"), -0.8, 0.8, 0.0, 0.12, -1.4, 1.4, 0.02); for (const s of [-1, 1]) rb(wb, woodM("#7a4a2a"), s * 0.78 - 0.05, s * 0.78 + 0.05, 0.12, 0.8, -1.4, 1.4, 0.02); rb(wb, woodM("#7a4a2a"), -0.8, 0.8, 0.12, 0.8, -1.4, -1.34, 0.02); rb(wb, woodM("#7a4a2a"), -0.8, 0.8, 0.12, 0.8, 1.34, 1.4, 0.02); wb.build(bed, true); bed.position.set(0, 1.0, 0); }
@@ -236,10 +239,10 @@ const buildPit = (): SetRig => {
   rig.tick = (t) => {
     const f = Math.round(t * 30), F = fillAt(f), k = Math.max(0.0001, F);
     fill.scale.y = k; top.position.y = F; stairs.scale.y = k; stairs.visible = F > 0.05;
-    wag.position.set(-2.2, F, 2.6); wag.rotation.y = 0;
+    wag.position.set(-3.0, F, 2.2); wag.rotation.y = Math.PI / 2;
     const tilt = 0.55 * glide((f - (EV.DUMP6 - 6)) / 10) * (1 - glide((f - (EV.DUMP6 + 20)) / 12));
-    bed.rotation.x = -tilt; bed.position.z = 0; bed.position.y = 1.0 + 0.0;
-    heap.visible = f >= EV.DUMP6; heap.position.set(-2.2, F, 4.6); heap.scale.set(0.5 + 1.2 * smooth((f - EV.DUMP6) / 14), 0.15 + 0.7 * smooth((f - EV.DUMP6) / 14), 0.5 + 0.9 * smooth((f - EV.DUMP6) / 14));
+    bed.rotation.x = tilt; bed.position.z = 0; bed.position.y = 1.0 + 0.0;
+    heap.visible = f >= EV.DUMP6; heap.position.set(-5.6, F, 2.2); heap.scale.set(0.5 + 1.2 * smooth((f - EV.DUMP6) / 14), 0.15 + 0.7 * smooth((f - EV.DUMP6) / 14), 0.5 + 0.9 * smooth((f - EV.DUMP6) / 14));
   };
   return rig;
 };
@@ -299,8 +302,8 @@ const bandOf = (b: Batch, x0: number, x1: number, y: number, r: number, z = 0, c
 /** a Pullman sleeping car (side seen from +z), body emerald, gold lining, windows glowing warm */
 const pullmanCar = (b: Batch, x0: number, x1: number, zc: number) => {
   const L = x1 - x0, cx = (x0 + x1) / 2, W = 3.0, y0 = 1.0;
-  rb(b, shiny("#1f6a4a", 70), x0, x1, y0, y0 + 3.2, zc - W / 2, zc + W / 2, 0.12);
-  rb(b, shiny("#1a5a40", 50), x0 + 0.3, x1 - 0.3, y0 + 3.2, y0 + 3.8, zc - 0.9, zc + 0.9, 0.12);                        // clerestory
+  rb(b, col("#1f6a4a"), x0, x1, y0, y0 + 3.2, zc - W / 2, zc + W / 2, 0.12);
+  rb(b, col("#1a5a40"), x0 + 0.3, x1 - 0.3, y0 + 3.2, y0 + 3.8, zc - 0.9, zc + 0.9, 0.12);                        // clerestory
   rb(b, col("#3a3a42"), x0 - 0.1, x1 + 0.1, y0 + 3.8, y0 + 4.05, zc - 1.0, zc + 1.0, 0.06);
   for (const dz of [-1, 1]) { rb(b, col("#e8c040"), x0 + 0.02, x1 - 0.02, y0 + 2.9, y0 + 3.0, zc + dz * (W / 2 + 0.005) - 0.01, zc + dz * (W / 2 + 0.01) + 0.01, 0.005); rb(b, col("#e8c040"), x0 + 0.02, x1 - 0.02, y0 + 0.25, y0 + 0.33, zc + dz * (W / 2 + 0.005) - 0.01, zc + dz * (W / 2 + 0.01) + 0.01, 0.005); }
   const n = Math.floor((L - 2) / 1.6);
@@ -316,17 +319,17 @@ const pullmanCar = (b: Batch, x0: number, x1: number, zc: number) => {
   for (let k = 0; k < 4; k++) rb(b, col("#c8a050"), x0 - 0.7 + 0.0, x0 - 0.2, 0.0 + k * 0.25, 0.25 + k * 0.25, zc - 0.6, zc + 0.6, 0.01);
 };
 const locomotive = (b: Batch, x0: number, zc: number) => {
-  const R = 1.1, body = shiny("#26262e", 60), red = shiny("#c8282e", 60);
+  const R = 1.1, body = col("#2c2c34"), red = col("#c8282e");
   b.add(cached("boiler", () => new THREE.CylinderGeometry(1.0, 1.0, 6.2, 22).rotateZ(Math.PI / 2)), body, M4(x0 + 6.6, 2.4, zc));
   for (const x of [x0 + 4.4, x0 + 5.8, x0 + 7.2, x0 + 8.6]) bandOf(b, x - 0.5, x + 0.5, 2.4, 1.03, zc);
-  b.add(cached("smokebox", () => new THREE.CylinderGeometry(1.06, 1.06, 1.1, 22).rotateZ(Math.PI / 2)), shiny("#3a3a44", 40), M4(x0 + 9.9, 2.4, zc));
+  b.add(cached("smokebox", () => new THREE.CylinderGeometry(1.06, 1.06, 1.1, 22).rotateZ(Math.PI / 2)), col("#3a3a44"), M4(x0 + 9.9, 2.4, zc));
   b.add(cached("stack", () => new THREE.CylinderGeometry(0.34, 0.2, 1.6, 12)), body, M4(x0 + 9.6, 3.9, zc)); b.add(lathe("stackTop", [[0, 0], [0.34, 0], [0.8, 0.5], [0.9, 0.9], [0.8, 1.0], [0, 1.0]], 18), body, M4(x0 + 9.6, 4.6, zc));
   b.add(cached("domeL", () => new THREE.SphereGeometry(0.55, 14, 10, 0, 6.3, 0, 1.6)), shiny(BRASS, 80), M4(x0 + 7.4, 3.3, zc)); b.add(cached("domeL2", () => new THREE.SphereGeometry(0.42, 14, 10, 0, 6.3, 0, 1.6)), shiny(BRASS, 80), M4(x0 + 5.6, 3.3, zc));
   b.add(rod(V(x0 + 5.6, 3.8, zc), V(x0 + 5.6, 4.6, zc), 0.07, 0.07, 6), shiny(BRASS, 60));
   rb(b, red, x0 + 1.0, x0 + 3.4, 1.5, 4.7, zc - 1.3, zc + 1.3, 0.1);                                                  // the cab
   rb(b, col("#3a2a1a"), x0 + 0.8, x0 + 3.7, 4.7, 4.9, zc - 1.5, zc + 1.5, 0.06);
   for (const s of [-1, 1]) { archGlow(b, x0 + 2.2, 3.0, zc + s * 1.31, 0.45, 0.7, "#ffd890", 1.4, s > 0 ? 0 : Math.PI); }
-  rb(b, shiny("#2a2a32", 40), x0 + 3.6, x0 + 11.0, 0.9, 1.5, zc - 0.9, zc + 0.9, 0.06);                               // the running board / frame
+  rb(b, col("#2a2a32"), x0 + 3.6, x0 + 11.0, 0.9, 1.5, zc - 0.9, zc + 0.9, 0.06);                               // the running board / frame
   rb(b, col("#3a3a42"), x0 + 10.9, x0 + 12.4, 0.5, 1.4, zc - 0.9, zc + 0.9, 0.04); b.add(cached("catcher", () => new THREE.ConeGeometry(1.2, 1.4, 4).rotateZ(-Math.PI / 2)), shiny("#3a3a42", 40), M4(x0 + 11.8, 0.7, zc, Math.PI / 4));
   b.add(cached("headlamp", () => new THREE.CylinderGeometry(0.4, 0.4, 0.5, 16).rotateZ(Math.PI / 2)), shiny(BRASS, 80), M4(x0 + 10.55, 3.4, zc)); b.add(cached("lampLens", () => new THREE.SphereGeometry(0.34, 12, 8)), glow("#fff2c0", 1.8), M4(x0 + 10.85, 3.4, zc));
   for (const s of [-1, 1]) for (const wx of [4.6, 6.4, 8.2]) {
@@ -338,7 +341,7 @@ const locomotive = (b: Batch, x0: number, zc: number) => {
   }
   for (const s of [-1, 1]) b.add(rod(V(x0 + 4.6, R, zc + s * 1.27), V(x0 + 8.2, R, zc + s * 1.27), 0.07, 0.07, 6), shiny("#d6dae0", 80));
   // the tender with a woodpile
-  rb(b, shiny("#26262e", 50), x0 - 3.8, x0 + 0.8, 1.1, 3.0, zc - 1.2, zc + 1.2, 0.08); for (let k = 0; k < 14; k++) b.add(cached("log", () => new THREE.CylinderGeometry(0.14, 0.14, 2.2, 7).rotateX(Math.PI / 2)), woodM("#a8764a"), M4(x0 - 3.4 + (k % 7) * 0.62, 3.1 + Math.floor(k / 7) * 0.22, zc + (k % 2 ? 0.3 : -0.3) * 0, 0));
+  rb(b, col("#26262e"), x0 - 3.8, x0 + 0.8, 1.1, 3.0, zc - 1.2, zc + 1.2, 0.08); for (let k = 0; k < 14; k++) b.add(cached("log", () => new THREE.CylinderGeometry(0.14, 0.14, 2.2, 7).rotateX(Math.PI / 2)), woodM("#a8764a"), M4(x0 - 3.4 + (k % 7) * 0.62, 3.1 + Math.floor(k / 7) * 0.22, zc + (k % 2 ? 0.3 : -0.3) * 0, 0));
   for (const s of [-1, 1]) for (const wx of [-3.2, -2.0, -0.8]) b.add(cached("tWheel", () => new THREE.CylinderGeometry(0.5, 0.5, 0.1, 18).rotateX(Math.PI / 2)), col("#2a2a30"), M4(x0 + wx, 0.5, zc + s * 1.0));
 };
 const buildPlatform = (): SetRig => {
@@ -378,29 +381,31 @@ const buildSleeper = (): SetRig => {
   const wood = texM("pullPanel", () => P.panelHD("#7a4a2a")), ceil = texM("pullCeil", () => P.wallpaperHD("pc", "#f0e4c4", "#e0b050"));
   // shell: floor (carpet aisle), back wall (with the windows cut as glass quads), ceiling, end walls
   sh.add(quad(V(X0, 0, Z1), V(X1, 0, Z1), V(X1, 0, Z0), V(X0, 0, Z0), 9, 1.7), texM("pullCarpet", () => P.carpetHD("#7a2a2e", "#d9a83a")));
-  sh.add(quad(V(X0, 0, Z0), V(X1, 0, Z0), V(X1, H, Z0), V(X0, H, Z0), 9, 1.5), wood);
   sh.add(quad(V(X1, 0, Z1), V(X0, 0, Z1), V(X0, H, Z1), V(X1, H, Z1), 9, 1.5), wood);
   sh.add(quad(V(X0, H, Z0), V(X1, H, Z0), V(X1, H, Z1), V(X0, H, Z1), 9, 1.7), ceil);
   for (const s of [-1, 1]) sh.add(quad(V(s > 0 ? X1 : X0, 0, s > 0 ? Z1 : Z0), V(s > 0 ? X1 : X0, 0, s > 0 ? Z0 : Z1), V(s > 0 ? X1 : X0, H, s > 0 ? Z0 : Z1), V(s > 0 ? X1 : X0, H, s > 0 ? Z1 : Z0), 2, 1.5), wood);
   // the bays: window above a lower berth, green curtains drawn back to both sides, a brass lamp
   const bays = [-6.0, -3.0, 0.0, 3.0, 6.0];
+  { const sh2 = new THREE.Shape([new THREE.Vector2(X0, 0), new THREE.Vector2(X1, 0), new THREE.Vector2(X1, H), new THREE.Vector2(X0, H)]);
+    for (const x of bays) { const pts: THREE.Vector2[] = [new THREE.Vector2(x - 0.62, 1.1), new THREE.Vector2(x + 0.62, 1.1)]; for (let i = 0; i <= 12; i++) { const a = (Math.PI * i) / 12; pts.push(new THREE.Vector2(x + 0.62 * Math.cos(a), 2.0 + 0.62 * Math.sin(a))); } sh2.holes.push(new THREE.Path(pts)); }
+    const wg = new THREE.ExtrudeGeometry(sh2, { depth: 0.1, bevelEnabled: true, bevelThickness: 0.008, bevelSize: 0.008, bevelSegments: 1, curveSegments: 10 }); wg.translate(0, 0, Z0);
+    { const uv = wg.attributes.uv as THREE.BufferAttribute; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 0.5, uv.getY(i) * 0.5); }
+    b.add(wg, texM("pullPanelF", () => P.panelHD("#7a4a2a"), { side: THREE.DoubleSide })); }
   for (const x of bays) {
     // berth: mattress, white sheet, pillow, a wooden valance
     rb(b, woodM("#5a3320"), x - 1.35, x + 1.35, 0.3, 0.55, Z0 + 0.02, Z0 + 1.1, 0.04); rb(b, col("#fbf8ee"), x - 1.3, x + 1.3, 0.55, 0.72, Z0 + 0.05, Z0 + 1.05, 0.08); rb(b, col("#f2f0e8"), x - 1.3, x - 0.55, 0.72, 0.86, Z0 + 0.15, Z0 + 0.9, 0.06);
     rb(b, texM("quiltS", () => P.ctex("quiltS", 64, 64, (g) => { g.fillStyle = "#c0352e"; g.fillRect(0, 0, 64, 64); g.fillStyle = "#e8c040"; g.fillRect(0, 28, 64, 8); })), x - 0.4, x + 1.3, 0.72, 0.84, Z0 + 0.08, Z0 + 1.0, 0.07);
-    // the window (arched, glowing with the outside), brass frame
-    archGlow(b, x, 1.15, Z0 + 0.02, 0.62, 1.0, "#ffe0a0", 0.0);
-    b.add(hood(0.62, 1.0, 0.1, 0.06), shiny(BRASS, 60), M4(x, 1.15, Z0 + 0.03));
-    rb(b, shiny(BRASS, 60), x - 0.62, x + 0.62, 1.1, 1.16, Z0 + 0.02, Z0 + 0.1, 0.01);
+    // the window (arched, open to the countryside), brass hood
+    b.add(hood(0.62, 0.9, 0.1, 0.06), shiny(BRASS, 60), M4(x, 1.1, Z0 + 0.11));
+    rb(b, shiny(BRASS, 60), x - 0.7, x + 0.7, 1.03, 1.1, Z0 + 0.04, Z0 + 0.16, 0.01);
     // upper berth folded up: a panel, a brass lamp
-    rb(b, woodM("#5a3320"), x - 1.4, x + 1.4, 2.35, 2.9, Z0 + 0.02, Z0 + 0.5, 0.05); b.add(lathe("pulLamp", [[0, 0], [0.12, 0], [0.12, 0.04], [0.04, 0.1], [0, 0.1]], 10), shiny(BRASS, 60), M4(x + 1.2, 1.95, Z0 + 0.1)); b.add(cached("pulBulb", () => new THREE.SphereGeometry(0.08, 8, 6)), glow("#ffe0a0", 1.7), M4(x + 1.2, 2.12, Z0 + 0.12));
+    rb(b, woodM("#5a3320"), x - 1.4, x + 1.4, 2.62, 2.95, Z0 + 0.02, Z0 + 0.5, 0.05); b.add(lathe("pulLamp", [[0, 0], [0.12, 0], [0.12, 0.04], [0.04, 0.1], [0, 0.1]], 10), shiny(BRASS, 60), M4(x + 1.05, 1.95, Z0 + 0.12)); b.add(cached("pulBulb", () => new THREE.SphereGeometry(0.08, 8, 6)), glow("#ffe0a0", 1.7), M4(x + 1.05, 2.12, Z0 + 0.14));
     // the green curtains: gathered folds either side of the bay, a pelmet
     for (const s of [-1, 1]) for (let k = 0; k < 5; k++) rb(b, col(["#1f8f5a", "#2aa066", "#188250"][k % 3]), x + s * (1.38 - k * 0.1) - 0.05, x + s * (1.38 - k * 0.1) + 0.05, 0.1, 2.35, Z0 + 0.3 + k * 0.01, Z0 + 1.2 + (k % 2) * 0.05, 0.02);
     rb(b, col("#1f8f5a"), x - 1.5, x + 1.5, 2.25, 2.45, Z0 + 0.1, Z0 + 1.3, 0.04); rb(b, shiny(BRASS, 60), x - 1.5, x + 1.5, 2.43, 2.47, Z0 + 0.1, Z0 + 1.3, 0.01);
   }
   // aisle-side seats / far wall brass rail, ceiling lamps
   for (const x of [-7.5, -4.5, -1.5, 1.5, 4.5, 7.5]) { b.add(cached("celLamp", () => new THREE.SphereGeometry(0.16, 10, 8)), glow("#ffe0a0", 1.9), M4(x, H - 0.25, 0)); b.add(rod(V(x, H, 0), V(x, H - 0.22, 0), 0.015, 0.015, 5), shiny(BRASS, 60)); }
-  rb(b, shiny(BRASS, 60), X0, X1, 1.2, 1.26, Z1 - 0.1, Z1 - 0.06, 0.01);
   rb(b, col("#e8c040"), X0, X1, H - 0.4, H - 0.34, Z0 + 0.0, Z0 + 0.02, 0.005);
   // outside scenery (seen through the windows): ground strips, fields, hills, moving poles / fence posts / trees (the tick slides them)
   const groundOut = new THREE.Mesh(new THREE.PlaneGeometry(400, 120).rotateX(-Math.PI / 2), lam("fieldOut", () => ({ map: P.fieldHD() })));

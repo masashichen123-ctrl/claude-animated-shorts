@@ -7,7 +7,7 @@ import { Outfit, Expr, FrontOpts, fxStink } from "./toon";
 import { SKIN, townsfolk, mix } from "./toon";
 import {
   Stage, CamInfo, person, blob, stand, act, lidAt, q, hh, W_, Who, puff, sparkle, poof, stink, steam, stars, zzz, fxc, item, bigCloud, setLight, findSun, SUNV, hexOf,
-  fxFlame, fxFrog, fxBubble, fxMud, fxCough, fxSwirl, fxCoin, horseDraw, fxPoof, fxBurst, SHOTS, setOf, EV, FPS, clamp01,
+  fxFlame, fxMist, fxFrog, fxBubble, fxMud, fxCough, fxSwirl, fxCoin, horseDraw, fxPoof, fxBurst, SHOTS, setOf, EV, FPS, clamp01,
 } from "./cast";
 import {
   V3, HOTEL, SCREWS, screwX, screwZ, SPOT, hotelY, screwTurn, turnPulse, marchZ, fillAt, cutY, boardK, smooth, glide, lerp, riseAt,
@@ -62,6 +62,7 @@ const O = new Map<string, Outfit>(); const memo = (k: string, f: () => Outfit) =
 const wk = (v: number) => memo("w" + v, () => worker(v));
 
 // ---------------- helpers ----------------
+const mist = (out: Stage, c: V3, w: number, seed: number, f: number) => fxc(out, "mist" + (seed % 4), 400, 300, (p) => fxMist(p, seed % 4), [c[0] + 0.4 * Math.sin(f / 70 + seed), c[1], c[2]], w, w * 0.45, { soft: true });
 const walkerDraw = (out: Stage, cam: CamInfo, w: Who, p: V3, dir: V3, dist: number, t: number, fo: FrontOpts = {}, gait: "walk" | "march" | "run" = "walk", scale = 1) => {
   const stride = gait === "run" ? 2.3 : gait === "march" ? 1.1 : 1.5;
   const phase = q((((dist / stride) % 1) + 1) % 1, 12);
@@ -77,8 +78,8 @@ const lying = (out: Stage, cam: CamInfo, w: Who, c: V3, fo: FrontOpts, t: number
 };
 /** a sitting person: p = the seat point (y = seat height) */
 const sit = (out: Stage, cam: CamInfo, i: number, o: Outfit, okey: string, p: V3, fo: FrontOpts, t: number, scale = 1, shadow = true) => {
-  out.places.push(person(cam, W_(i, o, okey), p[0], p[1] - 0.45 * scale, p[2], { side: false, mirror: false }, { mode: "sit", blink: lidAt(t, i), ...fo }, {}, scale));
-  if (shadow) blob(out, p[0], p[1] - 0.45 * scale, p[2], scale * 1.1);
+  out.places.push(person(cam, W_(i, o, okey), p[0], p[1] + 0.23 * scale, p[2], { side: false, mirror: false }, { mode: "sit", blink: lidAt(t, i), ...fo }, {}, scale));
+  if (shadow) blob(out, p[0], p[1] - 0.05 * scale, p[2], scale * 1.1);
 };
 const SW = (f: number, i: number) => { const u = ((f + i * 7) % 26) / 26; return u < 0.9 ? q(u / 0.9, 14) : undefined; };
 const pulse = (f: number, i: number, per = 22) => q(0.5 + 0.5 * Math.sin((f / per) * 6.28 + i), 6);
@@ -113,12 +114,13 @@ const guests = (out: Stage, cam: CamInfo, t: number, id: number, H: number, wave
 
 // ---------------- workers ----------------
 const WORKER_ROWS = SCREWS.ROWS;
-const workerBase = (i: number, j: number): V3 => [screwX(i) + 0.5, 0, screwZ(j) + 0.62];
+const workerBase = (a: number, j: number): V3 => [screwX(a) + 0.75, 0, screwZ(j) + 0.6];
 /** the grid of workers (every other column, every row): mode picks the acting */
 const workers = (out: Stage, cam: CamInfo, f: number, t: number, mode: "cheer" | "idle" | "turn" | "march", maxRow = WORKER_ROWS, minRow = 0) => {
   let n = 0;
-  for (let j = minRow; j < maxRow; j++) for (let i = 0; i < SCREWS.COLS; i += 2) {
-    const k = j * 9 + i / 2, base = workerBase(i, j), w = W_(200 + k % 40, wk(k % 12), "wk" + (k % 12));
+  for (let j = minRow; j < maxRow; j++) for (let i = 0; i < SCREWS.COLS - 1; i++) {
+    if (i === 5) continue;
+    const k = j * 11 + i, base = workerBase(i, j), w = W_(200 + k % 40, wk(k % 12), "wk" + (k % 12));
     let p: V3 = base, fo: FrontOpts = {};
     const d = cam.pos.distanceTo(new THREE.Vector3(base[0], 1, base[2]));
     if (d > 62 && j > 5) continue;
@@ -174,8 +176,8 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
         else if (hop) fxc(out, "frogH" + q(jf, 12), 300, 300, (p) => fxFrog(p, q(jf, 12)), [fp[0] - 1.4 * jf, 0.3 + 0.7 * Math.sin(jf * Math.PI), fp[2] - 3.4 * jf], 0.75, 0.75);
         if (F >= EV.FROG2 + 12 && F < EV.FROG2 + 28) { const u = (F - EV.FROG2 - 12) / 16; fxc(out, "splM" + q(u, 12), 400, 400, (p) => fxMud(p, q(u, 12)), [fp[0] - 1.4, 0.4, fp[2] - 3.4], 1.6, 1.6, { glow: 1.0 }); }
         for (const [x, z, k] of [[-1.8, 20.5, 0], [2.6, 19.0, 1], [-0.2, 26, 2], [3.4, 24.5, 3]] as [number, number, number][]) fxc(out, "frogS", 300, 300, (p) => fxFrog(p, 0), [x, 0.22 + 0.01 * Math.sin(f * 0.4 + k), z], 0.5, 0.5);
-        for (let k = 0; k < 7; k++) bigCloud(out, [-14 + 6 * k + 3 * Math.sin(f / 60 + k), 0.9 + 0.3 * (k % 2), -30 + 6 * k], 9, F, 0, 99, k, "#e8f0f2", 0, [0.3, 0, 0]);
-        for (let k = 0; k < 4; k++) puff(out, [-2 + 3 * k, 0.5, 14 + 2 * k], ((F + k * 9) % 40) / FPS, 1.0, 1.4, k, "#e4eef0");
+        for (let k = 0; k < 9; k++) mist(out, [-16 + 4.5 * k, 1.1 + 0.4 * (k % 2), -28 + 5 * k], 13, k, f);
+        for (let k = 0; k < 3; k++) mist(out, [-4 + 4 * k, 0.5, 4 - 2 * k], 5, 3 + k, f);
       } else {
         const cp: V3 = [0.4, 0, 8.0]; horse(out, cam, 0, [cp[0] + 1.7, 0, cp[2] + 3.4], [0.5, 0, 1], F, 3.4, true, true);
         stand(out, cam, 500, manTown(1), "drv", [cp[0] - 0.2, 0.1, cp[2] + 0.9], { expr: "annoyed", armR: "pull", armL: "pull", facing: 1, lean: 8 + 3 * Math.sin(f * 0.4) }, t);
@@ -184,41 +186,38 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
         stand(out, cam, 502, manTown(0), "man0", [2.6, 0, 14.6], { expr: slp ? "shock" : "pained", tilt: slp ? -10 + 12 * glide((F - EV.SCHLORP2) / 6) : 6 * Math.sin(f * 0.6), armR: slp ? "up" : "pull", armL: "out", facing: 1, hatTilt: slp ? 0.5 : 0, hatLift: slp ? 0.15 : 0 }, t);
         if (F >= EV.SCHLORP2 - 2) { const u = clamp01((F - EV.SCHLORP2 + 2) / 16); fxc(out, "slM" + q(u, 12), 400, 400, (p) => fxMud(p, q(u, 12)), [2.9, 0.3, 14.8], 1.8, 1.8); item(out, "boot", (p) => { p.poly([[200, 120], [310, 120], [330, 360], [440, 380], [450, 470], [190, 470]], "#5a3a22", 14); p.poly([[200, 440], [440, 440], [450, 470], [190, 470]], "#2a1a10", 8); }, [2.8, 0.38, 14.9], 0.42, 0.15, 512); }
         for (let k = 0; k < 6; k++) { const side = k % 2 ? 1 : -1, z = 24 + 6 * k; walkerDraw(out, cam, W_(510 + k, k % 2 ? bonnetLady(k) : manTown(k), "tw" + k), [side * 5.6, 0.38, z - 0.4 * (f - EV.CUT2) / 3], [0, 0, -1], z + f * 0.1, t, {}, "walk"); }
-        for (let k = 0; k < 4; k++) bigCloud(out, [-6 + 4 * k, 0.8, 0 + 7 * k], 7, F, 0, 99, k, "#e4eef0", 0, [0.2, 0, 0]);
       }
       break;
     }
     case 3: { // the whole street one puddle: bubbles burp @328, a brown flow circles @343, stink + the dog holds his nose @358
       const P0: V3 = [0.2, 0.06, -12.5];
       if (F >= EV.FLOW3 - 3) { const ph = q((F / 70) % 1, 12); fxc(out, "swirl" + ph, 400, 400, (p) => fxSwirl(p, ph), [P0[0], 0.08, P0[2]], 5.2, 5.2, { flat: true }); }
-      for (let k = 0; k < 7; k++) {
-        const per = 36 + (k % 3) * 6, base = EV.BUBBLE3 - 4 + k * 5, u = ((F - base) % per + per) % per / per, on = F >= base;
-        if (!on) continue; const g = q(Math.min(1, u * 1.15), 12);
-        const bx = P0[0] + [-1.0, 0.7, 0.1, -0.5, 1.3, -1.5, 0.4][k], bz = P0[2] + [0.4, -0.2, 0.9, -0.9, 0.5, -0.1, -1.3][k];
-        fxc(out, "bub" + g, 400, 400, (p) => fxBubble(p, g), [bx, 0.1 + 0.35 * g + 0.2 * (k % 2), bz], 0.5 + 0.7 * g, 0.5 + 0.7 * g, { glow: 1.05 });
-        if (u > 0.88 && u < 1) poof(out, [bx, 0.5, bz], 0.9, F, base + Math.floor((F - base) / per) * per + Math.round(per * 0.88), 6);
-      }
-      if (F >= EV.BUBBLE3 - 3) for (let k = 0; k < 3; k++) bigCloud(out, [P0[0] + (k - 1) * 0.9, 0.5, P0[2] + 0.5], 2.0, F, EV.BUBBLE3 - 2 + k * 3, 1.0, k, "#c8d890", 0.9);
+      const POP = [329, 346, 362], BPOS: [number, number][] = [[-0.9, 0.3], [0.8, -0.4], [0.0, 0.8]];
+      POP.forEach((pf, k) => {
+        const u = (F - (pf - 16)) / 16; if (u < 0 || u > 1.15) return;
+        const g = q(Math.min(1, u), 12), bx = P0[0] + BPOS[k][0], bz = P0[2] + BPOS[k][1];
+        if (u <= 1) fxc(out, "bub" + g, 400, 400, (p) => fxBubble(p, g), [bx, 0.15 + 0.3 * g, bz], 0.6 + 1.3 * g, 0.6 + 1.3 * g, { glow: 1.05 });
+        if (F >= pf && F < pf + 8) poof(out, [bx, 0.6, bz], 1.6, F, pf, 8);
+      });
+      for (let k = 0; k < 5; k++) { const per = 30 + 4 * k, u = (((F - 300 - k * 7) % per) + per) % per / per; if (F < 305) continue; const g = q(u, 8); fxc(out, "bubs" + g, 400, 400, (p) => fxBubble(p, g), [P0[0] + [-1.8, 1.7, -0.4, 1.1, -1.2][k], 0.1 + 0.2 * g, P0[2] + [-0.6, 0.7, -1.4, 0.2, 1.3][k]], 0.2 + 0.35 * g, 0.2 + 0.35 * g, { glow: 1.0 }); }
       if (F >= EV.STINK3 - 2) for (let k = 0; k < 3; k++) stink(out, [P0[0] - 1.6 + 1.6 * k, 0.6, P0[2] + 0.6 * (k % 2)], 1.6, F, k);
       const dz = lerp(-4.5, -9, smooth((F - 300) / 70)), nose = F >= EV.STINK3 - 2;
       dogAt(out, cam, [-4.2, 0.38, dz - 2.0 * (nose ? 0 : 0)], [0, 0, -1], F, { nose, k: 1, bark: false }, 1.35);
       stand(out, cam, 520, bonnetLady(3), "lad3", [4.9, 0.38, -16.5], { expr: F > EV.STINK3 ? "sick" : "annoyed", armR: F > EV.STINK3 ? "pinch" : undefined, facing: -1 }, t);
-      for (let k = 0; k < 3; k++) bigCloud(out, [-8 + 5 * k, 0.8, -30 - 8 * k], 9, F, 0, 99, k, "#dfe8ea", 0, [0.2, 0, 0]);
       break;
     }
     case 4: { // cholera: a bench of green-faced townsfolk with thermometers, sneezing; the doctor with his bag shakes his head
       const C0 = SPOT.CLINIC, bx = C0[0] - 0.8, bz = [-24.2, -22.8, -21.4, -20.0];
       bz.forEach((zz, k) => {
-        const sneeze = F >= EV.COUGH4 - 2 + k * 6 && F < EV.COUGH4 + 14 + k * 6, tz = F >= EV.COUGH4 + 10;
-        sit(out, cam, 530 + k, sick(k), "sick" + k, [bx, 0.38 + 0.52, C0[2] + zz - C0[2] - 0.0], { expr: sneeze ? "cough" : (["sick", "pained", "nervous", "sick"] as Expr[])[k], armR: "raise", prop: "thermo", facing: 1, headTilt: sneeze ? -8 : 2 * Math.sin(f * 0.2 + k), lean: sneeze ? 6 : 0, sweat: SW(F, k) }, t, 1.05);
-        if (sneeze) fxc(out, "cough" + q((F - EV.COUGH4 - k * 6) / 16, 8), 400, 400, (p) => fxCough(p, clamp01(q((F - EV.COUGH4 - k * 6 + 2) / 16, 8))), [bx + 0.9, 1.35 + 0.1 * k, C0[2] + zz], 1.5, 1.5);
+        const SN = [389, 409, 432, 444][k], sneeze = F >= SN - 2 && F < SN + 16, tz = F >= EV.COUGH4 + 10;
+        sit(out, cam, 530 + k, sick(k), "sick" + k, [bx, 0.55, zz], { expr: sneeze ? "cough" : (["sick", "pained", "nervous", "sick"] as Expr[])[k], armR: "raise", prop: "thermo", facing: 1, headTilt: sneeze ? -8 : 2 * Math.sin(f * 0.2 + k), lean: sneeze ? 6 : 0, sweat: SW(F, k) }, t, 1.05);
+        if (sneeze) fxc(out, "cough" + q((F - SN) / 16, 8), 400, 400, (p) => fxCough(p, clamp01(q((F - SN + 2) / 16, 8))), [bx + 0.9, 1.35 + 0.1 * k, zz], 1.5, 1.5);
         void tz;
       });
       const dp: V3 = [C0[0] + 1.4, 0.38, C0[2] - 22.2 + 22.2 - 0.4];
       stand(out, cam, 540, doctor, "doc", [C0[0] + 1.6, 0.38, C0[2] - 1.0], { expr: F < EV.SHAKE4 - 2 ? "stern" : "nervous", armR: "hold", prop: "chart", headTilt: F >= EV.SHAKE4 - 2 ? 10 * Math.sin((F - EV.SHAKE4) * 0.9) * Math.exp(-(F - EV.SHAKE4) / 20) : 0, facing: -1, look: 0.4 }, t);
       item(out, "bag", (p) => { p.poly([[100, 280], [500, 280], [520, 440], [80, 440]], "#3a2a26", 16); p.stroke([[220, 280], [260, 200], [340, 200], [380, 280]], 22, "#5a463c"); p.band([[100, 340], [500, 340]], "#5a463c", 18, 0); }, [C0[0] + 0.7, 0.38 + 0.18, C0[2] - 1.9], 0.36, 0, 512);
       void dp;
-      for (let k = 0; k < 3; k++) bigCloud(out, [-4 + 3 * k, 1.2, -24 + 4 * k], 6, F, 0, 99, k, "#e4eef0", 0, [0.2, 0, 0]);
       for (let k = 0; k < 4; k++) walkerDraw(out, cam, W_(550 + k, k % 2 ? bonnetLady(k) : manTown(k + 2), "tw" + k), [2.4 + k, 0, -10 - 5 * k + 0.05 * (F - 389)], [0, 0, -1], 100 + F * 0.05 + k, t, { expr: "nervous" }, "walk");
       break;
     }
@@ -250,26 +249,26 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
     case 6: { // the street is raised: shovels, the dumping wagon; then pull back: the buildings in a pit; the head bonk
       const Fy = fillAt(F);
       for (let k = 0; k < 7; k++) {
-        const x = -9 + 2.1 * k + (k % 2) * 0.7, z = -2.8 + 1.6 * (k % 3), sw = Math.sin(f * 0.42 + k * 1.3);
+        const x = -10.5 + 1.25 * k + (k % 2) * 0.4, z = -2.2 + 1.7 * (k % 3), sw = Math.sin(f * 0.42 + k * 1.3);
         stand(out, cam, 620 + k, wk(k + 3), "wk" + ((k + 3) % 12), [x, Fy, z], { expr: sw > 0.3 ? "pained" : "grin", armR: "hold", prop: "shovel", lean: 6 + 6 * sw, tilt: 2 * sw, facing: k % 2 ? 1 : -1, sweat: SW(F, k), look: 0.4 }, t);
         if (F >= EV.SHOVEL6 - 4 && k % 2 === 0 && (F + k * 3) % 11 === 0) puff(out, [x + 0.5, Fy + 0.5, z], 0, 0.9, 0.5, F + k, "#c8a070");
       }
-      const wp: V3 = [-2.2, Fy, 2.6];
-      horse(out, cam, 2, [wp[0], Fy, wp[2] + 3.2], [0, 0, 1], F, 3.4, false, F < EV.DUMP6 - 8 || F > EV.DUMP6 + 40);
-      stand(out, cam, 630, manTown(2), "drvr", [wp[0] + 0.45, Fy + 1.0, wp[2] + 1.3], { expr: "grin", armR: "pull", facing: 1 }, t);
-      if (F >= EV.DUMP6 - 4 && F < EV.DUMP6 + 40) for (let k = 0; k < 5; k++) { const u = (F - EV.DUMP6 + 4 - k * 2) / 24; if (u > 0 && u < 1.3) bigCloud(out, [wp[0] + 0.6 * k - 1.2, Fy + 0.6, wp[2] - 1.5 - 1.5 * u], 1.9 + 0.8 * k * 0.2, F, F - 2, 0.5, k, "#c8a070", 0.6); }
+      const wp: V3 = [-3.0, Fy, 2.2];
+      horse(out, cam, 2, [wp[0] + 3.6, Fy, wp[2]], [1, 0, 0], F, 3.4, false, F < EV.DUMP6 - 8 || F > EV.DUMP6 + 40);
+      stand(out, cam, 630, manTown(2), "drvr", [wp[0] + 1.0, Fy + 1.05, wp[2] + 0.2], { expr: "grin", armR: "pull", facing: 1 }, t);
+      if (F >= EV.DUMP6 - 4 && F < EV.DUMP6 + 40) for (let k = 0; k < 5; k++) { const u = (F - EV.DUMP6 + 4 - k * 2) / 24; if (u > 0 && u < 1.3) bigCloud(out, [wp[0] - 1.8 - 1.4 * u, Fy + 0.5 + 0.3 * k, wp[2] + 0.5 * (k - 2)], 1.9 + 0.8 * k * 0.2, F, F - 2, 0.5, k, "#c8a070", 0.6); }
       // pedestrians on the raised street, down the stair, the bonk
       for (let k = 0; k < 4; k++) { const x0 = -20 + 14 * k + 0.25 * (F - 618), z = k % 2 ? 4.4 : -4.4; if (Fy > 1) walkerDraw(out, cam, W_(640 + k, k % 2 ? bonnetLady(k + 1) : manTown(k), "pd" + k), [x0, Fy + 0.14, z], [1, 0, 0], x0, t, { expr: "smile", prop: k % 2 ? "parasol" : null }, "walk"); }
       if (F >= EV.PULL6 - 6) {
-        const u = clamp01((F - (EV.BONK6 - 34)) / 34), zs = lerp(5.4, 8.1, u * u * (3 - 2 * u)), hitN = F >= EV.BONK6;
-        const yy = Fy * (1 - ((zs - 6) / 3) * 0.923 - 0.077);
-        const rb = hitN ? clamp01((F - EV.BONK6) / 10) : 0, zz = zs - 0.9 * rb * (1 - rb * 0.3);
+        const u = clamp01((F - (EV.BONK6 - 34)) / 34), zs = lerp(-5.4, -8.1, u * u * (3 - 2 * u)), hitN = F >= EV.BONK6;
+        const yy = Fy * (1 - ((-zs - 6) / 3) * 0.923 - 0.077);
+        const rb = hitN ? clamp01((F - EV.BONK6) / 10) : 0, zz = zs + 0.9 * rb * (1 - rb * 0.3);
         const m = manTown(3);
-        walkerDraw(out, cam, W_(650, m, "bonk"), [SPOT.PIT_STAIR_X, Math.max(0, hitN ? Fy * (1 - ((zz - 6) / 3) * 0.923 - 0.077) : yy), hitN ? zz : zs], [0, 0, 1], zs * 1.6, t, hitN ? { expr: "dazed", armR: "palm", headTilt: 8 * Math.sin((F - EV.BONK6) * 0.8) * Math.exp(-(F - EV.BONK6) / 18), facing: -1 } : { expr: "smile_closed", look: 0.3 }, hitN ? "walk" : "walk");
-        if (hitN) { stars(out, [SPOT.PIT_STAIR_X, Math.max(0, Fy * (1 - ((zz - 6) / 3) * 0.923 - 0.077)) + 2.1, zz], 1.2, F); if (F < EV.BONK6 + 12) sparkle(out, [SPOT.PIT_STAIR_X, 2.5, 8.0], F, EV.BONK6, 1.0, 1.5); }
-        for (let k = 0; k < 3; k++) { const u2 = clamp01((F - (EV.PULL6 + 6 + 14 * k)) / 40); if (u2 > 0 && u2 < 1) walkerDraw(out, cam, W_(655 + k, k === 1 ? bonnetLady(k) : manTown(k + 1), "sd" + k), [SPOT.PIT_STAIR_X - 0.3 + 0.3 * k, Fy * (1 - u2 * 0.92) + 0.0, 6.0 + 3.0 * u2], [0, 0, 1], u2 * 8, t, { expr: "smile" }, "walk"); }
-        walkerDraw(out, cam, W_(660, manTown(0), "pit0"), [1.4, 0, 8.6], [1, 0, 0], F * 0.05, t, { expr: "neutral" }, "walk");
-        walkerDraw(out, cam, W_(661, bonnetLady(2), "pit1"), [-6, 0, 8.6], [1, 0, 0], F * 0.05 + 1, t, { expr: "smile", prop: "parasol" }, "walk");
+        walkerDraw(out, cam, W_(650, m, "bonk"), [SPOT.PIT_STAIR_X, Math.max(0, hitN ? Fy * (1 - ((-zz - 6) / 3) * 0.923 - 0.077) : yy), hitN ? zz : zs], [0, 0, -1], -zs * 1.6, t, hitN ? { expr: "dazed", armR: "palm", headTilt: 8 * Math.sin((F - EV.BONK6) * 0.8) * Math.exp(-(F - EV.BONK6) / 18), facing: -1 } : { expr: "smile_closed", look: 0.3 }, hitN ? "walk" : "walk");
+        if (hitN) { stars(out, [SPOT.PIT_STAIR_X, Math.max(0, Fy * (1 - ((-zz - 6) / 3) * 0.923 - 0.077)) + 2.1, zz + 0.3], 1.2, F); if (F < EV.BONK6 + 12) sparkle(out, [SPOT.PIT_STAIR_X, 2.5, -7.5], F, EV.BONK6, 1.0, 1.5); }
+        for (let k = 0; k < 3; k++) { const u2 = clamp01((F - (EV.PULL6 + 6 + 14 * k)) / 40); if (u2 > 0 && u2 < 1) walkerDraw(out, cam, W_(655 + k, k === 1 ? bonnetLady(k) : manTown(k + 1), "sd" + k), [SPOT.PIT_STAIR_X - 0.3 + 0.3 * k, Fy * (1 - u2 * 0.92) + 0.0, -6.0 - 3.0 * u2], [0, 0, -1], u2 * 8, t, { expr: "smile" }, "walk"); }
+        walkerDraw(out, cam, W_(660, manTown(0), "pit0"), [1.4, 0, -8.6], [1, 0, 0], F * 0.05, t, { expr: "neutral" }, "walk");
+        walkerDraw(out, cam, W_(661, bonnetLady(2), "pit1"), [-6, 0, -8.6], [1, 0, 0], F * 0.05 + 1, t, { expr: "smile", prop: "parasol" }, "walk");
       }
       break;
     }
@@ -278,7 +277,7 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
       stand(out, cam, 700, doorman, "door", [1.9, 0.56, 0.55], { expr: "proud", armR: F > EV.CREST7 + 6 ? "salute" : "hip", facing: -1, lean: 2 }, t);
       stand(out, cam, 701, doorman, "door", [-1.9, 0.56, 0.55], { expr: "smile", armL: "hip", facing: 1 }, t);
       guests(out, cam, t, 7, H, (fl, bay) => F > 750 && (fl + bay) % 3 === 0, 1.0);
-      horse(out, cam, 1, [-11.8, 0, 18.2], [0.5, 0, 1], F, 3.4, false, true); stand(out, cam, 702, manTown(1), "cab1", [-13.1, 1.0, 16.0], { expr: "smile", armR: "pull", facing: 1 }, t);
+      const cu = 1 - glide((F - 715) / 50), cabX = -11.8 - 26 * cu; horse(out, cam, 1, [cabX, 0, 18.2 - 0 * cu], [1, 0, 0.3], F, 3.4, false, cu < 0.02); stand(out, cam, 702, manTown(1), "cab1", [cabX - 1.3, 1.0, 16.0], { expr: "smile", armR: "pull", facing: 1 }, t);
       horse(out, cam, 3, [15.6, 0, 33.2], [-0.3, 0, 1], F, 3.4, false, true);
       for (let k = 0; k < 18; k++) { const x = -9 + 18 * hh(k, 3) + 1.2 * Math.sin(f * 0.02 + k), z = 3.8 + 12 * hh(k, 4); walkerDraw(out, cam, W_(710 + k, k % 3 === 1 ? bonnetLady(k) : manTown(k), "t7" + k), [x, 0.2 + 0 * z, z], [k % 2 ? 1 : -1, 0, 0], f * 0.03 + k, t, { expr: "smile", prop: k % 3 === 1 && k % 2 ? "parasol" : null }, "walk"); }
       if (F >= EV.CREST7 - 2 && F < EV.CREST7 + 18) sparkle(out, [0, H + FH[1] + 1.8, 1.0], F, EV.CREST7 - 2, 4.0, 1.4);
@@ -297,7 +296,7 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
         stand(out, cam, 810 + k, partner(k), "par" + k, [xx, 0, Pu[2] + 0.3 * (k % 2)], { expr: shake ? "laugh" : F >= EV.HANDS8 ? "grin" : "awe", armR: shake && side > 0 ? "out" : (k < 2 ? undefined : undefined), armL: shake && side < 0 ? "out" : undefined, wave: shake ? pulse(f, k, 8) : undefined, facing: side as -1 | 1, look: 0.4, lean: shake ? 5 : 0 }, t, 1.0);
         void hs; void inChain;
       });
-      if (F >= EV.CHAIN8 - 2 && F < EV.CHAIN8 + 24) for (const x of [-0.5, 0.1, 0.7]) sparkle(out, [x + 0.2, 1.25, -0.6], F, EV.CHAIN8 - 2 + Math.round(x * 4), 0.7, 1.4);
+      [[891, -1.6], [897, -0.5], [904, 0.6], [910, 1.8]].forEach(([e, x]) => { if (F >= e - 1 && F < e + 14) sparkle(out, [x, 1.2, -0.7], F, e - 1, 0.8, 1.5); });
       if (smileOn && F < EV.SMILE8 + 16) sparkle(out, [0.5, 1.9, Pu[2] + 0.2], F, EV.SMILE8 - 1, 0.7, 1.5);
       out.lights.push({ p: [T[0] + 1.3, 1.6, T[2] - 0.4], I: 5, col: "#ffd9a0", d: 5 }, { p: [0, 3.0, 0], I: 10, col: "#ffe2b0", d: 10 });
       break;
@@ -306,8 +305,8 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
       const H = hotelY(9, F), hp = SPOT.HERO_SCREW;
       if (F < EV.PULLBACK9 + 36) {
         const placing = F < EV.SCREW9 - 2, hit = F >= EV.SCREW9 - 2;
-        stand(out, cam, 900, wk(1), "wk1", [hp[0] - 1.25, 0, hp[2] + 0.1], { expr: hit ? "grin" : "pained", armR: placing ? "hold" : "pull", armL: placing ? "hold" : "pull", prop: placing ? "bar" : null, lean: hit ? 8 : 4, facing: 1, sweat: SW(F, 3), look: 0.4 }, t, 1.2);
-        if (hit && F < EV.SCREW9 + 16) { sparkle(out, [hp[0] - 0.7, 1.55, hp[2] + 0.2], F, EV.SCREW9 - 2, 1.2, 1.5); for (let k = 0; k < 3; k++) puff(out, [hp[0] + (k - 1) * 0.4, 0.15, hp[2] + 0.4], (F - EV.SCREW9 + 2 + k * 2) / FPS, 0.8, 0.5, k, "#d8a86a"); }
+        stand(out, cam, 900, wk(1), "wk1", [hp[0] - 1.0, 0, hp[2] - 0.15], { expr: hit ? "grin" : "pained", armR: placing ? "hold" : "pull", armL: placing ? "hold" : "pull", prop: placing ? "bar" : null, lean: hit ? 8 : 4, facing: 1, sweat: SW(F, 3), look: 0.4 }, t, 1.0);
+        if (hit && F < EV.SCREW9 + 16) { sparkle(out, [hp[0] - 0.45, 1.6, hp[2] + 0.4], F, EV.SCREW9 - 2, 1.2, 1.5); for (let k = 0; k < 3; k++) puff(out, [hp[0] + (k - 1) * 0.4, 0.15, hp[2] + 0.4], (F - EV.SCREW9 + 2 + k * 2) / FPS, 0.8, 0.5, k, "#d8a86a"); }
       }
       workers(out, cam, F, t, F < EV.MARCH9 - 40 ? "idle" : "march", 14);
       void H;
@@ -317,9 +316,9 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
       const Fp = SPOT.FOREMAN, fy = 0.55;
       stand(out, cam, 1000, FOREMAN, "foreman", [Fp[0], fy, Fp[2]], { expr: F >= EV.WHISTLE10 - 2 ? "whistle" : "stern", armR: F >= EV.FLAG10 - 4 ? "raise" : "hold", prop: "flagPole", armL: F >= EV.WHISTLE10 - 2 ? "drink" : undefined, lean: F >= EV.FLAG10 ? -4 : 0, facing: 1,
         headTilt: F >= EV.WHISTLE10 ? 4 : 0 }, t, 1.05);
-      if (F >= EV.WHISTLE10 - 1 && F < EV.WHISTLE10 + 12) { poof(out, [Fp[0] - 0.5, fy + 1.55, Fp[2] + 0.2], 1.2, F, EV.WHISTLE10 - 1, 12); fxc(out, "whis" + q((F - EV.WHISTLE10) / 12, 8), 500, 500, (p) => fxBurst(p, q(clamp01((F - EV.WHISTLE10 + 1) / 12), 8), "#fff3b0", 8, 40, 200), [Fp[0] - 0.5, fy + 1.6, Fp[2] + 0.5], 1.6, 1.6, { glow: 1.3 }); }
+      if (F >= EV.WHISTLE10 - 1 && F < EV.WHISTLE10 + 12) { fxc(out, "whis" + q((F - EV.WHISTLE10) / 12, 8), 500, 500, (p) => fxBurst(p, q(clamp01((F - EV.WHISTLE10 + 1) / 12), 8), "#fff3b0", 8, 40, 200), [Fp[0] - 0.55, fy + 1.55, Fp[2] + 0.5], 1.1, 1.1, { glow: 1.3 }); }
       workers(out, cam, F, t, "turn", 16);
-      for (const [e, j0] of [[EV.TURN10, 0], [EV.TURN10B, 0], [EV.TURN10C, 0]] as [number, number][]) if (F >= e - 2 && F < e + 10) for (let k = 0; k < 3; k++) sparkle(out, [screwX(2 + 4 * k) + 0.1, 1.15, screwZ(j0) + 0.5], F, e - 2 + k, 0.45, 1.5);
+      for (const [e, j0] of [[EV.TURN10, 0], [EV.TURN10B, 0], [EV.TURN10C, 0]] as [number, number][]) if (F >= e - 2 && F < e + 10) for (let k = 0; k < 3; k++) sparkle(out, [screwX(3 + 3 * k) + 0.2, 1.15, screwZ(j0) + 0.5], F, e - 2 + k, 0.45, 1.5);
       break;
     }
     case 11: { // inch by inch: the board, the neat row of smiling workers, spectators
@@ -339,8 +338,8 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
       if (F >= EV.OPEN12 + 4 && F < EV.OPEN12 + 20) sparkle(out, [-4.7, L + 1.95, -0.7], F, EV.OPEN12 + 4, 0.9, 1.5);
       const ring = F >= EV.CLERK12 - 2;
       stand(out, cam, 1201, clerk, "clerk", [0.6, L + 0.0, -3.55], { expr: ring ? "grin" : "smile", armR: ring ? "raise" : "hold", prop: ring ? "bell" : null, wave: ring ? pulse(f, 5, 5) : undefined, facing: -1, look: -0.4 }, t, 1.05);
-      if (ring) { sparkle(out, [0.15, L + 1.9, -3.2], F, EV.CLERK12 - 2, 0.8, 1.5); if (F > EV.CLERK12 && F % 6 < 3) sparkle(out, [0.15, L + 1.9, -3.2], F, F - (F % 6), 0.6, 1.4); }
-      stand(out, cam, 1202, guestLady(2), "lad2", [1.9, L, -1.9], { expr: ring ? "laugh" : "smile", armR: "lift", prop: "trunk", facing: 1, look: -0.3, lean: 2 }, t, 1.0);
+      if (ring) { sparkle(out, [0.15, L + 1.9, -3.2], F, EV.CLERK12 - 2, 0.8, 1.5); if (F >= 1421 && F < 1432) sparkle(out, [0.15, L + 1.9, -3.2], F, 1421, 0.8, 1.5); }
+      stand(out, cam, 1202, guestLady(2), "lad2", [-0.7, L, -2.2], { expr: ring ? "laugh" : "smile", armR: "lift", prop: "trunk", facing: 1, look: -0.3, lean: 2 }, t, 1.0);
       stand(out, cam, 1203, manTown(1), "par2", [4.3, L, -1.3], { expr: "smile", look: -0.3, facing: -1 }, t);
       // dining room
       const eat = F >= EV.DINER12 - 6, sp = F % 24 < 12;
@@ -377,16 +376,16 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
     case 14: {
       if (set === "platform") { // the golden platform: rich old Pullman, the coin, the passengers, the steam
         const cy = 0.0;
-        stand(out, cam, 1400, PULLMAN_OLD, "pullO", [0.0, cy, 0.7], { expr: F >= EV.BEAM14 - 2 ? "laugh" : "proud", armR: F >= EV.COIN14 - 2 ? "raise" : "hold", prop: F >= EV.COIN14 - 4 ? "coin" : "watch", armL: "hip", facing: 1, lean: 2, look: 0.3 }, t, 1.08);
+        stand(out, cam, 1400, PULLMAN_OLD, "pullO", [-5.0, cy, 0.7], { expr: F >= EV.BEAM14 - 2 ? "laugh" : "proud", armR: F >= EV.COIN14 - 2 ? "raise" : "hold", prop: F >= EV.COIN14 - 4 ? "coin" : "watch", armL: "hip", facing: 1, lean: 2, look: 0.3 }, t, 1.08);
         const u = (F - EV.COIN14) / 40, cyy = 2.4 + 0.45 * Math.sin(Math.max(0, u) * 8);
-        if (F >= EV.COIN14) { const ph = q((F / 14) % 1, 14); fxc(out, "coin" + ph, 300, 300, (p) => fxCoin(p, ph), [0.55, cyy, 0.9], 0.5, 0.5, { glow: 1.5 }); sparkle(out, [0.55, cyy, 0.95], F, F - (F % 10), 0.6, 1.6); }
-        if (F >= EV.BEAM14 - 2 && F < EV.BEAM14 + 16) sparkle(out, [0.2, 2.4, 1.0], F, EV.BEAM14 - 2, 1.2, 1.5);
-        stand(out, cam, 1401, conductor, "cond", [3.0, 0, 0.5], { expr: "proud", armR: "raise", prop: "whistle", look: -0.4, facing: -1 }, t);
-        stand(out, cam, 1402, porter, "port", [-3.6, 0, 0.4], { expr: "smile", armR: "lift", prop: "trunk", facing: 1 }, t);
-        for (let k = 0; k < 7; k++) { const x = -9.5 + 2.5 * k + 0.2 * Math.sin(k), pf = passenger(k); stand(out, cam, 1410 + k, pf, "ps" + k, [x, 0, 1.6 + 0.9 * (k % 2)], { expr: "smile", armR: k % 3 === 0 ? "wave" : undefined, wave: pulse(f, k, 18), prop: k % 3 === 1 ? "parasol" : null, facing: k % 2 ? 1 : -1 }, t); }
+        if (F >= EV.COIN14) { const ph = q((F / 14) % 1, 14); fxc(out, "coin" + ph, 300, 300, (p) => fxCoin(p, ph), [-4.45, cyy, 0.9], 0.5, 0.5, { glow: 1.5 }); sparkle(out, [-4.45, cyy, 0.95], F, F - (F % 10), 0.6, 1.6); }
+        if (F >= EV.BEAM14 - 2 && F < EV.BEAM14 + 16) sparkle(out, [-4.8, 2.4, 1.0], F, EV.BEAM14 - 2, 1.2, 1.5);
+        stand(out, cam, 1401, conductor, "cond", [-2.2, 0, 0.5], { expr: "proud", armR: "raise", prop: "whistle", look: -0.4, facing: -1 }, t);
+        stand(out, cam, 1402, porter, "port", [-8.4, 0, 0.4], { expr: "smile", armR: "lift", prop: "trunk", facing: 1 }, t);
+        for (let k = 0; k < 7; k++) { const x = -14.5 + 2.1 * k + 0.2 * Math.sin(k), pf = passenger(k); stand(out, cam, 1410 + k, pf, "ps" + k, [x, 0, 1.6 + 0.9 * (k % 2)], { expr: "smile", armR: k % 3 === 0 ? "wave" : undefined, wave: pulse(f, k, 18), prop: k % 3 === 1 ? "parasol" : null, facing: k % 2 ? 1 : -1 }, t); }
         steam(out, [10.6, 7.5, -5.0], 3.0, F); steam(out, [10.6, 9.6, -5.0], 3.4, F + 8); steam(out, [10.9, 11.6, -5.0], 3.6, F + 16);
-        for (let k = 0; k < 4; k++) bigCloud(out, [-12 + 3 * k, 1.2, -7.0], 3.5, F, 0, 99, k, "#fbe6cc", 0.2, [0.3, 0, 0]);
-        out.lights.push({ p: [3.0, 3.2, 3], I: 3, col: "#ffc070", d: 8 });
+        for (let k = 0; k < 4; k++) mist(out, [-12 + 5 * k, 1.2, -7.0], 7, k, f);
+        out.lights.push({ p: [-3.0, 3.2, 3], I: 3, col: "#ffc070", d: 8 });
       } else { // inside the sleeping car: sleepers in the lower berths, zzz, the countryside slides by in the windows
         const bays = [-6.0, -3.0, 0.0, 3.0, 6.0];
         bays.forEach((x, k) => {

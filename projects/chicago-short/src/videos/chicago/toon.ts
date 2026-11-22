@@ -1,11 +1,9 @@
-// Our own flat 2D cartoon cast + 2D effects, drawn on a canvas (owner: characters, with cast.ts / cardshade.ts).
-// "The 1904 Olympic Marathon" cast: THOMAS HICKS (tall, thin, moustache, red singlet; a wrecked grey-green variant),
-// FRED LORZ (fresh-faced, white singlet, a cap), the CUBAN RUNNER (small, white shirt, trousers cut off at the knee, a
-// beret, a cheerful moustache), TRAINERS / OFFICIALS (bowler hats, waistcoats; goggles + driving caps in the cars),
-// 1904 RUNNERS (singlets, baggy knee shorts, dot / stripe bibs, never digits), the 1904 CROWD (straw boaters, long
-// dresses, picture hats, parasols) and scrappy farm DOGS (bottom of the file). Props: the skull-and-crossbones bottle
-// (pictogram only), brandy flask, egg + cup, apples (shiny / rotten with worms), starter's pistol, parasol, gold medal.
-// Effects: dust clouds, "Z" sleep bubbles, heat shimmer, the blazing sun, confetti, flying boaters, steam, stink lines.
+// Our own flat 2D cartoon cast + 2D effects, drawn on a canvas (owner: characters, with cast.ts / stage.ts / cardshade.ts).
+// "Chicago Lifts a Hotel" cast (outfits in stage.ts): George Pullman (young: derby, emerald waistcoat; old: top hat, watch chain),
+// partners and workers (flat caps, braces), the mayor and council (frock coats, top hats), townsfolk (bonnets, bowlers), the sick
+// (green faces, thermometers), the doctor, hotel guests and staff, a carthorse, dogs, frogs. Props: blueprint, gavel, whistle,
+// signal flag, magnifier, desk bell, spoon, trunk, gold coin, thermometer, doctor's bag, candle, crossbar, tray, key, watch, chart.
+// Effects: mud, bubbles, cough puffs, swirls, steam, stink lines, sparkles, bursts.
 // Construction v2 (characters.md, our own cast): superellipse heads (pointed crown 1.75 / full jaw 2.3, chin taper,
 // seeded side bulge + tilt), bean torsos, single-stroke limbs with ink-dot hands, a thick-thin plum outline weighted
 // away from the light, soft painted crescents, deadpan lidded eyes, no blush, no catchlights.
@@ -73,69 +71,8 @@ const curve = (a: P2, k: P2, b: P2, n = 10): P2[] => {
   return out;
 };
 
-export const RIFLEMAN: Outfit = { jacket: "#357650", pants: "#3d4440", boots: INK, hat: "shako", belt: "#f1efe6", buttons: "#d9dde0", rifle: true };
-export const OFFICER_1831: Outfit = { ...RIFLEMAN, hat: "shako_tall", buttons: "#e8c45a", sash: "#c0353a", sword: true, moustache: "#4a3020", rifle: false, belt: null, build: "stout" };
-export const KID: Outfit = { jacket: "#f08a2c", pants: "#3b5b9a", boots: "#f4f1ea", hat: "cap", cap: "#e2453c", build: "kid" };
-export const PARENT: Outfit = { jacket: "#7b5ac9", pants: "#3b3f52", boots: "#5a3b2a", hat: "hair", hair: "#5a3b2a" };
 export const SKINS = [SKIN, "#f5c9a0", "#ecd0b6", "#c99067"];
-// ---- the 1904 marathon cast (near-white heads, own hat silhouettes, colour on the clothes) ----
 const LEGS = INK; // bare legs + arms read as ink sticks, like every limb of the style
-/** Thomas Hicks: tall, thin, moustache, red singlet (the hero colour), navy knee shorts, a dot bib */
-export const HICKS: Outfit = { jacket: "#d42a26", pants: LEGS, boots: "#3a2a22", hat: "hair", hairStyle: "side", hair: "#5a3a22",
-  moustache: "#5a3a22", singlet: true, shorts: "#2c3550", bib: "#241726", build: "slim", headType: "bean", buttons: "none" };
-/** Hicks wrecked: grey-green skin, the singlet darkened with sweat and dust */
-export const HICKS_WRECK: Outfit = { ...HICKS, skin: "#cfe0b4", jacket: "#b8302a", shorts: "#3a3e4a" };
-/** Fred Lorz: fresh-faced, smug, white singlet, a blue cap */
-export const LORZ: Outfit = { jacket: "#fbfaf4", pants: LEGS, boots: "#e8e0cc", hat: "cap", cap: "#2f5ab8", hair: "#a8682e",
-  singlet: true, shorts: "#2a2f44", bib: "#2f5ab8", stripe: "#2f5ab8", headType: "standard", buttons: "none" };
-/** the Cuban runner: small and wiry, white long shirt, dark trousers cut off at the knee, a beret, a cheerful moustache */
-export const CUBAN: Outfit = { jacket: "#f6f1e2", pants: LEGS, boots: "#5a3a26", hat: "beret", cap: "#3a3040", hair: "#2a2020",
-  moustache: "#2a2020", collar: "shirt", shorts: "#4a4038", headType: "bun", buttons: "#c9c2b0" };
-/** the Cuban after the rotten apple: green */
-export const CUBAN_SICK: Outfit = { ...CUBAN, skin: "#b9db8a" };
-/** trainers / officials: bowler, white shirt, waistcoat, bow tie */
-export const trainer = (v = 0): Outfit => ({ jacket: "#f4f1e6", pants: ["#3a3432", "#4a4038", "#3a3e4a"][v % 3], boots: "#2a2220", hat: "bowler",
-  cap: ["#2a2426", "#4a3426", "#2a2426"][v % 3], hair: ["#3a2a20", "#7a4a2a", "#2a2020"][v % 3], collar: "shirt", buttons: "none",
-  waistcoat: ["#7a3a2e", "#4a5a3a", "#5a4a6a"][v % 3], bowtie: ["#2a2a40", "#8a2a2a", "#2a2a40"][v % 3],
-  moustache: v % 2 ? undefined : ["#3a2a20", "#7a4a2a", "#2a2020"][v % 3], headType: (["standard", "bean", "bun"] as HeadKind[])[v % 3], build: v % 3 === 1 ? "stout" : "adult" });
-/** drivers / officials in the 1904 cars: driving cap with goggles pushed up, a dust coat */
-export const driver = (v = 0): Outfit => ({ jacket: ["#d8ccb0", "#c9bb9a", "#e0d6c0"][v % 3], pants: "#5a4a3a", boots: "#2a2220", hat: "goggles",
-  cap: ["#6a5a48", "#3a3a40", "#7a6a50"][v % 3], hair: "#3a2a20", collar: "shirt", buttons: "#5a4a3a", moustache: v % 2 ? "#4a3020" : undefined,
-  headType: (["bean", "standard", "bun"] as HeadKind[])[v % 3], build: v % 2 ? "stout" : "adult" });
-const SINGLETS = ["#fbfaf4", "#2f6ab0", "#e8b22a", "#3a8a4a", "#fbfaf4", "#8a3a6a", "#e86a2a", "#fbfaf4"];
-/** the 1904 field: singlets in many colours, baggy shorts, dot / stripe bibs, caps or bare heads */
-export const runner = (v = 0): Outfit => {
-  const k = v % 8;
-  return { jacket: SINGLETS[k], pants: LEGS, boots: ["#3a2a22", "#e8e0cc", "#5a3a26"][v % 3], singlet: true, shorts: ["#2a2f44", "#f2efe4", "#3a3030", "#5a4a3a"][v % 4],
-    bib: v % 2 ? "#241726" : "#c0352e", stripe: v % 5 === 2 ? "#c0352e" : undefined, buttons: "none",
-    hat: v % 3 === 0 ? "cap" : "hair", cap: ["#fbfaf4", "#2f5ab8", "#c0352e"][v % 3], hairStyle: (["side", "crop", "bowl", "wild"] as HairStyle[])[v % 4],
-    hair: ["#3a2a20", "#7a4a2a", "#a8682e", "#2a2020", "#d9b070"][v % 5], moustache: v % 4 === 1 ? "#4a3020" : undefined,
-    headType: (["standard", "bun", "bean"] as HeadKind[])[v % 3], build: v % 5 === 3 ? "slim" : "adult" };
-};
-/** a runner coated brown by the dust */
-export const dusty = (o: Outfit): Outfit => ({ ...o, jacket: mix(o.jacket, "#b8895a", 0.6), shorts: o.shorts ? mix(o.shorts, "#a07a50", 0.5) : o.shorts, skin: "#e8cba0" });
-/** the 1904 crowd: men in suits + straw boaters, women in long dresses + picture hats (parasols from cast.ts) */
-const SUITS = ["#3a3e52", "#5a4a3a", "#e8e0c8", "#4a5a4a", "#6a5a48", "#2e2e36", "#8a7a5a"];
-const DRESS = ["#f6f2ea", "#a8c4e8", "#e8b8c8", "#f2e2a8", "#c8d8b0", "#ffffff", "#d8c0e8"];
-export const fan1904 = (v = 0): Outfit => {
-  const lady = v % 3 === 1;
-  if (lady) return { jacket: DRESS[v % 7], pants: LEGS, boots: "#3a2a22", dress: DRESS[(v + 2) % 7], longDress: true, hat: "lady", cap: ["#f2e2b0", "#ffffff", "#e8d0a8"][v % 3],
-    band: ["#c0352e", "#2f5ab8", "#e86a8a", "#5a8a4a"][v % 4], hair: ["#7a4a2a", "#3a2a20", "#d9b070"][v % 3], collar: "shirt", buttons: "none", headType: (["bun", "standard"] as HeadKind[])[v % 2] };
-  return { jacket: SUITS[v % 7], pants: SUITS[v % 7], boots: "#2a2220", hat: v % 5 === 4 ? "bowler" : "boater", cap: v % 5 === 4 ? "#2a2426" : "#e8cf7a",
-    band: ["#c0352e", "#2a2a40", "#2f5ab8"][v % 3], hair: ["#3a2a20", "#7a4a2a", "#a8682e", "#2a2020"][v % 4], collar: "shirt",
-    tie: v % 2 ? undefined : ["#c0352e", "#2a2a40", "#3a6a3a"][v % 3], bowtie: v % 2 ? ["#2a2a40", "#c0352e"][v % 2] : undefined, buttons: "none",
-    moustache: v % 3 === 0 ? ["#3a2a20", "#7a4a2a", "#5a3a22"][v % 3] : undefined, headType: (["standard", "bean", "bun"] as HeadKind[])[v % 3], build: v % 4 === 2 ? "stout" : "adult" };
-};
-/** Boston 1905 spring crowd: lighter suits, more colour */
-export const fan1905 = (v = 0): Outfit => ({ ...fan1904(v + 3), jacket: (v % 3 === 1 ? DRESS : SUITS)[(v * 3) % 7] });
-
-export const soldier = (v = 0, extra: Partial<Outfit> = {}): Outfit => {
-  const o: Outfit = { ...RIFLEMAN, skin: SKINS[v % 4] };
-  if (v % 4 === 1) o.moustache = "#4a3426";
-  if (v % 4 === 3) o.moustache = "#2a201a";
-  return { ...o, ...extra };
-};
-
 export const townsfolk = (v = 0): Outfit => {
   const coats = ["#3f6fb5", "#8c3b4a", "#5d7a3a", "#b5653f", "#2f5f6a", "#7b5ac9"];
   const o: Outfit = { jacket: coats[v % 6], pants: "#3b3f52", boots: "#4a3426", skin: SKINS[v % 4] };
@@ -1956,4 +1893,13 @@ export const horseDraw = (p: Pen, o: { phase: number; col: string; mane: string;
   p.dot(620, by - 108, 8); p.ell(660, by - 78, 14, 10, "#2a2220", 0);
   p.line([[520, by - 70], [500, by - 150], [560, by - 170]], o.mane, 18, false);
   p.band([[470, by - 70], [610, by - 90]], "#7a4a2a", 7, 1.2);
+};
+/** a soft mist / steam bank (no ink): overlapping radial gradients on a 400 x 300 canvas; seed = variant */
+export const fxMist = (p: Pen, seed = 0) => {
+  const g = p.g;
+  for (let i = 0; i < 6; i++) {
+    const x = 70 + ((i * 53 + seed * 37) % 260), y = 120 + ((i * 41 + seed * 17) % 70), r = 80 + ((i * 29 + seed * 11) % 60);
+    const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, "rgba(236,242,244,0.55)"); gr.addColorStop(1, "rgba(236,242,244,0)");
+    g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2);
+  }
 };

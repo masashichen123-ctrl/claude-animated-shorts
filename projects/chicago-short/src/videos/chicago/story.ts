@@ -71,12 +71,12 @@ export const EV = {
   FROG2: 250, MUD2: 280, SCHLORP2: 296, CUT2: 268,                    // the frog, the river of mud, the boot
   BUBBLE3: 328, FLOW3: 343, STINK3: 358,                              // burp, the circling flow, the dog holds his nose
   COUGH4: 398, SHAKE4: 427,                                           // sneezes, the doctor shakes his head
-  WILD5: 473, GAVEL5: 496, CUTIN5: 505, ARROW5: 541, PIPE5: 574, GASP5: 585,
-  SHOVEL6: 623, DUMP6: 641, PULL6: 660, BONK6: 685,
+  WILD5: 473, GAVEL5: 496, CUTIN5: 505, ARROW5: 541, PIPE5: 574, GASP5: 548,
+  SHOVEL6: 623, DUMP6: 650, PULL6: 660, BONK6: 685,
   CREST7: 740, ROOF7: 788,
   PLAN8: 823, SMILE8: 859, HANDS8: 890, CHAIN8: 906,
   SCREW9: 974, PULLBACK9: 1000, MARCH9: 1033,
-  FLAG10: 1079, WHISTLE10: 1082, TURN10: 1142, TURN10B: 1168, TURN10C: 1194,
+  FLAG10: 1079, WHISTLE10: 1088, TURN10: 1142, TURN10B: 1168, TURN10C: 1194,
   MARK11: 1234, MARK11B: 1248, MARK11C: 1261, MARK11D: 1276,
   OPEN12: 1309, DINER12: 1360, SLEEPER12: 1385, CLERK12: 1409, PULLOUT12: 1442,
   TAP13: 1526, DRY13: 1535, WINK13: 1550,
@@ -87,14 +87,14 @@ export const EV = {
 // street: the Tremont House stands with its front face on the plane z = 0 (x -9..9), the body running back to z = -22;
 //   the plaza opens toward +z; the jackscrew field is a grid under the footprint. The hotel's group is lifted by
 //   hotelY(id, f); the timber grillage under it by 0.5 m.
-export const HOTEL = { W: 18, D: 22, FH: [0, 4.4, 8.0, 11.6, 15.2, 18.8, 22.4] as number[], TOP: 22.4, BAYS: [-7.2, -3.6, 0, 3.6, 7.2] as number[], SILL: 0.85 };
-export const SCREWS = { COLS: 18, ROWS: 18, DX: 1.0, DZ: 1.2 };
-export const screwX = (i: number) => -8.5 + SCREWS.DX * i;
+export const HOTEL = { W: 18, D: 24, FH: [0, 4.4, 8.0, 11.6, 15.2, 18.8, 22.4] as number[], TOP: 22.4, BAYS: [-7.2, -3.6, 0, 3.6, 7.2] as number[], SILL: 0.85 };
+export const SCREWS = { COLS: 12, ROWS: 20, DX: 1.5, DZ: 1.2 };
+export const screwX = (i: number) => -8.25 + SCREWS.DX * i;
 export const screwZ = (j: number) => -0.9 - SCREWS.DZ * j;
 export const SPOT = {
-  HERO_SCREW: [1.5, 0, -0.9] as V3,      // the screw of the CU in shot 9 (a front-row screw)
+  HERO_SCREW: [0.75, 0, -0.9] as V3,      // the screw of the CU in shot 9 (a front-row screw)
   FOREMAN: [-2.4, 0, 4.6] as V3,         // the foreman's crate
-  BOARD: [-13.2, 0, 5.5] as V3,          // the measuring board
+  BOARD: [-11.8, 0, 6.5] as V3,          // the measuring board
   WINDOW13: [-3.6, 0, 0] as V3,          // x of the bay of the window in shot 13 (floor 2)
   // town
   CLINIC: [-8, 0, -20] as V3,
@@ -211,12 +211,12 @@ export const eyes = (p: V3, s = 1): V3 => [p[0], p[1] + 1.52 * s, p[2]];
 // 1 (0-197): HOOK. Low on the plaza, the whole six-story hotel filling the frame on its forest of jackscrews with a gap
 // of daylight beneath it; it rises; push-in; the camera tilts up with the roof.
 const S1 = (f: number): Shot => {
-  const H = hotelY(1, f), look: V3 = [0, 9.5 + 0.5 * H, 0];
-  return P({ pos: [1.6, 1.25, 58], look, fov: 40, roll: 0.012 - 0.0002 * f }, f, 0, 0.0015, 0);
+  const H = hotelY(1, f);
+  return P({ pos: [1.6, 1.3, 70], look: [0, 12.8 + 0.5 * H, 0], fov: 40, roll: 0.012 - 0.0002 * f }, f, 0, 0.0012, 0);
 };
 // 2a (198-267): the lake edge: cattails, frogs, mist, the puddle. 2b (268-299): the river of mud
 const S2a = (f: number): Shot => P({ pos: [2.2, 0.75, 33.5], look: [-0.6, 0.55, 18], fov: 44, roll: 0.02 }, f, 198, 0.0035, 0.007, 12, EV.FROG2 - 3);
-const S2b = (f: number): Shot => P({ pos: [4.4, 1.35, 22.5], look: [0.2, 1.2, 9.5], fov: 44, roll: -0.02 }, f, EV.CUT2, 0.002, 0.006, 12, EV.SCHLORP2 - 3);
+const S2b = (f: number): Shot => P({ pos: [5.0, 1.6, 28.0], look: [0.0, 1.2, 10.0], fov: 46, roll: -0.02 }, f, EV.CUT2, 0.002, 0.006, 12, EV.SCHLORP2 - 3);
 // 3 (300-388): low over the puddle that is the whole street; bubbles, the circling flow, the stink; the dog
 const S3 = (f: number): Shot => {
   const a = C([1.8, 0.55, -2.0], [0.0, 0.3, -12.5], 46, 0.025), b = C([-1.0, 0.8, -3.0], [0.9, 0.9, -12], 44, -0.02);
@@ -224,19 +224,19 @@ const S3 = (f: number): Shot => {
 };
 // 4 (389-468): the clinic porch: a bench of green-faced townsfolk, the doctor with his bag
 const S4 = (f: number): Shot => {
-  const C0 = SPOT.CLINIC, a = C([C0[0] + 11.0, 1.55, C0[2] + 5.0], [C0[0] + 2.2, 1.3, C0[2] - 0.3], 44, 0.02);
-  const b = C([C0[0] + 8.0, 1.5, C0[2] + 3.8], [C0[0] + 2.0, 1.35, C0[2] - 0.3], 42, -0.02);
+  const C0 = SPOT.CLINIC, a = C([C0[0] + 9.0, 1.55, C0[2] + 4.2], [C0[0] + 0.4, 1.3, C0[2] - 1.0], 42, 0.02);
+  const b = C([C0[0] + 6.6, 1.5, C0[2] + 2.8], [C0[0] + 0.3, 1.35, C0[2] - 1.2], 40, -0.02);
   return P(between(a, b, gl(f, 420, 30)), f, 389, 0.0016, 0.006, 12, EV.SHAKE4 - 3);
 };
 // 5a (469-504): down the council table to the mayor in front of the arched windows; 5b (505-617): the easel
-const S5a = (f: number): Shot => P({ pos: [0.2, 1.45, 4.2], look: [0, 1.7, -8.6], fov: 46, roll: 0.02 }, f, 469, 0.003, 0.007, 12, EV.GAVEL5 - 3);
+const S5a = (f: number): Shot => P({ pos: [0.1, 1.35, -0.8], look: [0, 1.75, -9.4], fov: 42, roll: 0.02 }, f, 469, 0.003, 0.007, 12, EV.GAVEL5 - 3);
 const S5b = (f: number): Shot => {
-  const E = SPOT.EASEL, a = C([E[0] - 3.6, 1.7, E[2] + 4.6], [E[0] + 0.1, 1.9, E[2] - 0.2], 44, 0.02), b = C([E[0] - 2.4, 1.8, E[2] + 3.2], [E[0] + 0.15, 1.85, E[2] - 0.2], 42, -0.015);
+  const E = SPOT.EASEL, a = C([E[0] - 4.0, 1.8, E[2] + 6.0], [E[0] - 0.2, 1.9, E[2] - 0.2], 44, 0.02), b = C([E[0] - 2.8, 1.8, E[2] + 4.2], [E[0] - 0.2, 1.9, E[2] - 0.2], 42, -0.015);
   return P(between(a, b, gl(f, EV.PIPE5 - 14, 26)), f, EV.CUTIN5, 0.0018, 0.006, 10, EV.GASP5 - 3);
 };
 // 6a (618-659): MS on the fill, the shovellers and the dumping wagon; 6b (660+): pulls back and up: the buildings in the pit
 const S6 = (f: number): Shot => {
-  const a = C([-4.5, 3.4, 15.0], [0.5, 2.2, 3.5], 46, 0.02), b = C([-17.0, 11.5, 26.0], [3.0, 1.2, 6.8], 46, -0.015);
+  const a = C([-15.0, 2.9, 4.6], [-5.5, 2.2, 0.0], 46, 0.02), b = C([-27.0, 10.5, 18.0], [5.0, 1.0, -4.0], 46, -0.015);
   return P(between(a, b, gl(f, EV.PULL6 - 8, 36)), f, 618, 0.0014, 0.006, 12, EV.BONK6 - 3);
 };
 // 7 (715-816): low hero crane up the front of the hotel to the roof flag
@@ -252,15 +252,15 @@ const S8 = (f: number): Shot => {
 // 9a (937-999): CU of the iron jackscrew under the timber beam; 9b (1000-1071): pull back: the forest, the march
 const S9 = (f: number): Shot => {
   const H = SPOT.HERO_SCREW;
-  const a = C([H[0] + 1.35, 1.15, H[2] + 3.0], [H[0] - 0.05, 1.28, H[2]], 40, 0.03), b = C([0.4, 1.35, 5.8], [0.0, 1.9, -15], 48, -0.02);
-  const c = C([-2.5, 1.6, 10.5], [0.8, 2.0, -6.5], 46, 0.0);
+  const a = C([H[0] + 1.05, 1.3, H[2] + 3.0], [H[0] - 0.3, 1.4, H[2]], 40, 0.03), b = C([0.0, 1.35, 6.0], [0.0, 1.9, -16], 48, -0.02);
+  const c = C([-9.0, 2.4, 24], [1.0, 3.0, -6], 46, 0.0);
   const u1 = gl(f, EV.PULLBACK9 - 6, 34), u2 = gl(f, 1048, 22);
   return P(between(between(a, b, u1) as Cam, c, u2), f, 937, 0.0014, 0.007, 12, EV.SCREW9 - 3);
 };
 // 10a (1072-1117): the foreman raises the flag and blows the whistle; 10b (1118+): low down the line of workers
 const S10 = (f: number): Shot => {
   const F = SPOT.FOREMAN;
-  const a = C([F[0] + 1.6, 1.45, F[2] + 5.4], [F[0] + 0.3, 2.0, F[2]], 44, 0.02), b = C([0.15, 0.85, 5.0], [0.0, 1.5, -14], 50, -0.025);
+  const a = C([F[0] + 1.6, 1.45, F[2] + 5.4], [F[0] + 0.3, 2.0, F[2]], 44, 0.02), b = C([0.8, 1.25, 4.8], [1.5, 1.45, -16], 48, -0.025);
   return P(between(a, b, gl(f, 1100, 26)), f, 1072, 0.0016, 0.006, 12, EV.TURN10 - 3);
 };
 // 11 (1223-1300): the hotel wide from the right with the measuring board; slow push
@@ -270,22 +270,22 @@ const S11 = (f: number): Shot => {
 };
 // 12 (1301-1488): the cutaway: lobby, diner, sleeper, clerk, then all three rising
 const CZ = 7.2; // the camera plane
-const S12a = (f: number): Shot => { const y = cutY(f); return P({ pos: [-1.8, y + 2.9, CZ + 4.0], look: [-2.2, y + 2.0, -1.5], fov: 44, roll: 0.02 }, f, 1301, 0.0018, 0.005, 12, EV.OPEN12 - 3); };
-const S12b = (f: number): Shot => { const y = cutY(f); return P({ pos: [0.2, y + EV_ROOM(1) + 1.9, CZ + 0.0], look: [-0.2, y + EV_ROOM(1) + 1.5, -2.0], fov: 40, roll: -0.025 }, f, EV.DINER12 - 4, 0.0024, 0.006, 12, EV.DINER12 - 3); };
-const S12c = (f: number): Shot => { const y = cutY(f); return P({ pos: [-0.9, y + EV_ROOM(2) + 1.7, CZ - 1.0], look: [-1.1, y + EV_ROOM(2) + 1.2, -2.2], fov: 40, roll: 0.02 }, f, EV.SLEEPER12 - 4, 0.0024, 0.006, 12, EV.SLEEPER12 - 3); };
-const S12d = (f: number): Shot => { const y = cutY(f); return P({ pos: [-1.2, y + 1.9, CZ + 0.5], look: [-0.6, y + 1.6, -2.4], fov: 42, roll: -0.02 }, f, EV.CLERK12 - 4, 0.0022, 0.006, 12, EV.CLERK12 - 3); };
-const S12e = (f: number): Shot => P({ pos: [1.4, 7.4, 44], look: [0, 8.2, -2], fov: 42, roll: 0.01 }, f, EV.PULLOUT12, 0.0012, 0, 12);
+const S12a = (f: number): Shot => { const y = cutY(f); return P({ pos: [-1.0, y + 3.2, 13.5], look: [-1.5, y + 2.0, -1.5], fov: 40, roll: 0.02 }, f, 1301, 0.0018, 0.005, 12, EV.OPEN12 - 3); };
+const S12b = (f: number): Shot => { const y = cutY(f); return P({ pos: [-0.9, y + EV_ROOM(1) + 1.6, 8.8], look: [-1.0, y + EV_ROOM(1) + 1.35, -3.3], fov: 28, roll: -0.025 }, f, EV.DINER12 - 4, 0.0024, 0.006, 12, EV.DINER12 - 3); };
+const S12c = (f: number): Shot => { const y = cutY(f); return P({ pos: [-2.0, y + EV_ROOM(2) + 2.0, 9.6], look: [-2.5, y + EV_ROOM(2) + 1.2, -3.8], fov: 34, roll: 0.02 }, f, EV.SLEEPER12 - 4, 0.0024, 0.006, 12, EV.SLEEPER12 - 3); };
+const S12d = (f: number): Shot => { const y = cutY(f); return P({ pos: [-0.8, y + 2.3, 11.0], look: [-0.7, y + 2.0, -3.0], fov: 40, roll: -0.02 }, f, EV.CLERK12 - 4, 0.0022, 0.006, 12, EV.CLERK12 - 3); };
+const S12e = (f: number): Shot => P({ pos: [0.5, 9.0, 38], look: [0, 9.6, -2], fov: 42, roll: 0.01 }, f, EV.PULLOUT12, 0.0012, 0, 12);
 function EV_ROOM(i: number) { return SPOT.ROOM_H[i]; }
 // 13 (1489-1569): the window CU: the sill, the flower pot, the water glass; the inspector taps the glass
 const S13 = (f: number): Shot => {
   const y = hotelY(13, f) + HOTEL.FH[1] + 1.35, x = SPOT.WINDOW13[0];
-  const a = C([x + 1.4, y + 0.0, 5.6], [x - 0.15, y + 0.1, 0], 38, 0.02), b = C([x + 0.9, y + 0.1, 4.2], [x - 0.1, y + 0.05, 0], 38, -0.02);
+  const a = C([x + 1.0, y + 0.3, 8.2], [x - 0.9, y + 0.5, 0], 40, 0.02), b = C([x + 0.7, y + 0.35, 6.4], [x - 0.8, y + 0.5, 0], 38, -0.02);
   return P(between(a, b, gl(f, EV.TAP13 - 10, 28)), f, 1489, 0.0018, 0.006, 12, EV.TAP13 - 3);
 };
 // 14a (1570-1618): the golden platform, Pullman beaming; 14b (1619-1769): inside the sleeping car; push in; the window
-const S14a = (f: number): Shot => P({ pos: [-2.6, 1.45, 8.2], look: [0.0, 1.55, 0.2], fov: 42, roll: 0.02 }, f, 1570, 0.002, 0.006, 12, EV.BEAM14 - 3);
+const S14a = (f: number): Shot => P({ pos: [-7.6, 1.45, 8.4], look: [-5.0, 2.5, 0.2], fov: 42, roll: 0.02 }, f, 1570, 0.002, 0.006, 12, EV.BEAM14 - 3);
 const S14b = (f: number): Shot => {
-  const a = C([0.2, 1.5, 4.0], [0.0, 1.35, -1.4], 52, 0.02), b = C([0.1, 1.3, 2.4], [-0.2, 1.15, -1.4], 36, -0.02), c = C([-0.5, 1.5, 1.7], [-0.7, 1.5, -1.5], 36, 0.015);
+  const a = C([0.2, 1.4, 5.4], [0.0, 1.3, -1.4], 50, 0.02), b = C([0.1, 1.35, 3.6], [0.0, 1.3, -1.3], 44, -0.02), c = C([0.0, 1.45, 3.4], [0.0, 1.7, -1.5], 46, 0.015);
   return P(between(between(a, b, gl(f, EV.PUSH14 - 6, 34)) as Cam, c, gl(f, EV.WINDOW14 - 8, 30)), f, EV.CUT14, 0.0012, 0.004, 12, EV.PUSH14 - 3);
 };
 
@@ -367,12 +367,12 @@ export const DOF: Dof[] = [
   { f: 937, cInf: 14, focus: () => [SPOT.HERO_SCREW[0], 1.3, SPOT.HERO_SCREW[2]] },
   { f: EV.PULLBACK9 - 6, dur: 34, cInf: 4, focus: () => [0, 1.6, -8] },
   { f: 1072, cInf: 11, focus: () => [SPOT.FOREMAN[0], 1.6, SPOT.FOREMAN[2]] },
-  { f: 1100, dur: 26, cInf: 5, focus: () => [0, 1.4, -4.5] },
+  { f: 1100, dur: 26, cInf: 5, focus: () => [1.5, 1.4, -5] },
   { f: 1223, cInf: 0 },
   { f: 1301, cInf: 3, focus: () => [-2.2, 3.6, -2] },
-  { f: EV.DINER12 - 4, cInf: 12, focus: (f) => [-0.2, cutY(f) + SPOT.ROOM_H[1] + 1.4, -2.2] },
-  { f: EV.SLEEPER12 - 4, cInf: 12, focus: (f) => [-1.1, cutY(f) + SPOT.ROOM_H[2] + 1.0, -2.2] },
-  { f: EV.CLERK12 - 4, cInf: 11, focus: (f) => [-0.6, cutY(f) + 1.5, -2.4] },
+  { f: EV.DINER12 - 4, cInf: 12, focus: (f) => [-1.0, cutY(f) + SPOT.ROOM_H[1] + 1.4, -3.4] },
+  { f: EV.SLEEPER12 - 4, cInf: 12, focus: (f) => [-2.6, cutY(f) + SPOT.ROOM_H[2] + 1.0, -3.8] },
+  { f: EV.CLERK12 - 4, cInf: 11, focus: (f) => [0.0, cutY(f) + 1.7, -3.2] },
   { f: EV.PULLOUT12 - 2, cInf: 0 },
   { f: 1489, cInf: 11, focus: (f) => [SPOT.WINDOW13[0] - 0.1, hotelY(13, f) + HOTEL.FH[1] + 1.4, 0] },
   { f: 1570, cInf: 7, focus: () => [0, 1.6, 0.2] },

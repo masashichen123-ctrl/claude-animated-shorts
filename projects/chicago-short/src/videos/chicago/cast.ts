@@ -10,7 +10,7 @@ import * as THREE from "three";
 import {
   Pen, bodyFront, bodySide, fxContact, fxShadow, fxSmoke, fxDustCloud, fxSparkle, fxSpeed, fxBurst, fxDust,
   Outfit, Expr, FrontOpts, SideOpts, ArmPose, ArmSpec, fxPoof, fxStink, fxStars,
-  fxZ, fxHeat, fxSun, fxConfetti, fxBoater, fxDrop, fxSteam, fxMedal, dogDraw, DogOpts, fxFlame, fxFrog, fxBubble, fxMud, fxCough, fxSwirl, fxCoin, horseDraw,
+  fxZ, fxHeat, fxSun, fxConfetti, fxBoater, fxDrop, fxSteam, fxMedal, dogDraw, DogOpts, fxFlame, fxMist, fxFrog, fxBubble, fxMud, fxCough, fxSwirl, fxCoin, horseDraw,
 } from "./toon";
 import { FPS, SHOTS, V3, Light, smooth, clamp01, easeOut, lerp, EV, setOf } from "./story";
 import { NOINK } from "./ink";
@@ -405,6 +405,6 @@ export const W_ = (i: number, o: Outfit, okey: string): Who => ({ i, o, okey });
 export type { Who };
 export type { Beat as BeatT };
 void bodySide; void fxSpeed; void fxBurst; void fxDust; void fxSmoke; void fxHeat; void fxSun; void fxConfetti; void fxBoater; void fxDrop; void fxMedal; void dogDraw; void easeOut; void lerp; void smooth;
-export { fxFlame, fxFrog, fxBubble, fxMud, fxCough, fxSwirl, fxCoin, horseDraw, fxSteam, fxStink, fxStars, fxZ, fxSparkle, fxPoof, fxDustCloud, fxBurst };
+export { fxMist, fxFlame, fxFrog, fxBubble, fxMud, fxCough, fxSwirl, fxCoin, horseDraw, fxSteam, fxStink, fxStars, fxZ, fxSparkle, fxPoof, fxDustCloud, fxBurst };
 export type { DogOpts, Expr, FrontOpts, ArmSpec, ArmPose, Outfit };
 export { SHOTS, setOf, EV, clamp01, FPS };

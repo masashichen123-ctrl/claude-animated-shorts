@@ -363,9 +363,9 @@ export const mudHD = (key = "mudHD", base = "#7a5636", puddle = 0.5) => ctex(key
 /** murky swamp water / lake (1024 px = 8 m): teal-green with pale ripples and algae */
 export const waterHD = (key = "waterHD", base = "#5c8a7a") => ctex(key, 1024, 512, (g, r) => {
   g.fillStyle = base; g.fillRect(0, 0, 1024, 512);
-  octaves(g, r, 1024, 512, 120, "200,235,220", "30,70,60", 1.3);
+  octaves(g, r, 1024, 512, 120, "190,215,225", "20,30,34", 0.8);
   for (let i = 0; i < 70; i++) { const x = U(r, 0, 1024), y = U(r, 0, 512), l = U(r, 30, 110); g.strokeStyle = "rgba(235,250,245,0.5)"; g.lineWidth = 2.4; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + l / 2, y - 4, x + l, y); g.stroke(); }
-  for (let i = 0; i < 40; i++) blotch(g, U(r, 0, 1024), U(r, 0, 512), U(r, 20, 60), 2, "120,160,70", 0.25);
+  for (let i = 0; i < 14; i++) blotch(g, U(r, 0, 1024), U(r, 0, 512), U(r, 20, 60), 2, "110,130,60", 0.14);
 });
 /** striped wallpaper (512 px = 2 m): vertical bands with a small diamond motif */
 export const wallpaperHD = (key: string, base: string, stripe: string) => ctex("wallpaperHD" + key, 512, 512, (g, r) => {

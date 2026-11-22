@@ -13,7 +13,10 @@ import { HOTEL, SCREWS, screwX, screwZ, SPOT, hotelY, screwTurn, boardK, cutY, E
 
 const FH = HOTEL.FH, W2 = HOTEL.W / 2;
 const BRICK = "#b4513a";
+const texPlaza = () => { const m = texM("plazaCobble", () => P.cobbleHD()); m.userData.inkId = 1100; return m; };
 const brickM = (c = BRICK) => texM("brick" + c, () => P.brickHD(c));
+const brickF = (c = BRICK) => texM("brickF" + c, () => P.brickHD(c), { side: THREE.DoubleSide });
+const plasterF = (c = "#ecdcb6") => texM("plasterF" + c, () => P.plasterHD(c), { side: THREE.DoubleSide });
 const plasterM = (c = "#ecdcb6") => texM("plaster" + c, () => P.plasterHD(c));
 const CREAM = "#efe4c8";
 
@@ -28,17 +31,18 @@ const awning = (b: Batch, x: number, y: number, z: number, w: number, d: number,
   rb(b, awningTex(c, c2), x - w / 2, x + w / 2, y - 0.28, y - 0.02, z + d * 0.4, z + d * 0.4 + 0.02, 0.005);
 };
 /** arched hole (centre x, base y0, rect top y1, half width hw) as a THREE.Path */
-const archPath = (x: number, y0: number, y1: number, hw: number) => {
-  const p = new THREE.Path();
-  p.moveTo(x - hw, y0); p.lineTo(x + hw, y0); p.lineTo(x + hw, y1); p.absarc(x, y1, hw, 0, Math.PI, false); p.lineTo(x - hw, y0);
-  return p;
+const archPts = (x: number, y0: number, y1: number, hw: number, n = 12) => {
+  const pts: THREE.Vector2[] = [new THREE.Vector2(x - hw, y0), new THREE.Vector2(x + hw, y0)];
+  for (let i = 0; i <= n; i++) { const a = (Math.PI * i) / n; pts.push(new THREE.Vector2(x + hw * Math.cos(a), y1 + hw * Math.sin(a))); }
+  return pts;
 };
+const archPath = (x: number, y0: number, y1: number, hw: number) => new THREE.Path(archPts(x, y0, y1, hw));
 const scaleUV = (g: THREE.BufferGeometry, k: number) => { const uv = g.attributes.uv as THREE.BufferAttribute; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * k, uv.getY(i) * k); return g; };
 /** a hood moulding: an arch ring around an opening (outer = hw + t) */
 const hoodGeo = (hw: number, y1: number, y0: number, t: number, depth: number) => cached(`hood${hw}_${y1}_${y0}_${t}_${depth}`, () => {
-  const s = new THREE.Shape(); s.moveTo(-hw - t, y0); s.lineTo(hw + t, y0); s.lineTo(hw + t, y1); s.absarc(0, y1, hw + t, 0, Math.PI, false); s.lineTo(-hw - t, y0);
+  const s = new THREE.Shape(archPts(0, y0 - 0.06, y1, hw + t));
   s.holes.push(archPath(0, y0 - 0.01, y1, hw));
-  const g = new THREE.ExtrudeGeometry(s, { depth, bevelEnabled: false, curveSegments: 10 });
+  const g = new THREE.ExtrudeGeometry(s, { depth, bevelEnabled: true, bevelThickness: 0.008, bevelSize: 0.008, bevelSegments: 1, curveSegments: 10 });
   return scaleUV(g, 0.5);
 });
 const gasLamp = (b: Batch, x: number, y: number, z: number, h = 3.6) => {
@@ -104,9 +108,9 @@ export const buildHotel = (): HotelRig => {
       for (const bx of [-7.2, -3.6, 3.6, 7.2]) sh.holes.push(archPath(bx, 0.7, 2.55, 0.85));
       sh.holes.push(archPath(0, 0, 2.75, 1.4));
     } else for (const [bx, y0, y1, hw] of winHoles(k, 0.8, HOTEL.SILL, 2.2)) sh.holes.push(archPath(bx, y0, y1, hw));
-    const g = new THREE.ExtrudeGeometry(sh, { depth: 0.7, bevelEnabled: false, curveSegments: 10 });
+    const g = new THREE.ExtrudeGeometry(sh, { depth: 0.7, bevelEnabled: true, bevelThickness: 0.008, bevelSize: 0.008, bevelSegments: 1, curveSegments: 10 });
     g.translate(0, FH[k], -0.7); scaleUV(g, 0.5);
-    b.add(g, k === 0 ? plasterM("#e6d2a4") : brickM(k % 2 ? BRICK : "#a9482f"));
+    b.add(g, k === 0 ? plasterF("#e6d2a4") : brickF(k % 2 ? BRICK : "#a9482f"));
     // window dressing
     const ys0 = k === 0 ? 0.7 : HOTEL.SILL, ys1 = k === 0 ? 2.55 : 2.2, hw = k === 0 ? 0.85 : 0.8;
     const bays = k === 0 ? [-7.2, -3.6, 3.6, 7.2] : HOTEL.BAYS.filter((_, i) => !(k === 1 && i === 2));
@@ -140,7 +144,7 @@ export const buildHotel = (): HotelRig => {
   for (const s of [-1, 1]) for (let y = 0; y < FH[6]; y += 0.9) rb(b, col(CREAM), s * W2 - (s > 0 ? (y / 0.9) % 2 ? 0.5 : 0.8 : (y / 0.9) % 2 ? 0.0 : 0.3) - (s > 0 ? 0 : 0) + (s < 0 ? -0.3 : 0), s * W2 + (s > 0 ? 0.3 : 0.3), y, y + 0.8, -0.1, 0.12, 0.02);
   // body (sides + back + roof), brick, with cream-framed windows along the sides
   const body = brickM();
-  rb(b, body, -W2, W2, 0, FH[6], -HOTEL.D, -2.4, 0.05, 2);
+  rb(b, body, -W2, W2, 0, FH[6], -HOTEL.D, -2.46, 0.05, 2);
   for (const s of [-1, 1]) for (let k = 0; k < 6; k++) for (const z of [-5.2, -9.6, -14.0, -18.4]) {
     const y0 = FH[k] + 0.9, hgt = k === 0 ? 2.3 : 1.9;
     rb(b, col(CREAM), s * W2 + (s > 0 ? -0.02 : -0.12), s * W2 + (s > 0 ? 0.12 : 0.02), y0 - 0.1, y0 + hgt + 0.1, z - 0.62, z + 0.62, 0.02);
@@ -227,7 +231,7 @@ const shaftGeo = () => cached("jsShaft", () => {
 });
 const capGeo = () => cached("jsCap", () => new THREE.BoxGeometry(0.46, 0.12, 0.46));
 const handleGeo = () => cached("jsHandle", () => {
-  const parts = [new THREE.CylinderGeometry(0.032, 0.032, 1.4, 6).rotateZ(Math.PI / 2), new THREE.SphereGeometry(0.065, 8, 6).translate(0.7, 0, 0), new THREE.SphereGeometry(0.065, 8, 6).translate(-0.7, 0, 0),
+  const parts = [new THREE.CylinderGeometry(0.034, 0.034, 1.2, 6).rotateZ(Math.PI / 2), new THREE.SphereGeometry(0.07, 8, 6).translate(0.6, 0, 0), new THREE.SphereGeometry(0.07, 8, 6).translate(-0.6, 0, 0),
     new THREE.CylinderGeometry(0.17, 0.17, 0.12, 10)];
   return mergeGeometries(parts.map((g) => { const n = g.index ? g.toNonIndexed() : g; n.deleteAttribute("uv"); n.setAttribute("uv", new THREE.Float32BufferAttribute(new Float32Array(n.attributes.position.count * 2), 2)); return n; }), false);
 });
@@ -258,8 +262,8 @@ const buildHero = (): HeroRig => {
   // the saddle under the beam
   const sb = new Batch(); rb(sb, iron, -0.3, 0.3, 3.15, 3.3, -0.3, 0.3, 0.03); sb.build(G, true);
   const bar = new THREE.Group(); const bb = new Batch();
-  bb.add(rod(V(-0.85, 0, 0), V(0.85, 0, 0), 0.05, 0.05, 8), col("#3c404a"));
-  for (const s of [-1, 1]) bb.add(cached("barBall", () => new THREE.SphereGeometry(0.1, 10, 8)), shiny(BRASS, 60), M4(s * 0.88, 0, 0));
+  bb.add(rod(V(-0.6, 0, 0), V(0.6, 0, 0), 0.05, 0.05, 8), col("#3c404a"));
+  for (const s of [-1, 1]) bb.add(cached("barBall", () => new THREE.SphereGeometry(0.1, 10, 8)), shiny(BRASS, 60), M4(s * 0.63, 0, 0));
   bb.build(bar, true); bar.position.y = 1.5; G.add(bar);
   G.traverse((o) => { o.receiveShadow = true; });
   return { group: G, bar, shaft };
@@ -294,17 +298,17 @@ const measureBoard = (G: THREE.Group) => {
     g.fillStyle = "#f2e8cc"; g.fillRect(0, 0, 128, 1024);
     const y0 = 3.14, py = (y: number) => 1024 - (y / 8) * 1024;
     for (let k = 0; k < 20; k++) { g.fillStyle = "#3a2a1a"; g.fillRect(8, py(0.4 + k * 0.4) - 2, k % 2 ? 40 : 64, 4); }
-    for (let k = 0; k <= 6; k++) { g.fillStyle = k % 2 ? "#fbf6e8" : "#c8282e"; if (k < 6) g.fillRect(70, py(y0 + 0.4 * (k + 1)), 50, py(y0 + 0.4 * k) - py(y0 + 0.4 * (k + 1))); g.fillStyle = "#1a1a1a"; g.fillRect(4, py(y0 + 0.4 * k) - 4, 120, 8); }
+    for (let k = 0; k <= 6; k++) { g.fillStyle = k % 2 ? "#fbf6e8" : "#c8282e"; if (k < 6) g.fillRect(64, py(y0 + 0.4 * (k + 1)), 60, py(y0 + 0.4 * k) - py(y0 + 0.4 * (k + 1))); g.fillStyle = "#1a1a1a"; g.fillRect(4, py(y0 + 0.4 * k) - 4, 120, 8); }
   }));
   const [x, , z] = SPOT.BOARD;
-  rb(bd, tex, x - 0.3, x + 0.3, 0, 8, z - 0.07, z + 0.07, 0.02);
-  for (const s of [-1, 1]) rb(bd, woodM("#6a4626"), x + s * 0.4 - 0.05, x + s * 0.4 + 0.05, 0, 8.1, z - 0.1, z + 0.1, 0.02);
-  rb(bd, woodM("#6a4626"), x - 0.45, x + 0.45, 8.0, 8.2, z - 0.1, z + 0.1, 0.02);
-  rb(bd, woodM("#5a3a22"), x - 0.7, x + 0.7, 0, 0.3, z - 0.5, z + 0.5, 0.03);
+  rb(bd, tex, x - 0.6, x + 0.6, 0, 8, z - 0.08, z + 0.08, 0.02);
+  for (const s of [-1, 1]) rb(bd, woodM("#6a4626"), x + s * 0.7 - 0.08, x + s * 0.7 + 0.08, 0, 8.2, z - 0.12, z + 0.12, 0.02);
+  rb(bd, woodM("#6a4626"), x - 0.8, x + 0.8, 8.0, 8.25, z - 0.12, z + 0.12, 0.02);
+  rb(bd, woodM("#5a3a22"), x - 1.2, x + 1.2, 0, 0.3, z - 0.7, z + 0.7, 0.03);
   bd.build(G, true);
   const fl = new THREE.Group(); const fb = new Batch();
   fb.add(tri(V(0, 0.28, 0), V(0.95, 0, 0), V(0, -0.28, 0)), col("#e02a2a", THREE.DoubleSide)); rb(fb, col("#fbf6e8"), -0.05, 0.05, -0.3, 0.3, -0.04, 0.04, 0.01);
-  fb.build(fl, false); fl.position.set(x + 0.32, 3.14, z + 0.1); G.add(fl);
+  fb.build(fl, false); fl.position.set(x + 0.45, 3.14, z + 0.12); G.add(fl);
   return fl;
 };
 const scaffold = (): THREE.Group => {
@@ -349,6 +353,7 @@ export const buildStreet = (): SetRig & { hero: HeroRig; hotel: HotelRig } => {
   const b = new Batch(), r = rng(31);
   const dirt = groundM("streetDirt", () => P.dirtRoadHD());
   terrain(b, dirt, -FAR, FAR, -FAR, FAR, 4, undefined, 4, -0.01);
+  terrain(b, texPlaza(), -34, 34, -40, 110, 4, undefined, 4, 0.0);
   terrain(b, groundM("verdant", () => P.pastureHD("pastureS", "#7ab24e")), -FAR, -45, -FAR, FAR, 4, undefined, 4, 0.0);
   terrain(b, groundM("verdant", () => P.pastureHD("pastureS", "#7ab24e")), 45, FAR, -FAR, FAR, 4, undefined, 4, 0.0);
   // plank sidewalk across the hotel front
@@ -371,7 +376,6 @@ export const buildStreet = (): SetRig & { hero: HeroRig; hotel: HotelRig } => {
   for (let l = 0; l < 6; l++) rb(b, woodM("#c9a070"), 14.8, 19.8, 0.1 + l * 0.2, 0.28 + l * 0.2, 14, 14.8, 0.02, 1);
   cart(b, -13.5, 0, 15, 0.5); cart(b, 14, 0, 30, -0.3); cart(b, -17, 0, 40, 0.1);
   for (let i = 0; i < 14; i++) addVeg(b, "round", (i % 2 ? 1 : -1) * (30 + 9 * r()), 0, 12 + i * 13 + r() * 5, 5 + 2 * r(), i * 17, 1);
-  for (let k = 0; k < 5; k++) { const x = -22 + k * 11; b.add(rod(V(x, 0, 50), V(x, 8.6, 50), 0.12, 0.1, 6), woodM("#5a3a26")); rb(b, woodM("#5a3a26"), x - 1.2, x + 1.2, 8.2, 8.35, 49.9, 50.1, 0.02); }
   // the foreman's crate, the board
   rb(b, woodM("#b88a58"), SPOT.FOREMAN[0] - 0.7, SPOT.FOREMAN[0] + 0.7, 0, 0.55, SPOT.FOREMAN[2] - 0.7, SPOT.FOREMAN[2] + 0.7, 0.04);
   hillRing(b, 0, 0, 800, 8, 20, 12, "#8a9a78");
@@ -399,7 +403,7 @@ export const buildStreet = (): SetRig & { hero: HeroRig; hotel: HotelRig } => {
   const scaf = scaffold(); G.add(scaf);
   const w13 = window13(); hotel.group.add(w13);
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), ps = new THREE.Vector3(), sc = new THREE.Vector3(1, 1, 1), yq = new THREE.Vector3(0, 1, 0);
-  const IH = (SPOT.HERO_SCREW[0] + 8.5) / SCREWS.DX;
+  const IH = 6;
   rig.tick = (t, id) => {
     const f = Math.round(t * 30), H = hotelY(id, f);
     hotel.group.position.y = H;
@@ -452,7 +456,7 @@ export const buildCutaway = (): SetRig & CutRig => {
   const rig: SetRig = { name: "cutaway", group: new THREE.Group() }, G = rig.group, r = rng(77);
   // ---- the ground, the street, the neighbours ----
   const gb = new Batch();
-  terrain(gb, groundM("streetDirt", () => P.dirtRoadHD()), -FAR, FAR, -FAR, FAR, 4, undefined, 4, -0.01);
+  terrain(gb, groundM("cutDirt", () => P.stubbleHD("cutStub", "#c8a064")), -FAR, FAR, -FAR, FAR, 4, undefined, 4, -0.01);
   terrain(gb, groundM("verdant", () => P.pastureHD("pastureS", "#7ab24e")), -FAR, -60, -FAR, FAR, 4, undefined, 4, 0.0);
   terrain(gb, groundM("verdant", () => P.pastureHD("pastureS", "#7ab24e")), 60, FAR, -FAR, FAR, 4, undefined, 4, 0.0);
   const WALL = [brickM("#b4513a"), brickM("#c8805a"), plasterM("#e8d4a0"), brickM("#9a4a36"), plasterM("#d8c090")];
@@ -497,9 +501,9 @@ export const buildCutaway = (): SetRig & CutRig => {
   // the lobby ----------------------------------------------------
   const L = yF(0);
   hb.add(quad(V(-0.9, L + 0.01, -0.2), V(0.9, L + 0.01, -0.2), V(0.9, L + 0.01, -D + 2.4), V(-0.9, L + 0.01, -D + 2.4), 1, 3), texM("cutcarpet", () => P.carpetHD()));
-  rb(hb, woodM("#5a3a22"), -1.6, 2.6, L, L + 1.1, -3.9, -2.9, 0.04); rb(hb, woodM("#7a5030"), -1.7, 2.7, L + 1.1, L + 1.2, -4.0, -2.8, 0.03); rb(hb, shiny(BRASS), -1.6, 2.6, L + 0.25, L + 0.3, -2.9, -2.86, 0.01);
-  rb(hb, woodM("#4a2e1a"), -1.2, 3.2, L + 1.6, L + 3.4, -D + 0.02, -D + 0.3, 0.03);                         // key rack
-  for (let i = 0; i < 9; i++) for (let j = 0; j < 4; j++) { rb(hb, col("#1e120a"), -1.1 + i * 0.47, -0.72 + i * 0.47, L + 1.7 + j * 0.42, L + 2.0 + j * 0.42, -D + 0.3, -D + 0.34, 0.005); if ((i * 3 + j * 5) % 4) hb.add(cached("keyDot", () => new THREE.SphereGeometry(0.05, 6, 5)), shiny(BRASS), M4(-0.91 + i * 0.47, L + 1.85 + j * 0.42, -D + 0.37)); }
+  rb(hb, woodM("#5a3a22"), -1.6, 2.6, L, L + 0.9, -3.9, -2.9, 0.04); rb(hb, woodM("#7a5030"), -1.7, 2.7, L + 0.9, L + 1.0, -4.0, -2.8, 0.03); rb(hb, shiny(BRASS), -1.6, 2.6, L + 0.25, L + 0.3, -2.9, -2.86, 0.01);
+  rb(hb, woodM("#4a2e1a"), -0.2, 3.9, L + 1.6, L + 3.4, -D + 0.02, -D + 0.3, 0.03);                         // key rack
+  for (let i = 0; i < 8; i++) for (let j = 0; j < 4; j++) { rb(hb, col("#1e120a"), -0.1 + i * 0.47, 0.28 + i * 0.47, L + 1.7 + j * 0.42, L + 2.0 + j * 0.42, -D + 0.3, -D + 0.34, 0.005); if ((i * 3 + j * 5) % 4) hb.add(cached("keyDot", () => new THREE.SphereGeometry(0.05, 6, 5)), shiny(BRASS), M4(0.09 + i * 0.47, L + 1.85 + j * 0.42, -D + 0.37)); }
   for (const s of [-1, 1]) { rb(hb, col("#c8282e"), s * 3.4 - 0.3, s * 3.4 + 0.3, L, L + 0.5, -D + 0.6, -D + 1.2, 0.05); hb.add(lathe("pot", [[0, 0], [0.2, 0], [0.26, 0.4], [0.28, 0.46], [0, 0.46]], 12), col("#c8643a"), M4(s * 4.6, L, -D + 1.2, 0, 0, 0, [1.2, 1.2, 1.2])); for (let q = 0; q < 8; q++) { const a = (q / 8) * Math.PI * 2; hb.add(cached("palm", () => new THREE.ConeGeometry(0.16, 1.4, 4).translate(0, 0.7, 0)), col("#2f8a3a", THREE.DoubleSide), M4(s * 4.6 + Math.cos(a) * 0.2, L + 0.5, -D + 1.2 + Math.sin(a) * 0.2, 0, Math.cos(a) * 0.7, Math.sin(a) * 0.7)); } }
   // stair along the right wall
   for (let k = 0; k < 14; k++) rb(hb, woodM("#8a5a34"), 3.8 + k * 0.145, hw, L, L + 0.26 + k * 0.26, -D + 0.1, -D + 1.8, 0.01);
@@ -509,7 +513,7 @@ export const buildCutaway = (): SetRig & CutRig => {
   cb.add(new THREE.CircleGeometry(0.62, 28), unlit("clockFace", () => ctex("clockFace", 256, 256, (g) => { g.fillStyle = "#fbf6e8"; g.fillRect(0, 0, 256, 256); g.fillStyle = "#1a1a1a"; for (let q = 0; q < 12; q++) { const a = (q / 12) * Math.PI * 2; g.beginPath(); g.arc(128 + Math.sin(a) * 100, 128 - Math.cos(a) * 100, q % 3 ? 5 : 9, 0, 7); g.fill(); } })), M4(0, 0, 0.001));
   cb.build(clockG, false);
   const hb2 = new Batch(); rb(hb2, col("#1a1a1a"), -0.025, 0.025, 0, 0.42, 0, 0.02, 0.005); hb2.build(clockHands, false); const hb3 = new Batch(); rb(hb3, col("#1a1a1a"), -0.02, 0.02, 0, 0.56, 0, 0.02, 0.005); hb3.build(clockMin, false);
-  clockHands.position.z = 0.16; clockMin.position.z = 0.18; clockG.add(clockHands, clockMin); clockG.position.set(-3.6, L + 2.9, -D + 0.14);
+  clockHands.position.z = 0.16; clockMin.position.z = 0.18; clockG.add(clockHands, clockMin); clockG.position.set(-2.6, L + 3.0, -D + 0.14);
   const clockFaceUp = new THREE.Group(); clockFaceUp.add(clockG); house.add(clockFaceUp);
   // chandelier glows
   for (let k = 0; k < 3; k++) { const y = RH[k] + 3.6; hb.add(rod(V(0, y + 0.2, -3), V(0, y + 0.55, -3), 0.02), col("#3a3a40")); for (let q = 0; q < 4; q++) { const a = (q / 4) * Math.PI * 2; hb.add(cached("bulbC", () => new THREE.SphereGeometry(0.1, 8, 6)), glow("#ffe9b0", 1.6), M4(Math.cos(a) * 0.5, y, -3 + Math.sin(a) * 0.5)); } hb.add(cached("chandRing", () => new THREE.TorusGeometry(0.5, 0.025, 5, 20).rotateX(Math.PI / 2)), shiny(BRASS), M4(0, y - 0.1, -3)); }
@@ -544,7 +548,7 @@ export const buildCutaway = (): SetRig & CutRig => {
   const sg = new THREE.CircleGeometry(0.42, 24);
   const fA = new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ map: signTex(false), side: THREE.FrontSide })), fB = new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ map: signTex(true), side: THREE.FrontSide }));
   fB.rotation.y = Math.PI; fA.position.z = 0.01; fB.position.z = -0.01; sign.add(fA, fB); const cord = new Batch(); cord.add(rod(V(0, 0.4, 0), V(0, 1.0, 0), 0.015, 0.015, 5), col("#3a2a1a")); cord.build(sign, false);
-  sign.position.set(-4.7, L + 2.5, -0.7); house.add(sign);
+  sign.position.set(-4.7, L + 2.2, -0.7); house.add(sign);
   hb.build(house, false);
   house.traverse((o) => { o.castShadow = false; o.receiveShadow = true; });
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), ps = new THREE.Vector3(), sc = new THREE.Vector3(1, 1, 1), yq = new THREE.Vector3(0, 1, 0);

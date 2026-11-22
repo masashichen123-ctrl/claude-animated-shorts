@@ -1,5 +1,5 @@
-// "The 1904 Olympic Marathon" (St. Louis, 1904): 56 s vertical short in the flat-characters-in-a-3D-toon-world style,
-// on the whale / emu / bat shorts' look stack (owner: post, with ink.ts / lensblur.ts / grade.ts).
+// "Chicago Lifts a Hotel" (the raising of the Tremont House, 1861): 59 s vertical short in the flat-characters-in-a-3D-toon-world style,
+// on the marathon / whale / emu / bat shorts' look stack (owner: post, with ink.ts / lensblur.ts / grade.ts).
 // One three.js world (world.ts) posed per frame from the story timeline (story.ts). Post chain:
 //   InkPass (world ink lines, own pass) -> lens blur pre + main (thin-lens DOF per shot from dofAt) ->
 //   [bloom (emissive only) + NEUTRAL tone mapping + colour grade] (one merged EffectPass), MSAA 4.
