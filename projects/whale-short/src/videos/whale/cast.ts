@@ -383,7 +383,7 @@ const stink = (out: Stage, c: V3, size: number, f: number, seed = 0) => {
 /** fuse sparkle: a hot little star that flickers on every frame */
 const fuse = (out: Stage, c: V3, f: number, k: number) => {
   const ph = q(((f * 0.37 + k * 0.21) % 1), 6);
-  out.fx.push({ key: `fuse${ph}`, cw: 200, ch: 200, draw: (p) => { const g = p.g; g.save(); g.scale(0.4, 0.4); fxBurst(p, 0.3 + 0.4 * ph, "#ffd23a", 8, 30, 200); g.restore(); }, x: c[0], y: c[1], z: c[2], w: 0.42, h: 0.42, glow: 2.2 });
+  out.fx.push({ key: `fuse${ph}`, cw: 200, ch: 200, draw: (p) => { const g = p.g; g.save(); g.scale(0.4, 0.4); fxBurst(p, 0.3 + 0.4 * ph, "#ffd23a", 8, 30, 200); g.restore(); }, x: c[0], y: c[1], z: c[2], w: 0.8, h: 0.8, glow: 2.4 });
 };
 
 // ---------------- fire + bangs ----------------
@@ -435,7 +435,7 @@ const crowd = (out: Stage, cam: CamInfo, f: number, t: number, mood: "cheer" | "
   const C = SPOT.CROWD;
   for (const c of CROWD) {
     const d = cam.pos.distanceTo(_cp.set(c.p[0], c.p[1] + 1, c.p[2]));
-    if (d < 3.6) continue;
+    if (d < (mood === "panic" || mood === "up" ? 7.5 : 3.6)) continue; // nobody blurred big right at the lens
     let p = c.p, fo: FrontOpts = {}, facing: -1 | 1 = H(c.i, 83) < 0.5 ? -1 : 1;
     if (mood === "cheer") {
       const w = H(c.i, 84) < 0.35;
@@ -486,7 +486,7 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
       if (f >= EV.DYN1) STICK_SPOTS.forEach(([x, y, z], k) => {
         if (sticksK(f, k) < 0.8) return;
         const a = k * 0.7;
-        fuse(out, [W[0] + x + 0.27 * Math.cos(a), wy + y - 0.25 + 1.46, W[2] + z - 0.27 * Math.sin(a)], F, k);
+        fuse(out, [W[0] + x + 0.35 * Math.cos(a), wy + y - 0.25 + 1.89, W[2] + z - 0.35 * Math.sin(a)], F, k);
       });
       if (f >= EV.DYN1) sparkle(out, [W[0], wy + 4.6, W[2] + 0.5], f, EV.DYN1, 3.2, 1.6);
       break;
@@ -629,7 +629,7 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
       if (f >= EV.INSERT9[0] && f < EV.INSERT9[1]) { crowd(out, cam, f, t, "tense"); break; }
       // the plunger close-up: the Engineer's hands on the T-handle; the push
       const Pl = S.PLUNGER, pk = plungerK(9, f);
-      actor(out, cam, 1, ENGINEER, "eng", B(Pl[0] - 0.08, Pl[2] - 0.42), [
+      actor(out, cam, 1, ENGINEER, "eng", B(Pl[0] - 0.36, Pl[2] - 0.22), [
         { f: 890, expr: "stern", gaze: 1, lean: 8, armF: "out", armB: "out" },
         { f: EV.HOLD9, expr: "nervous", shrug: 0.6 },
         { f: EV.PUSH9 - 1, expr: "pained", armF: "hold", armB: "hold", lean: 12, shrug: 1, dur: 3 },
@@ -642,16 +642,21 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
       if (f >= EV.BOOM10 - 1) {
         const u = (f - EV.BOOM10) / FPS;
         out.lights.push({ p: [c[0] + 6, c[1] + 4, c[2] + 14], I: 120 * Math.max(0.1, 1 - u * 1.5), col: "#ffc070", d: 120 });
-        fireball(out, [c[0], c[1] + 1, c[2] + 2], 14, f, EV.BOOM10 - 1, 12, 1);
-        const lobes: [number, number, number, number][] = [[0, 0, 22, 0], [-8, -1, 18, 1], [8, 0, 18, 2], [-3, 10, 20, 3], [4, 16, 18, 4], [0, 24, 16, 5], [-6, 20, 14, 6], [6, 6, 16, 7]];
-        lobes.forEach(([dx, dy, sz, k]) => bigCloud(out, [c[0] + dx, c[1] + dy * easeOut(u / 0.8), c[2] + 1 - k * 0.3], sz, f, EV.BOOM10 + k, 3.0, k, k % 3 === 2 ? "#a8a0a2" : SAND, 1.5));
-        for (let k = 0; k < 36; k++) { // blubber chunks: ballistic, cartoon gravity
-          const s = (f - EV.BOOM10 - (k % 4)) / FPS;
+        // the hot core: a bright white-yellow starburst inside a swelling fireball (both bloom)
+        const cu = (f - EV.BOOM10 + 1) / 10;
+        if (cu < 1) out.fx.push({ key: `core${q(cu, 10)}`, cw: 500, ch: 500, draw: (p) => fxBurst(p, q(cu, 10), "#fff3b0", 14, 60, 240), x: c[0], y: c[1] + 3, z: c[2] + 3, w: 22 * (0.7 + 0.5 * cu), h: 22 * (0.7 + 0.5 * cu), glow: 2.6 * (1 - 0.6 * cu) });
+        fireball(out, [c[0], c[1] + 3, c[2] + 2.5], 20, f, EV.BOOM10 - 1, 13, 1);
+        // the towering column of sand + smoke: lobes stacked up the frame, already big on the first frames
+        const lobes: [number, number, number, number][] = [[0, 0, 24, 0], [-8, 0, 18, 1], [8, 1, 18, 2], [-3, 8, 20, 3], [4, 13, 18, 4], [-1, 19, 18, 5], [-6, 16, 14, 6], [6, 6, 16, 7], [1, 25, 15, 8], [-3, 30, 12, 9]];
+        lobes.forEach(([dx, dy, sz, k]) => bigCloud(out, [c[0] + dx, c[1] + dy * (0.45 + 0.55 * easeOut(u / 0.5)), c[2] + 1 - k * 0.3], sz * 1.15, f, EV.BOOM10 - 1 + Math.floor(k / 3), 3.0, k, k % 3 === 2 ? "#a8a0a2" : k % 4 === 3 ? "#cfc2b0" : SAND, 1.5));
+        const toCam = [0.39, 0.92];
+        for (let k = 0; k < 64; k++) { // blubber chunks: ballistic, cartoon gravity; a third of them fly out toward the lens
+          const s = (f - EV.BOOM10 + 1 - (k % 3)) / FPS;
           if (s <= 0) continue;
-          const a = H(k, 61) * 6.28, sp = 6 + 10 * H(k, 62), vy = 26 + 22 * H(k, 63);
-          const p: V3 = [c[0] + Math.cos(a) * sp * s, c[1] + vy * s - 14 * s * s, c[2] + 2 + Math.sin(a) * sp * s * 0.6];
-          if (p[1] < 0) continue;
-          chunk(out, p, 1.1 + 1.5 * H(k, 64), k, s * (H(k, 65) - 0.5) * 6);
+          const a = H(k, 61) * 6.28, sp = 6 + 10 * H(k, 62), vy = 18 + 24 * H(k, 63), out2 = k % 3 === 0 ? 9 + 8 * H(k, 68) : 0;
+          const p: V3 = [c[0] + Math.cos(a) * sp * s + toCam[0] * out2 * s, c[1] + 1 + vy * s - 14 * s * s, c[2] + 2 + Math.sin(a) * sp * s * 0.6 + toCam[1] * out2 * s];
+          if (p[1] < 0.3) continue;
+          chunk(out, p, 1.0 + 1.8 * H(k, 64), k, s * (H(k, 65) - 0.5) * 6);
         }
         for (let k = 0; k < 10; k++) { const s = (f - EV.BOOM10) / FPS; if (s > 0 && s < 0.7) out.fx.push({ key: `dust${q(s / 0.7, 10)}|${k % 3}`, cw: 400, ch: 400, draw: (p) => fxDust(p, q(s / 0.7, 10), k % 3, "#d9bc84"), x: c[0] + (H(k, 66) - 0.5) * 22, y: 1 + 4 * s, z: c[2] + 4 + (H(k, 67) - 0.5) * 6, w: 6, h: 6 }); }
       } else for (let k = 0; k < 3; k++) { const a = f * 0.03 + k * 2; gull(out, cam, 180 + k, [W[0] + 7 * Math.cos(a), 10 + k, W[2] + 4 * Math.sin(a)], { pose: "fly", phase: flap(f, k), size: 1.2 }, t); }
@@ -680,6 +685,11 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
         { f: EV.HEAD12, expr: "blank", shrug: 0.8, headTilt: -4, dur: 3 },
         { f: EV.HEAD12 + 8, expr: "speak", shrug: 0 },
       ], t, -1, (fo) => ({ ...fo, prop: "mic", expr: f >= EV.HEAD12 && f < EV.HEAD12 + 8 ? "blank" : talk(t, 1062 / FPS, 1140 / FPS, "smile") }));
+      for (let k = 0; k < 12; k++) { // the crowd running in panic across the dune behind him
+        const s = (f - 1062) / FPS, dir = k % 2 ? 1 : -1, x = R[0] - 7 + 14 * H(k, 95) + dir * 3.2 * s, z = R[2] + 4 + 6 * H(k, 96);
+        stand(out, cam, 240 + k, local70(k * 5 + 3), "l70_" + ((k * 5 + 3) % 48), B(x, z), { expr: k % 3 ? "yell" : "shock", mode: "march", phase: q((t * 2.6 + H(k, 97)) % 1, 12), lift: 90, armR: "up", armL: "up", lean: 8, facing: (dir * cam.right.x >= 0 ? 1 : -1) as -1 | 1 }, t);
+      }
+      for (let k = 0; k < 6; k++) fallChunk(out, B(R[0] - 6 + 2.6 * k, R[2] + 5 + 3 * H(k, 98)), f, 1068 + 11 * k, 1.1, k + 3, 22);
       fallChunk(out, B(R[0] - 1.8, R[2] + 1.4), f, EV.SPLAT12[0], 1.0, 1, 22);
       fallChunk(out, B(R[0] + 1.6, R[2] + 0.9), f, EV.SPLAT12[1], 0.9, 2, 22);
       fallChunk(out, B(R[0] + 3.4, R[2] + 3.4), f, 1076, 1.2, 4, 22);

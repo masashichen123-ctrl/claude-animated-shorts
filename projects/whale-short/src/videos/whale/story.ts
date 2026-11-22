@@ -102,8 +102,8 @@ export const EV = {
 // sand at the origin along x, head toward +x. The beach car park is at +x where the dunes fall away.
 export const SPOT = {
   WHALE: [0, 0, 0] as V3, WHALE_L: 14.5, HEAD_H: 4.3,
-  PLUNGER: [2.3, 0, 5.4] as V3,             // the plunger box (hook + shot 9)
-  ENG1: [3.3, 0, 5.9] as V3,                // the Engineer beside it
+  PLUNGER: [10.2, 0, 6.9] as V3,            // the plunger box, a safe way off the whale's head (hook + shot 9)
+  ENG1: [11.0, 0, 6.4] as V3,               // the Engineer beside it
   ROPE_TAIL: [-7.9, 2.0, 0.3] as V3,        // where the rope is tied (the tail stock, curled up)
   POST4: [-15.2, 0, 2.6] as V3,             // the post the gull faints off
   TRUCK5: [60, 0, 19] as V3,                // where the truck stops (nose toward -x)
@@ -214,11 +214,14 @@ const by = (x: number, z: number, h: number) => beachY(x, z) + h;
 // 1 (0-135): low on the sand off the whale's head: the carcass fills the frame, the Engineer + plunger box in front;
 // slow push, a punch on "dynamite" as the sticks pop up
 const S1 = (f: number): Shot => {
-  const a = C([8.2, 1.25, 13.0], [-1.4, 3.0, -0.6], 54, 0.03), b = C([7.6, 1.2, 12.0], [-1.2, 3.0, -0.6], 52, -0.02);
-  return P(between(a, b, gl(f, 0, 110)), f, 0, 0.0016, 0.006, 16, EV.DYN1 - 2);
+  // the Engineer ~35 % tall in the right third; the whole whale behind him, head + X-eye + jaw + flipper + flukes in frame
+  const a = C([15.5, 0.9, 10.5], [0.0, 3.4, -0.5], 50, 0.03), b = C([15.1, 0.9, 10.1], [0.2, 3.3, -0.5], 49, -0.02);
+  // a zoom push (the lens stays put, so it never dollies past the Engineer), a punch on "dynamite"
+  const c = between(a, b, gl(f, 0, 110));
+  return zoom(c.pos, c.look, c.fov!, pushK(f, 0, 0.0012) * pushK(f, EV.DYN1 - 2, 0, 0.004, 12), { roll: c.roll });
 };
 // 2 (136-197): after: the sooty Engineer in MS, the smoking whale behind; push on the plop
-const S2 = (f: number): Shot => P({ pos: [5.4, by(5.4, 10.6, 1.5), 10.6], look: [2.9, by(2.9, 5.5, 1.55), 5.2], fov: 42, roll: -0.025 }, f, 136, 0.0024, 0.007, 12, EV.PLOP2);
+const S2 = (f: number): Shot => P({ pos: [15.4, 1.5, 9.4], look: [6.0, 2.4, 3.0], fov: 46, roll: -0.025 }, f, 136, 0.0024, 0.007, 12, EV.PLOP2);
 // 3 (198-333): establishing wide down the coast to the headland + lighthouse; crane down onto the whale by "whale"
 const S3 = (f: number): Shot => {
   const a = C([48, 24, 40], [-70, 6, -30], 52, 0.02), b = C([16, 4.2, 19], [-1.5, 1.6, -1.5], 46, -0.02);
@@ -226,7 +229,7 @@ const S3 = (f: number): Shot => {
 };
 // 4 (334-421): the tug of war at the tail; the snap; the smell
 const S4 = (f: number): Shot => {
-  const a = C([-16.2, 1.55, 13.8], [-10.4, 1.15, 4.8], 50, 0.02), b = C([-15.8, 1.5, 13.0], [-10.4, 1.1, 5.0], 50, -0.02);
+  const a = C([-14.6, 1.45, 11.2], [-10.6, 1.3, 5.0], 46, 0.02), b = C([-14.3, 1.4, 10.6], [-10.6, 1.25, 5.2], 46, -0.02);
   return P(between(a, b, gl(f, 380, 24)), f, 334, 0.0018, 0.007, 14, EV.SNAP4 - 2);
 };
 // 5 (422-495): the car park: the orange truck pulls up, the crew + the Engineer
@@ -255,21 +258,21 @@ const S7b = (f: number): Shot => {
 // 8 (768-889): the crowd on the dune crest, from the seaward slope (sky behind them); glide right to the TV crew
 const S8 = (f: number): Shot => {
   const Cw = SPOT.CROWD, R = SPOT.REPORTER;
-  const a = C([Cw[0] + 13, by(Cw[0] + 13, 37.4, 1.7), 37.4], [Cw[0] - 3, by(Cw[0] - 3, 41.5, 1.3), 41.5], 50, 0.02);
-  const b = C([R[0] - 1.4, by(R[0] - 1.4, 34.2, 1.6), 34.2], [R[0] - 1.0, by(R[0] - 1, 39.6, 1.1), 39.6], 50, -0.02);
+  const a = C([Cw[0] + 11, by(Cw[0] + 11, 38.6, 1.3), 38.6], [Cw[0] - 3, by(Cw[0] - 3, 41.5, 1.45), 41.5], 46, 0.02);
+  const b = C([R[0] - 1.1, by(R[0] - 1.1, 33.4, 1.5), 33.4], [R[0] - 1.0, by(R[0] - 1, 39.6, 1.25), 39.6], 50, -0.02);
   return P(between(a, b, gl(f, EV.TV8 - 22, 20)), f, 768, 0.0018, 0.006, 14, 868);
 };
 // 9 (890-937): the plunger close-up; an insert of the crowd holding its breath; the push
 const S9 = (f: number): Shot => {
   const Pl = SPOT.PLUNGER, y = beachY(Pl[0], Pl[2]);
-  return P({ pos: [Pl[0] + 1.0, y + 1.25, Pl[2] + 2.3], look: [Pl[0] + 0.2, y + 0.85, Pl[2]], fov: 42, roll: 0.03 }, f, 890, 0.003, 0.009, 10, EV.PUSH9 - 2);
+  return P({ pos: [Pl[0] + 2.1, y + 1.25, Pl[2] + 1.25], look: [Pl[0] + 0.05, y + 0.85, Pl[2] - 0.05], fov: 42, roll: 0.03 }, f, 890, 0.003, 0.009, 10, EV.PUSH9 - 2);
 };
 const S9i = (f: number): Shot => {
   const Cw = SPOT.CROWD;
   return P({ pos: [Cw[0] + 7.5, by(Cw[0] + 7.5, 38.2, 1.65), 38.2], look: [Cw[0] - 2, by(Cw[0] - 2, 40.6, 1.5), 40.6], fov: 40, roll: -0.02 }, f, EV.INSERT9[0], 0.004);
 };
 // 10 (938-987): the beach wide from the dune slope; BOOM: the column goes up the frame
-const S10 = (f: number): Shot => P({ pos: [9.5, 3.2, 21], look: [-0.5, 9.0, -1], fov: 60, roll: 0.02 }, f, 938, 0.0025, 0.006, 14, EV.BOOM10);
+const S10 = (f: number): Shot => P({ pos: [6.5, 1.8, 15.5], look: [-0.3, 8.0, -0.5], fov: 62, roll: 0.02 }, f, 938, 0.0025, 0.006, 14, EV.BOOM10);
 // 11 (988-1061): the crowd from below on the seaward slope, the sky above them where the chunks come down
 const S11 = (f: number): Shot => {
   const Cw = SPOT.CROWD, a = C([Cw[0] + 15, by(Cw[0] + 15, 38.0, 1.4), 38.0], [Cw[0] - 2, by(Cw[0] - 2, 41.4, 3.2), 41.4], 54, -0.02);
@@ -279,7 +282,7 @@ const S11 = (f: number): Shot => {
 // 12 (1062-1139): the reporter to camera, chunks thudding all round him
 const S12 = (f: number): Shot => {
   const R = SPOT.REPORTER;
-  return P({ pos: [R[0] + 0.5, by(R[0] + 0.5, R[2] - 4.6, 1.5), R[2] - 4.6], look: [R[0] - 0.2, by(R[0], R[2], 1.25), R[2]], fov: 44, roll: -0.02 }, f, 1062, 0.002, 0.006, 12, EV.HEAD12 - 2);
+  return P({ pos: [R[0] + 0.5, by(R[0] + 0.5, R[2] - 4.2, 1.7), R[2] - 4.2], look: [R[0] - 0.2, by(R[0], R[2], 1.15), R[2]], fov: 46, roll: -0.02 }, f, 1062, 0.002, 0.006, 12, EV.HEAD12 - 2);
 };
 // 13 (1140-1227): the lonely sedan in the distant lot, the smoke cloud small on the horizon; the chunk; KICK
 const S13 = (f: number): Shot => P({ pos: [7.4, 1.6, 9.6], look: [-0.4, 2.2, -1.2], fov: 50, roll: 0.025 }, f, 1140, 0.0018, 0.007, 12, EV.CRUSH13 - 1);

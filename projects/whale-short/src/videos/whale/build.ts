@@ -587,7 +587,7 @@ const loft = (rings: [number, number, number, number][], seg = 28, bite?: { x0: 
  *  (it lies tipped on its side), the flukes on edge. bitten = the after-blast carcass (a bite-shaped chunk missing,
  *  soot smudges) */
 const whale = (b: Batch, x0: number, y0: number, z0: number, bitten: boolean) => {
-  const skin = texM("whaleSkin", () => P.whaleSkinHD()), headSkin = texM("whaleHead", () => rep(P.whaleSkinHD("whaleSkinH", "#76706e"), 1, 1));
+  const skin = texM("whaleSkin", () => P.whaleSkinHD()), headSkin = texM("whaleHead", () => rep(P.whaleSkinHD("whaleSkinH", "#6f625b"), 1, 1));
   const m = M4(x0, y0, z0, 0, 0, -0.08);
   const put = (g: THREE.BufferGeometry, mat: Mat, lm = new THREE.Matrix4()) => b.add(g, mat, m.clone().multiply(lm));
   // body rings: x, centre y, ry, rz (sunk ~12 % into the sand)
@@ -739,7 +739,7 @@ const buildBeach = (): SetRig => {
   rig.tick = (t, id) => {
     const f = Math.round(t * 30), st = whaleState(id, f), mk = moundK(id, f);
     gWI.visible = st === "intact"; gWB.visible = st === "bitten" && !(id === 15 && mk >= 0.98);
-    gSt.forEach((g, k) => { const s = id === 1 ? sticksK(f, k) : 0; g.visible = s > 0.01; g.scale.set(1.7, 1.7 * Math.max(0.01, s), 1.7); });
+    gSt.forEach((g, k) => { const s = id === 1 ? sticksK(f, k) : 0; g.visible = s > 0.01; g.scale.set(2.2, 2.2 * Math.max(0.01, s), 2.2); });
     const n = cratesN(id, f), newest = id === 6 ? clamp01((f - (EV.CUT6 + (n - 3) * ((EV.CRATES6 - EV.CUT6) / 17))) / 5) : 1;
     gCr.forEach((g, k) => {
       g.visible = k < n; if (!g.visible) return;
@@ -785,8 +785,10 @@ const buildLot = (): SetRig => {
   sedan(ci, M4(C[0], 0, C[2], 0), "#8cc43a"); sedan(cf, M4(C[0], 0, C[2], 0), "#8cc43a", true);
   const gI = sub(G, ci), gFl = sub(G, cf);
   const kb = new Batch();
-  kb.add(cached("chunk3d", () => { const g = new THREE.SphereGeometry(1, 40, 24), p = g.attributes.position as THREE.BufferAttribute, v = new THREE.Vector3(); for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); const n = 0.78 + 0.4 * vn2(v.x * 1.6 + 3, v.z * 1.6, 5) + 0.16 * vn2(v.y * 3, v.x * 3, 6); p.setXYZ(i, v.x * n * (1 + 0.15 * v.z), v.y * n * (v.y > 0 ? 0.6 : 0.9), v.z * n); } g.computeVertexNormals(); return g; }), col("#f4e2d8"));
-  kb.add(cached("chunkSkin", () => new THREE.SphereGeometry(1, 20, 8, 0, Math.PI * 2, 0, 0.9)), texM("whaleSkinChunk", () => P.whaleSkinHD()), M4(0.1, 0.18, 0, 0, 0.2, 0, [0.95, 0.62, 0.92]));
+  kb.add(cached("chunk3d", () => { const g = new THREE.SphereGeometry(1, 40, 24), p = g.attributes.position as THREE.BufferAttribute, v = new THREE.Vector3(); for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); const n = 0.78 + 0.4 * vn2(v.x * 1.6 + 3, v.z * 1.6, 5) + 0.16 * vn2(v.y * 3, v.x * 3, 6); p.setXYZ(i, v.x * n * (1 + 0.15 * v.z), v.y * n * (v.y > 0 ? 0.6 : 0.9), v.z * n); } g.computeVertexNormals(); return g; }), col("#f2d8cc"));
+  for (const [x, y, z, s] of [[0.7, 0.1, 0.4, 0.62], [-0.65, 0.05, -0.3, 0.6], [0.2, -0.1, -0.7, 0.5], [-0.3, 0.25, 0.6, 0.48], [0.85, -0.25, -0.45, 0.4]] as number[][]) kb.add(cached("chunk3d", () => new THREE.SphereGeometry(1, 40, 24)), col("#f2d8cc"), M4(x, y, z, x * 3, 0, 0, [s * 1.1, s * 0.85, s]));
+  kb.add(cached("chunkSkin", () => new THREE.SphereGeometry(1, 20, 8, 0, Math.PI * 1.2, 0, 0.9)), col("#57504e"), M4(-0.2, 0.2, 0.1, 0.6, 0.25, 0, [0.98, 0.66, 0.95]));
+  for (let k = 0; k < 4; k++) kb.add(cached("drip", () => new THREE.SphereGeometry(1, 10, 8)), col("#f2d8cc"), M4(Math.cos(k * 1.7) * 0.85, -0.55, Math.sin(k * 1.7) * 0.85, 0, 0, 0, [0.09, 0.2, 0.09]));
   const gK = sub(G, kb);
   rig.tick = (t, id) => {
     const f = Math.round(t * 30), flat = carFlat(f) > 0;

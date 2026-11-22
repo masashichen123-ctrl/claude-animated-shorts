@@ -875,8 +875,8 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
       arms.push({ pts: [S1, [tcx + 1.1 * T.a + 8 * u, S1[1] + 0.4 * HH], [tcx + 0.62 * T.a, S1[1] + 0.34 * HH]], front: true });
     } else if (prop === "shovel") { // planted at the side, hand on the shaft at chest height
       arms.push({ pts: [S1, [tcx + 1.15 * T.a + 8 * u, S1[1] + 0.3 * HH], [tcx + 1.2 * T.a + 18 * u, S1[1] + 0.2 * HH]], front: true });
-    } else if (prop === "mic") { // handheld mic up at the chin
-      arms.push({ pts: [S1, [tcx + 1.15 * T.a + 10 * u, S1[1] + 0.36 * HH], [hd.cx + 0.42 * W * f, chin + 0.02 * HH]], front: true });
+    } else if (prop === "mic") { // handheld mic held out in front of the chest, pointed at the lens
+      arms.push({ pts: [S1, [tcx + 1.1 * T.a + 6 * u, S1[1] + 0.42 * HH], [tcx + 0.25 * T.a * f, chin + 0.3 * HH]], front: true });
     } else if (prop === "filmcam") { // big film camera on the shoulder, hand up on its grip
       arms.push({ pts: [S1, [tcx + 1.2 * T.a + 16 * u, S1[1] + 0.1 * HH], [tcx + 0.9 * T.a + 8 * u * f, chin - 0.12 * HH]], front: true });
     } else if (prop === "balloon") { // a balloon on a string, hand raised a little
@@ -975,10 +975,12 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
       p.stroke([[top[0] - 10 * u, top[1]], [top[0] + 10 * u, top[1]]], 4.5 * u, "#3a2a22");
       p.dot(hx, hy, 5.5 * u);
     } else if (prop === "mic") { // black handheld mic with a silver ball head and a cord
-      const head: P2 = [hx + 10 * u * f, hy - 14 * u];
-      p.band([[hx, hy + 8 * u], head], "#2a2a30", 4.2 * u, 1.2 * u, "round");
-      p.ell(head[0], head[1], 8 * u, 8 * u, "#c9ccd2", 2 * u);
-      p.stroke([[hx - 2 * u, hy + 8 * u], [hx - 10 * u * f, hy + 40 * u], [hx - 4 * u * f, hy + 80 * u]], 1.6 * u, "#2a2a30");
+      const head: P2 = [hx + 6 * u * f, hy - 20 * u];
+      p.stroke([[hx - 2 * u, hy + 12 * u], [hx - 14 * u * f, hy + 50 * u], [hx - 2 * u * f, hy + 100 * u], [hx - 16 * u * f, hy + 150 * u]], 2.4 * u, "#1e1e24"); // the cord
+      p.band([[hx, hy + 12 * u], head], "#2a2a30", 7 * u, 1.6 * u, "round");
+      p.ell(head[0], head[1], 15 * u, 15 * u, "#c9ccd2", 2.6 * u);                  // big ball grille, foreshortened toward us
+      for (let k = -1; k <= 1; k++) { p.stroke([[head[0] - 13 * u, head[1] + k * 6 * u], [head[0] + 13 * u, head[1] + k * 6 * u]], 1.2 * u, "#7a8088"); p.stroke([[head[0] + k * 6 * u, head[1] - 13 * u], [head[0] + k * 6 * u, head[1] + 13 * u]], 1.2 * u, "#7a8088"); }
+      p.ell(head[0] - 5 * u, head[1] - 6 * u, 4 * u, 3 * u, "rgba(255,255,255,0.8)", 0);
       p.dot(hx, hy, 5.5 * u);
     } else if (prop === "filmcam") { // big 70s shoulder film camera: grey body, twin film magazine on top, a long lens to the facing side
       const cx = hx + 6 * u * f, cy = hy - 6 * u;
@@ -1547,32 +1549,39 @@ export const gullDraw = (p: Pen, o: GullOpts) => {
 /** a blubber chunk on a 400 x 400 canvas: a lumpy cream-grey slab of fat with a strip of grey-brown whale skin along
  *  one edge, a pale belly shade, two dabs of shine (seed = shape) */
 export const fxChunk = (p: Pen, seed = 0) => {
-  const r = rng2(seed * 7 + 2), pts: P2[] = [];
-  const n = 18, R0 = 132 + 18 * r();
-  for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2, rr2 = R0 * (0.82 + 0.3 * r()) * (1 - 0.18 * Math.sin(a) ** 2); pts.push([200 + rr2 * Math.cos(a), 210 + rr2 * 0.78 * Math.sin(a)]); }
+  // an irregular wobbly lump (no two alike), lobed rim, cream-pink fat lit from inside (reads soft / translucent),
+  // a thick torn strip of dark grey whale skin on one side, wet shine, gooey drips
+  const r = rng2(seed * 7 + 2), pts: P2[] = [], g = p.g;
+  const n = 26, R0 = 128 + 16 * r(), squash = 0.68 + 0.18 * r(), tilt = (r() - 0.5) * 0.6;
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2, lobe = 1 + 0.16 * Math.sin(a * (3 + (seed % 3)) + seed) + 0.12 * (r() - 0.5);
+    const x = R0 * lobe * Math.cos(a), y = R0 * lobe * squash * Math.sin(a);
+    pts.push([200 + x * Math.cos(tilt) - y * Math.sin(tilt), 210 + x * Math.sin(tilt) + y * Math.cos(tilt)]);
+  }
   const sh = chaikin(pts, pts.map(() => false), 3);
-  p.poly(sh, "#f6ece2", 0);
+  const [gx, gy] = p.P(190, 200), gr = g.createRadialGradient(gx, gy, 10, gx, gy, R0 * 1.25);
+  gr.addColorStop(0, "#fff6f0"); gr.addColorStop(0.55, "#f6dfd6"); gr.addColorStop(1, "#e2b8ac");
+  g.save(); g.beginPath(); sh.forEach(([x, y], i) => { const [X, Y] = p.P(x, y); if (i) g.lineTo(X, Y); else g.moveTo(X, Y); }); g.closePath(); g.fillStyle = gr; g.fill(); g.restore();
   p.clip(sh, () => {
-    p.ell(200, 300, 190, 90, "#e8cfc6", 0);                     // underside: pinkish fat
-    const sk: P2[] = [];                                         // the whale-skin strip along the top-left edge
-    for (let i = 0; i <= 12; i++) { const a = Math.PI * (0.95 + 0.75 * (i / 12)); sk.push([200 + (R0 + 40) * Math.cos(a), 210 + (R0 + 40) * 0.8 * Math.sin(a)]); }
-    for (let i = 12; i >= 0; i--) { const a = Math.PI * (0.95 + 0.75 * (i / 12)); sk.push([200 + (R0 - 34 - 8 * Math.sin(i * 1.7)) * Math.cos(a), 210 + (R0 - 34) * 0.8 * Math.sin(a)]); }
-    p.poly(sk, "#5f5560", 0);
-    p.ell(170, 200, 40, 18, "rgba(255,255,255,0.95)", 0, 0, 360, -20);   // wet shine
-    p.ell(240, 220, 14, 8, "rgba(255,255,255,0.9)", 0);
+    const sk: P2[] = [], side = seed % 2 ? 1 : -1;                // the torn skin strip on one side
+    for (let i = 0; i <= 14; i++) { const a = Math.PI * (side > 0 ? -0.35 + 0.7 * (i / 14) : 0.65 + 0.7 * (i / 14)); sk.push([200 + (R0 + 60) * Math.cos(a), 210 + (R0 + 60) * Math.sin(a)]); }
+    for (let i = 14; i >= 0; i--) { const a = Math.PI * (side > 0 ? -0.35 + 0.7 * (i / 14) : 0.65 + 0.7 * (i / 14)); const d = R0 * (0.52 + 0.1 * Math.sin(i * 2.1 + seed)); sk.push([200 + d * Math.cos(a), 210 + d * squash * Math.sin(a)]); }
+    p.poly(sk, "#57504e", 0);
+    p.stroke(sk.slice(15), 5, "#8a7f7a");                        // the torn edge catches light
+    p.ell(170 - 30 * side, 185, 46, 20, "rgba(255,255,255,0.9)", 0, 0, 360, -20);   // wet shine
+    p.ell(225 - 30 * side, 230, 16, 9, "rgba(255,255,255,0.85)", 0);
   });
-  p.poly(sh, null, 12);
-  // two gooey drips hanging off the bottom
-  for (const [x, l] of [[170, 46], [250, 30]]) { p.poly([[x - 14, 290], [x + 14, 290], [x + 6, 290 + l], [x, 300 + l], [x - 6, 290 + l]], "#f6ece2", 6); }
+  p.poly(sh, null, 11);
+  for (const [x, l] of [[150 + 20 * r(), 36 + 20 * r()], [240 + 20 * r(), 24 + 16 * r()]]) { const yb = 210 + R0 * squash * 0.9; p.poly([[x - 13, yb - 6], [x + 13, yb - 6], [x + 6, yb + l], [x, yb + l + 10], [x - 6, yb + l]], "#f3dcd2", 6); }
 };
-/** a flat blubber splat (top-down) on a 400 x 400 canvas: a cream puddle with radial lobes and droplets */
+/** a flat blubber splat (top-down) on a 400 x 400 canvas: a cream-pink puddle with radial lobes and a ring of droplets */
 export const fxSplat = (p: Pen, seed = 0) => {
   const r = rng2(seed + 41), pts: P2[] = [];
-  for (let i = 0; i < 28; i++) { const a = (i / 28) * Math.PI * 2, rr2 = i % 2 ? 90 + 30 * r() : 120 + 50 * r(); pts.push([200 + rr2 * Math.cos(a), 200 + rr2 * Math.sin(a)]); }
+  for (let i = 0; i < 28; i++) { const a = (i / 28) * Math.PI * 2, rr2 = i % 2 ? 80 + 25 * r() : 110 + 45 * r(); pts.push([200 + rr2 * Math.cos(a), 200 + rr2 * Math.sin(a)]); }
   const sh = chaikin(pts, pts.map(() => false), 2);
-  p.poly(sh, "#ecdcc0", 9);
-  p.ell(185, 190, 60, 44, "#f6ead6", 0);
-  for (let i = 0; i < 7; i++) { const a = r() * 6.28, d = 160 + 30 * r(), rr2 = 8 + 10 * r(); p.ell(200 + d * Math.cos(a), 200 + d * Math.sin(a), rr2, rr2, "#ecdcc0", 5); }
+  p.poly(sh, "#f0dcd0", 8);
+  p.ell(185, 190, 56, 40, "#fbefe8", 0);
+  for (let i = 0; i < 16; i++) { const a = (i / 16) * 6.28 + r() * 0.3, d = 158 + 30 * r(), rr2 = 6 + 9 * r(); p.ell(200 + d * Math.cos(a), 200 + d * Math.sin(a), rr2, rr2, "#f0dcd0", 4); }
 };
 /** green stink lines on a 300 x 400 canvas, t = rise phase 0..1 (loops) */
 export const fxStink = (p: Pen, t: number) => {

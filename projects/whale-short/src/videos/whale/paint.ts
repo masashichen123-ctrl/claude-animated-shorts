@@ -300,16 +300,17 @@ export const driftHD = () => ctex("driftHD", 512, 256, (g, r) => {
 });
 /** the whale's skin (1024 x 512 on the body lathe: u around, v along): grey-brown, wrinkled furrows, pale scars and
  *  barnacle dabs, a lighter belly band (v = along the body, u = around) */
-export const whaleSkinHD = (key = "whaleSkin", base = "#8f8088") => ctex(key, 1024, 512, (g, r) => {
+export const whaleSkinHD = (key = "whaleSkin", base = "#6b5f58") => ctex(key, 1024, 512, (g, r) => {
   const W = 1024, H = 512;
   g.fillStyle = base; g.fillRect(0, 0, W, H);
   // belly: pale grey band around u = .5 (the underside)
   const lg = g.createLinearGradient(0, 0, W, 0);
-  lg.addColorStop(0, "rgba(0,0,0,0)"); lg.addColorStop(0.36, "rgba(0,0,0,0)"); lg.addColorStop(0.46, "rgba(210,200,190,0.55)"); lg.addColorStop(0.54, "rgba(210,200,190,0.55)"); lg.addColorStop(0.64, "rgba(0,0,0,0)"); lg.addColorStop(1, "rgba(0,0,0,0)");
+  // lighter belly: the lower lens-side flank (u .26-.5) up to the underside, warm pale grey
+  lg.addColorStop(0, "rgba(0,0,0,0)"); lg.addColorStop(0.24, "rgba(0,0,0,0)"); lg.addColorStop(0.36, "rgba(200,184,170,0.6)"); lg.addColorStop(0.6, "rgba(200,184,170,0.6)"); lg.addColorStop(0.72, "rgba(0,0,0,0)"); lg.addColorStop(1, "rgba(0,0,0,0)");
   g.fillStyle = lg; g.fillRect(0, 0, W, H);
-  octaves(g, r, W, H, 128, "230,220,225", "60,45,50", 0.55);
+  octaves(g, r, W, H, 128, "220,205,190", "50,40,34", 0.55);
   // soft, smooth hide: a few long gentle wrinkle bands (the sperm whale's prune skin), never rocky cracks
-  for (let i = 0; i < 26; i++) { const x = U(r, 0, W), y = U(r, 0, H), l = U(r, 160, 420); g.strokeStyle = "rgba(70,55,62,0.16)"; g.lineWidth = U(r, 5, 9); g.lineCap = "round"; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + l * 0.5, y + U(r, -14, 14), x + l, y + U(r, -6, 6)); g.stroke(); }
+  for (let i = 0; i < 26; i++) { const x = U(r, 0, W), y = U(r, 0, H), l = U(r, 160, 420); g.strokeStyle = "rgba(55,44,38,0.2)"; g.lineWidth = U(r, 5, 9); g.lineCap = "round"; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + l * 0.5, y + U(r, -14, 14), x + l, y + U(r, -6, 6)); g.stroke(); }
   for (let i = 0; i < 10; i++) { const x = U(r, 0, W), y = U(r, 0, H); g.strokeStyle = "rgba(245,238,235,0.35)"; g.lineWidth = U(r, 3, 5); g.beginPath(); g.moveTo(x, y); g.lineTo(x + U(r, 40, 90), y + U(r, -8, 8)); g.stroke(); }
 });
 /** the whale's cartoon X-eye decal (256 px, alpha): a pale socket with a bold ink X */
