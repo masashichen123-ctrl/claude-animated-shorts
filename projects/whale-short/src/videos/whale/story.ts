@@ -222,7 +222,7 @@ const S2 = (f: number): Shot => P({ pos: [5.4, by(5.4, 10.6, 1.5), 10.6], look: 
 // 3 (198-333): establishing wide down the coast to the headland + lighthouse; crane down onto the whale by "whale"
 const S3 = (f: number): Shot => {
   const a = C([48, 24, 40], [-70, 6, -30], 52, 0.02), b = C([16, 4.2, 19], [-1.5, 1.6, -1.5], 46, -0.02);
-  return P(between(a, b, gl(f, 210, 48)), f, 198, 0.0012, 0, 16);
+  return P(between(a, b, gl(f, 210, 48)), f, 198, 0.0024, 0, 16);
 };
 // 4 (334-421): the tug of war at the tail; the snap; the smell
 const S4 = (f: number): Shot => {
@@ -269,7 +269,7 @@ const S9i = (f: number): Shot => {
   return P({ pos: [Cw[0] + 7.5, by(Cw[0] + 7.5, 38.2, 1.65), 38.2], look: [Cw[0] - 2, by(Cw[0] - 2, 40.6, 1.5), 40.6], fov: 40, roll: -0.02 }, f, EV.INSERT9[0], 0.004);
 };
 // 10 (938-987): the beach wide from the dune slope; BOOM: the column goes up the frame
-const S10 = (f: number): Shot => P({ pos: [9.5, 3.2, 21], look: [-0.5, 9.0, -1], fov: 60, roll: 0.02 }, f, 938, 0.0012, 0.004, 14, EV.BOOM10);
+const S10 = (f: number): Shot => P({ pos: [9.5, 3.2, 21], look: [-0.5, 9.0, -1], fov: 60, roll: 0.02 }, f, 938, 0.0025, 0.006, 14, EV.BOOM10);
 // 11 (988-1061): the crowd from below on the seaward slope, the sky above them where the chunks come down
 const S11 = (f: number): Shot => {
   const Cw = SPOT.CROWD, a = C([Cw[0] + 15, by(Cw[0] + 15, 38.0, 1.4), 38.0], [Cw[0] - 2, by(Cw[0] - 2, 41.4, 3.2), 41.4], 54, -0.02);

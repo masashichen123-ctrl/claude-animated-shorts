@@ -446,14 +446,15 @@ const crowd = (out: Stage, cam: CamInfo, f: number, t: number, mood: "cheer" | "
       const down = f >= EV.DOWN11 - 2 - Math.floor(4 * H(c.i, 88));
       fo = { expr: down ? (H(c.i, 89) < 0.5 ? "shock" : "jawdrop") : (H(c.i, 85) < 0.5 ? "grin" : "awe"), gaze: -1, look: q(0.4 * Math.sin(c.i), 4), shrug: down ? 1 : 0 };
     } else { // panic: run outward from the crowd centre, arms up, shrieking
-      const s = Math.max(0, (f - f0 - 3 * H(c.i, 90)) / FPS), dir = Math.sign(c.p[0] - C[0] + 0.01), run = 3.6 * s;
-      const x = c.p[0] + dir * run, z = c.p[2] + (H(c.i, 91) - 0.3) * run * 0.6;
+      // everyone runs AWAY from the lens (along the crest and over the back of the dune), never into it
+      const s = Math.max(0, (f - f0 - 3 * H(c.i, 90)) / FPS), awayX = -Math.sign(cam.pos.x - c.p[0] + 0.01), dir = awayX, run = 3.6 * s;
+      const x = c.p[0] + dir * run * (0.5 + 0.4 * H(c.i, 94)), z = c.p[2] + (H(c.i, 91) - 0.2) * run * 0.9;
       p = [x, beachY(x, z) - 0.04, z]; facing = (dir * cam.right.x >= 0 ? 1 : -1) as -1 | 1;
       fo = { expr: H(c.i, 92) < 0.5 ? "yell" : "shock", mode: "march", phase: q((t * 2.6 + H(c.i, 93)) % 1, 12), lift: 90, armR: c.prop === "umbrella" ? undefined : "up", armL: "up", lean: 8 };
     }
     if (c.prop === "basket" && mood !== "panic") fo.prop = "basket";
     stand(out, cam, c.i, c.o, c.key, p, { ...fo, facing }, t);
-    if (c.prop === "umbrella" && (mood === "panic" || mood === "up")) { // pops open over the head
+    if (c.prop === "umbrella" && (mood === "panic" || mood === "up") && d > 7) { // pops open over the head
       const k = mood === "panic" ? easeOut((f - f0 + 2) / 5) : 0, ck = c.i % 4;
       item(out, `umb${q(k, 6)}|${ck}`, (pn) => fxUmbrella(pn, q(k, 6), UMB_COL[ck]), [p[0] + 0.25, p[1] + 2.0 + 0.25 * k, p[2] + 0.05], 1.3 + 0.5 * k, -0.15 * facing, 512);
     }
@@ -657,7 +658,7 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
       const C = S.CROWD;
       // falling chunks against the sky, then thuds among the crowd
       for (let k = 0; k < 12; k++) {
-        const f0 = 1030 + k * 3 + Math.floor(4 * H(k, 71)), x = C[0] - 9 + 18 * H(k, 72), z = 38.6 + 4.6 * H(k, 73);
+        const f0 = 1030 + k * 3 + Math.floor(4 * H(k, 71)), x = C[0] - 10 + 13 * H(k, 72), z = 38.6 + 4.6 * H(k, 73);
         fallChunk(out, B(x, z), f, f0, 0.7 + 0.6 * H(k, 74), k, 34);
       }
       const bk = CROWD[9].p, bp: V3 = [bk[0] + 0.5, bk[1], bk[2] + 0.3];
