@@ -1,0 +1,116 @@
+[
+ {
+  "line": 0,
+  "text": "In the 1860s, bank robbers stopped trying to break into vaults.",
+  "s": 0.12,
+  "e": 4.723
+ },
+ {
+  "line": 0,
+  "text": "They just kidnapped the banker.",
+  "s": 4.943,
+  "e": 6.2
+ },
+ {
+  "line": 1,
+  "text": "The plan was simple.",
+  "s": 6.75,
+  "e": 7.727
+ },
+ {
+  "line": 1,
+  "text": "Grab the manager, march him to the bank at night, and make him open the door.",
+  "s": 7.947,
+  "e": 11.833
+ },
+ {
+  "line": 2,
+  "text": "A steel vault is only as safe as the man with the key.",
+  "s": 12.153,
+  "e": 14.884
+ },
+ {
+  "line": 3,
+  "text": "And a scared banker will open anything.",
+  "s": 15.204,
+  "e": 16.965
+ },
+ {
+  "line": 4,
+  "text": "Then a lock maker named James Sargent had a clever idea.",
+  "s": 17.465,
+  "e": 20.595
+ },
+ {
+  "line": 4,
+  "text": "Build a lock that even the banker can't open.",
+  "s": 20.815,
+  "e": 22.908
+ },
+ {
+  "line": 5,
+  "text": "He built it out of parts from two kitchen clocks.",
+  "s": 23.228,
+  "e": 25.581
+ },
+ {
+  "line": 6,
+  "text": "The clock kept the bolt locked, and it wouldn't release until a set hour.",
+  "s": 25.901,
+  "e": 29.349
+ },
+ {
+  "line": 6,
+  "text": "No matter who was asking.",
+  "s": 29.569,
+  "e": 30.85
+ },
+ {
+  "line": 7,
+  "text": "In 1874, the first one went onto the vault door of a bank in Morrison, Illinois.",
+  "s": 31.17,
+  "e": 36.73
+ },
+ {
+  "line": 8,
+  "text": "Luckily, kidnapping no longer worked.",
+  "s": 37.05,
+  "e": 38.828
+ },
+ {
+  "line": 8,
+  "text": "Unluckily for the banker, neither did he.",
+  "s": 39.048,
+  "e": 40.983
+ },
+ {
+  "line": 9,
+  "text": "The robbers could threaten him, tie him up, and wait.",
+  "s": 41.433,
+  "e": 43.815
+ },
+ {
+  "line": 9,
+  "text": "The clock did not care.",
+  "s": 44.035,
+  "e": 45.134
+ },
+ {
+  "line": 10,
+  "text": "Soon, every bank wanted one.",
+  "s": 45.634,
+  "e": 47.179
+ },
+ {
+  "line": 11,
+  "text": "And today, banks still use time locks.",
+  "s": 47.679,
+  "e": 49.619
+ },
+ {
+  "line": 11,
+  "text": "The best security guard turned out to be a clock.",
+  "s": 49.839,
+  "e": 52.122
+ }
+]

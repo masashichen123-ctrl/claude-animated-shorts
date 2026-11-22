@@ -1,0 +1,7 @@
+node_modules
+.rtmp/
+out/
+*.wav
+public/vault/
+backup/
+__pycache__/
