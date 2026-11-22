@@ -1,15 +1,16 @@
-// Timeline of "The Bat Bomb" (USA, 1943): 15 shots locked to the voice (voice/words.json, SHOTS.md), the props that
-// move (the bomb casing of the hook, the bat crate of the test, the bats' flight paths), set anchors shared by sets /
-// cast / cameras, the camera grammar of the template (continuous slow push-ins; symmetric smootherstep glides 18-40 f;
-// big reframes are cuts; impacts are 7-frame flip kicks; no hand-held float) and the per-shot depth of field.
+// Timeline of "The Exploding Whale" (Florence, Oregon, 1970): 16 shots locked to the voice (voice/words.json, SHOTS.md),
+// the event frames the sound is timed to, the set anchors shared by sets / cast / cameras, the props that move or grow
+// (dynamite, crates, the highway truck, the plunger, the bulldozer, the sand mound, the falling blubber), the camera
+// grammar of the template (continuous slow push-ins; symmetric smootherstep glides 18-40 f; big reframes are cuts;
+// impacts are 7-frame flip kicks; no hand-held float) and the per-shot depth of field.
 //
 // CONTRACTS (other owners import these; change them only together with the readers):
-//   SetName, Light, ShotDef, SHOTS, XFADE, FLASH_AT, layersAt          -> Bat.tsx, world.ts, cast.ts, build.ts
+//   SetName, Light, ShotDef, SHOTS, XFADE, FLASH_AT, layersAt          -> Whale.tsx, world.ts, cast.ts, build.ts
 //   SPOT (set anchors in each set's own local frame; every set sits at the world origin, only one is visible)
-//   bombAt / crateAt (rig poses), bat9At / ribbonAt (flight paths)     -> world.ts poses the rigs, cast.ts flies the bats
-//   camAt, keyEnd, kickAt, dofAt, focusAt, FOREGROUND                  -> world.ts, Bat.tsx, build.ts
+//   beachY / lotY / parkY (ground heights), EV (event frames), prop timelines (sticksK, cratesN, truckAt, ...)
+//   camAt, keyEnd, kickAt, dofAt, focusAt, FOREGROUND                  -> world.ts, Whale.tsx, build.ts
 export const FPS = 30;
-export const TOTAL = 1650;
+export const TOTAL = 1590;
 export type V3 = [number, number, number];
 
 export const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
@@ -23,32 +24,33 @@ export const lerp3 = (a: V3, b: V3, k: number): V3 => [lerp(a[0], b[0], k), lerp
 
 // ---------------- shots ----------------
 /** one THREE.Group per set in build.ts (buildSets); only the active shot's set is visible */
-export type SetName = "desert" | "base" | "cave" | "workshop" | "attic" | "oval" | "lab" | "office";
-/** light presets (lights.ts LIGHTS / LOOK, grade.ts GRADES): moonlit hook -> desert sunset -> warm interiors / cool lab
- *  -> bright desert day (the test and the fire) -> grey dusk office -> moonlit ending */
-export type Light = "night" | "dusk" | "day" | "interior" | "lab" | "office";
+export type SetName = "beach" | "lot" | "park";
+/** light presets (lights.ts LIGHTS / LOOK, grade.ts GRADES): bright Oregon-coast day (blue sky, white clouds) for the
+ *  1970 story, a warmer full-sun "sunny" for the present-day park */
+export type Light = "day" | "sunny";
 export type ShotDef = { id: number; a: number; b: number; set: SetName; light: Light };
 // frame ranges from SHOTS.md (b = exclusive end)
 export const SHOTS: ShotDef[] = [
-  { id: 1, a: 0, b: 114, set: "desert", light: "night" },       // hook: the bomb opens, the bats burst out
-  { id: 2, a: 114, b: 171, set: "base", light: "dusk" },        // "Then the bats bombed America."
-  { id: 3, a: 171, b: 328, set: "cave", light: "dusk" },        // Adams at the cave, the column of bats
-  { id: 4, a: 328, b: 547, set: "workshop", light: "interior" }, // the idea, the capsule, the tabletop model
-  { id: 5, a: 547, b: 653, set: "attic", light: "interior" },   // cutaway model house: the attic, the timer, POOF
-  { id: 6, a: 653, b: 733, set: "oval", light: "interior" },    // the President says yes
-  { id: 7, a: 733, b: 853, set: "lab", light: "lab" },          // the chemist, the tiny bomb, the flexing bat
-  { id: 8, a: 853, b: 968, set: "base", light: "day" },         // the test base, the crate, the escape
-  { id: 9, a: 968, b: 1110, set: "base", light: "day" },        // one bat looking for a dark place
-  { id: 10, a: 1110, b: 1150, set: "base", light: "day" },      // under the fuel tank
-  { id: 11, a: 1150, b: 1215, set: "base", light: "day" },      // WHOOMP
-  { id: 12, a: 1215, b: 1302, set: "base", light: "day" },      // the base burns, the bucket line
-  { id: 13, a: 1302, b: 1418, set: "base", light: "day" },      // burnt hangar; the General's car
-  { id: 14, a: 1418, b: 1515, set: "office", light: "office" }, // the project is cancelled
-  { id: 15, a: 1515, b: TOTAL, set: "cave", light: "night" },   // the medal, the wink
+  { id: 1, a: 0, b: 136, set: "beach", light: "day" },      // HOOK: the whale, the Engineer, the plunger, dynamite
+  { id: 2, a: 136, b: 198, set: "beach", light: "day" },    // after: the whale still there, the sooty Engineer
+  { id: 3, a: 198, b: 334, set: "beach", light: "day" },    // establishing: the coast, crane down to the whale
+  { id: 4, a: 334, b: 422, set: "beach", light: "day" },    // the rope snaps; the smell
+  { id: 5, a: 422, b: 496, set: "beach", light: "day" },    // the highway truck in the car park
+  { id: 6, a: 496, b: 648, set: "beach", light: "day" },    // the boulder idea; stacking the dynamite
+  { id: 7, a: 648, b: 768, set: "beach", light: "day" },    // the easel plan; the seagulls in bibs
+  { id: 8, a: 768, b: 890, set: "beach", light: "day" },    // the crowd on the dunes; the TV crew
+  { id: 9, a: 890, b: 938, set: "beach", light: "day" },    // the plunger
+  { id: 10, a: 938, b: 988, set: "beach", light: "day" },   // BOOM
+  { id: 11, a: 988, b: 1062, set: "beach", light: "day" },  // it comes down on everyone
+  { id: 12, a: 1062, b: 1140, set: "beach", light: "day" }, // the deadpan reporter
+  { id: 13, a: 1140, b: 1228, set: "lot", light: "day" },   // the car a quarter mile away
+  { id: 14, a: 1228, b: 1322, set: "beach", light: "day" }, // most of the whale is still there
+  { id: 15, a: 1322, b: 1458, set: "beach", light: "day" }, // they buried it
+  { id: 16, a: 1458, b: TOTAL, set: "park", light: "sunny" }, // today: the park, the wink
 ];
 /** 5-frame anchored dissolves (place / time changes); a white flash after the hook */
-export const XFADE: Record<number, number> = { 3: 5, 8: 5, 14: 5, 15: 5 };
-export const FLASH_AT = 112;
+export const XFADE: Record<number, number> = { 3: 5, 16: 5 };
+export const FLASH_AT = 134;
 
 export const shotAt = (f: number) => SHOTS.find((s) => f >= s.a && f < s.b) ?? SHOTS[SHOTS.length - 1];
 /** layers to draw at frame f: base shot, plus the next shot fading in during a crossfade */
@@ -62,148 +64,105 @@ export const layersAt = (f: number): { id: number; alpha: number }[] => {
 
 // ---------------- event frames (SHOTS.md, locked: the sound is timed to them) ----------------
 export const EV = {
-  POP1: 80,         // the casing's panels pop open, the bats burst out
-  GRIN1: 95,        // "bats"@95: the hero bat grins in the lens
-  DIVE2: 121,       // "bats"@121: the swarm dives in
-  FIRES2: [128, 131, 134, 137, 139] as number[], // little roof fires pop ("bombed"@128 .. "America"@139)
-  KICK2: 139,       // the soldier's cap flies off, jaw drop, KICK
-  COLUMN3: 290,     // the column of bats spirals out of the cave
-  TURN3: 308,       // "bats"@308: Adams turns to the lens, big eyes
-  BULB4: 331,       // the light bulb pops on
-  CU4: 367,         // "strap": the bench close-up
-  STRAP4: 369,      // the capsule is strapped on (audio/cues.md strap_buckle @367)
-  MEH4: 413,        // "bat": the bat looks at it, unimpressed
-  CUT4: 430,        // the tabletop planning model
-  FLUTTER5: 553,    // the bat flutters into the attic
-  HANG5: 565,       // "hide": hangs upside down, cosy
-  TICK5: 607,       // "timers": push in on the ticking timer
-  POOF5: 628,       // "off": POOF, the bat's eyes pop, KICK
-  STAMP6: 711,      // the stamp slams down ("yes"@713 KICK)
-  YES6: 713,
-  TWEEZ7: 800,      // the chemist holds up the capsule
-  FIT7: 828,        // the bat has tried one on
-  FLEX7: 845,       // flexes a tiny bicep, thumbs-up wing
-  CRATE8: 880,      // soldiers carry the crate of bats
-  LID8: 940,        // the lid pops
-  ESCAPE8: 947,     // the bats flutter out
-  TANK11: 1186,     // WHOOMP, KICK
-  CRANE12: 1274,    // the whole base burning
-  CUT13: 1365,      // the General polishing his car
-  CHAR13: 1394,     // puff: the car is a charred shell
-  KICK13: 1397,
-  WEIGH14: [1430, 1450] as [number, number],
-  DROP14: 1489,     // folder into the wastebasket (thunk)
-  TURN15: 1600,     // the medal bat turns to the lens, smug
-  WINK15: 1610,
+  DYN1: 114,        // "dynamite": the sticks pop up along the whale's back, fuses sparkle
+  PLOP2: 169,       // a blubber chunk plops onto the Engineer's hat
+  KICK2: 171,
+  PEOPLE3: 260,     // "whale": the crane lands on the whale with the tiny people
+  SNAP4: 366,       // the rope snaps, the locals tumble
+  SMELL4: 403,      // stink lines, pinched noses, the gull faints
+  TRUCK5: 440,      // the orange truck pulls up
+  CONF5: 466,       // "department": the Engineer steps forward
+  BUBBLE6: 558,     // the thought bubble: whale -> boulder
+  CUT6: 580,        // the crates of dynamite
+  CRATES6: 625,     // 20 crates by "dynamite"
+  CUT7: 744,        // the seagulls in bibs
+  TV8: 845,         // the reporter + cameraman
+  HOLD9: 898,       // the breath-held insert 898-910
+  INSERT9: [900, 911] as [number, number],
+  PUSH9: 914,       // the plunger goes down
+  BOOM10: 960,
+  DOWN11: 1020,     // blubber coming DOWN
+  SCATTER11: 1034,
+  SPLAT12: [1090, 1105] as number[],
+  HEAD12: 1118,
+  CRUSH13: 1158,
+  KICK13: 1160,
+  FLEE14: 1255,
+  BLINK14: 1300,
+  PALM15: 1406,
+  CUT15: 1424,
+  MOUND15: 1444,
+  LAND16: 1547,
+  WINK16: 1556,
 };
 
 // ---------------- set anchors (each set's local frame = world frame) ----------------
+// beach: the shore runs along x; the Pacific is toward -z (waterline z ~ -13), the dunes rise toward +z (crest z ~ 44),
+// spruce hills behind them; the rocky headland with the white lighthouse sits up the coast at -x. The whale lies on the
+// sand at the origin along x, head toward +x. The beach car park is at +x where the dunes fall away.
 export const SPOT = {
-  // desert (shot 1): the camera hangs in the night sky, the desert floor 30 m below
-  CAM1: [0, 8, 8] as V3,
-  BOMB1: [0.2, 10.6, -1.2] as V3,          // where the casing pops
-  // base: hangar (doors on +z), control tower, water tower, barracks, the big fuel tank on legs, the General's car
-  HANGAR: [-18, 0, -24] as V3, HANGAR_W: 20, HANGAR_D: 20, HANGAR_H: 7.2,
-  TOWER: [6, 0, -32] as V3,
-  WTOWER: [22, 0, -40] as V3,
-  FLAG: [-3, 0, -11] as V3,
-  BARRACKS: [[10, 0, -10, 0], [27, 0, -13, 0.12], [13, 0, -24, 0]] as [number, number, number, number][], // centre + yaw; 14 x 5 m, door + steps on +z
-  STEP: [8.0, 0, -7.1] as V3,               // shot 9: the step the bat peeks under
-  TANK: [-10, 0, 4] as V3, TANK_R: 2.3, TANK_L: 10, TANK_Y: 4.7,       // axis along x at TANK_Y; underside at TANK_Y - TANK_R
-  CAR: [-12, 0, -5] as V3,                   // the General's car, nose toward +x
-  CRATES9: [1.5, 0, -5.0] as V3,             // the crate stack the bat looks behind
-  SOLDIER2: [14.7, 0, 13.8] as V3,
-  // cave: overlook platform at y 0, the bowl falls to the cave floor at y -8, the mouth on z = -30 (x -7..7, up to y 3)
-  ADAMS3: [6.6, 0, -3.0] as V3,
-  RAIL_Z: -4.4,
-  MOUTH: [0, -8, -30] as V3, MOUTH_W: 14, MOUTH_H: 11,
-  FLOOR_Y: -8,
-  LIP15: [1.2, 1.8, -30.4] as V3,           // shot 15: the medal bat hangs from the cave lip (feet at the rock)
-  CAM15: [0.0, -5.2, -40] as V3,
-  // workshop: bench centre, the planning table with the model town
-  BENCH: [0, 0, 0] as V3, BENCH_Y: 0.92,
-  ADAMS4: [0.05, 0, -0.95] as V3,
-  BAT4: [-0.12, 0.92, 0.12] as V3,
-  TABLE: [4.2, 0, 1.2] as V3, TABLE_Y: 0.84,
-  ADAMS4C: [4.15, 0, 0.05] as V3,
-  // attic: the cutaway model house (front open), ridge beam of the attic
-  HOUSE5: [0, 0, 0] as V3, RIDGE5: [0, 1.44, 0] as V3,
-  // oval office: the desk, the President behind it, Adams in front
-  DESK6: [0, 0, -1.4] as V3, DESK_Y: 0.8,
-  PRES6: [0.05, -0.2, -1.93] as V3,
-  ADAMS6: [-0.35, 0, -0.65] as V3,
-  PAPER6: [0.3, 0.805, -1.68] as V3,
-  // lab
-  LABBENCH: [0, 0, 0] as V3, LAB_Y: 0.92,
-  CHEM7: [0.42, 0, -0.85] as V3,
-  BAT7: [-0.34, 0.92, 0.08] as V3,
-  // office
-  ODESK: [0, 0, -1.1] as V3, ODESK_Y: 0.78,
-  OFFICER14: [0.15, 0, -1.8] as V3,
-  BAGS14: [-0.38, 0.78, -1.08] as V3,
-  BASKET14: [0.6, 0, -0.38] as V3,
-  TRAY14: [0.6, 0.78, -0.95] as V3,
+  WHALE: [0, 0, 0] as V3, WHALE_L: 14.5, HEAD_H: 4.3,
+  PLUNGER: [2.3, 0, 5.4] as V3,             // the plunger box (hook + shot 9)
+  ENG1: [3.3, 0, 5.9] as V3,                // the Engineer beside it
+  ROPE_TAIL: [-7.9, 2.0, 0.3] as V3,        // where the rope is tied (the tail stock, curled up)
+  POST4: [-15.2, 0, 2.6] as V3,             // the post the gull faints off
+  TRUCK5: [60, 0, 19] as V3,                // where the truck stops (nose toward -x)
+  ENG6: [-0.6, 0, 6.6] as V3,               // the Engineer studying the whale
+  CRATES: [-0.6, 0, 2.6] as V3,             // centre of the crate pile against the whale's belly
+  EASEL: [5.2, 0, 7.4] as V3, ENG7: [3.85, 0, 7.75] as V3,
+  LOG7: [-4.5, 0, 12.5] as V3,              // driftwood log with the seagulls in bibs
+  CROWD: [-6, 0, 41] as V3,                 // centre of the crowd on the dune crest (y from beachY)
+  REPORTER: [14, 0, 40.5] as V3, CAMERAMAN: [12.0, 0, 38.6] as V3,
+  LIGHTHOUSE: [-125, 0, -38] as V3,
+  // lot: the distant parking lot, the sedan nose toward +x, the coast + the smoke cloud far off toward -z
+  CAR: [0, 0, 0] as V3,
+  // park: the pictogram sign, a picnic table, the family
+  SIGN: [0.75, 0, 0] as V3, TABLE16: [-3.6, 0, 0.6] as V3, KID16: [-0.3, 0, 2.9] as V3, PARENT16: [-0.95, 0, 2.0] as V3,
 };
 
-// ---------------- terrain heights shared by build.ts (the ground) and cast.ts ----------------
-/** cave set: overlook ground at 0, the bowl in front of the mouth down to FLOOR_Y */
-export const caveGround = (x: number, z: number) => {
-  const zb = smooth((-z - 7) / 10);                         // 0 at z = -7 .. 1 at z = -17
-  const side = smooth((Math.abs(x) - 16) / 14);             // the bowl's side walls
-  return SPOT.FLOOR_Y * zb * (1 - side) + 4 * side * smooth((-z + 2) / 20);
+// ---------------- ground heights shared by build.ts (the terrain) and cast.ts ----------------
+const wv = (x: number) => Math.sin(x / 9.1) * 1.1 + Math.sin(x / 4.3 + 1.7) * 0.55 + Math.sin(x / 17 + 0.4) * 0.9;
+/** the beach: flat sand (y .3) from z -7 up to the dune foot, sloping under the sea below; dune ridge to y ~7 at z ~44,
+ *  falling away at x > 40 for the car park, lower back dunes behind */
+export const beachY = (x: number, z: number) => {
+  let y = z > -7 ? 0.3 : 0.3 - 0.055 * (-7 - z);
+  const ridge = smooth((z - 22) / 20) * (1 - 0.55 * smooth((z - 52) / 14)), keep = 1 - smooth((x - 34) / 12);
+  y += ridge * keep * (6.2 + wv(x)) * (0.6 + 0.4 * smooth((z - 22) / 22));
+  y += 0.12 * Math.sin(x * 0.7 + z * 0.4) * smooth((z - 4) / 10);  // wind ripples on the upper beach
+  return y;
 };
+/** top of the crowd's dune crest at x (people stand at z ~ 39-43) */
+export const crestY = (x: number, z = 41) => beachY(x, z);
+export const lotY = (_x: number, _z: number) => 0;
+export const parkY = (_x: number, _z: number) => 0;
 
-// ---------------- moving props ----------------
-/** the hook's bomb casing: pos = centre, pitch = tilt off vertical (rad), open = panel opening 0..1, spin about its axis */
-export type BombPose = { visible: boolean; pos: V3; tilt: number; open: number; spin: number };
-export const bombAt = (id: number, f: number): BombPose => {
-  if (id !== 1) return { visible: false, pos: [0, -99, 0], tilt: 0, open: 0, spin: 0 };
-  const B = SPOT.BOMB1, u = clamp01(f / EV.POP1);
-  // drops in fast from above the frame and settles into a slow fall at the centre (cartoon hang), then sinks away
-  const y = f < EV.POP1 ? B[1] + 7.5 * (1 - u) ** 1.6 : B[1] - 0.9 * ((f - EV.POP1) / FPS) - 3.2 * ((f - EV.POP1) / FPS) ** 2;
-  const x = B[0] + 0.9 * (1 - u) ** 2;
-  const open = f < EV.POP1 ? 0 : easeOut((f - EV.POP1) / 7);
-  return { visible: true, pos: [x, y, B[2]], tilt: 0.16 * Math.sin(f * 0.07) + 0.12 * (1 - u), open, spin: f * 0.015 };
+/** shot 4: the rope runs from the tail toward the lens-left, the locals strung along it in depth */
+export const ROPE_DIR: V3 = [-0.42, 0, 0.91];
+export const ropeAt = (d: number): V3 => [SPOT.ROPE_TAIL[0] + ROPE_DIR[0] * d, 0, SPOT.ROPE_TAIL[2] + ROPE_DIR[2] * d];
+// ---------------- prop timelines ----------------
+/** dynamite sticks on the whale's back (hook): 0 hidden .. 1 up (staggered pops from DYN1) */
+export const sticksK = (f: number, k: number) => easeOut((f - EV.DYN1 + 2 - k * 1.2) / 5);
+/** how many crates stand against the whale at frame f (shot 6 stacking: 20 by CRATES6; 20 from then until the blast) */
+export const cratesN = (id: number, f: number) => {
+  if (id === 6) return f < EV.CUT6 ? 0 : Math.min(20, 3 + Math.floor((f - EV.CUT6) / ((EV.CRATES6 - EV.CUT6) / 17)));
+  if (id === 1) return 6;
+  return id >= 7 && id <= 10 ? 20 : 0;
 };
-/** shot 8: the crate of bats carried in by two soldiers; lid 0..1 (pops open at LID8) */
-export type CratePose = { visible: boolean; pos: V3; yaw: number; lid: number; jolt: number };
-export const crate8X = (f: number) => 12.6 - 3.2 * glide((f - 853) / 80) - 0.6 * glide((f - 925) / 30);
-export const crateAt = (id: number, f: number): CratePose => {
-  if (id !== 8) return { visible: false, pos: [0, -99, 0], yaw: 0, lid: 0, jolt: 0 };
-  const walk = f < 930, bob = walk ? 0.03 * Math.abs(Math.sin(f * 0.42)) : 0;
-  const jolt = f >= EV.LID8 - 4 && f < EV.LID8 ? 0.05 * Math.sin((f - EV.LID8 + 4) * 2.2) : 0;
-  return { visible: true, pos: [crate8X(f), 0.78 + bob + jolt, 12.4], yaw: 0.05, lid: f < EV.LID8 ? 0 : easeOut((f - EV.LID8) / 5) * 1.9, jolt };
-};
-
-// ---------------- flight paths ----------------
-/** a smooth path through keyed points (smootherstep between keys) */
-const keyed = (keys: [number, V3][], f: number): V3 => {
-  if (f <= keys[0][0]) return keys[0][1];
-  for (let i = 1; i < keys.length; i++) if (f < keys[i][0]) return lerp3(keys[i - 1][1], keys[i][1], glide((f - keys[i - 1][0]) / (keys[i][0] - keys[i - 1][0])));
-  return keys[keys.length - 1][1];
-};
-/** shot 9: one bat cruising the base: under the barracks step, behind the crate stack, on toward the fuel tank */
-export const BAT9_KEYS: [number, V3][] = [
-  [968, [11.2, 2.6, 2.4]], [988, [8.6, 0.85, -5.4]], [995, [8.25, 0.42, -6.25]], [1016, [8.2, 0.42, -6.3]],
-  [1032, [3.6, 1.6, -3.4]], [1040, [2.05, 0.75, -4.2]], [1066, [2.0, 0.75, -4.25]], [1100, [-5.4, 2.3, 1.8]], [1110, [-6.4, 2.3, 2.1]],
-];
-export const bat9At = (f: number): V3 => {
-  const p = keyed(BAT9_KEYS, f);
-  return [p[0], p[1] + 0.05 * Math.sin(f * 0.5), p[2]];
-};
-/** the cave's bat column / ribbon: point on the centre line at s (0 deep in the cave .. 1 high in the sky) */
-const bez = (a: V3, b: V3, c: V3, d: V3, t: number): V3 => {
-  const s = 1 - t, A = s * s * s, B = 3 * s * s * t, C = 3 * s * t * t, D = t * t * t;
-  return [A * a[0] + B * b[0] + C * c[0] + D * d[0], A * a[1] + B * b[1] + C * c[1] + D * d[1], A * a[2] + B * b[2] + C * c[2] + D * d[2]];
-};
-export const ribbonAt = (id: number, s: number): V3 => id === 15
-  ? bez([0, -5.6, -46], [0, -4.6, -28], [1.5, 6, -16], [8, 36, 4], s)
-  : bez([0, -6.5, -38], [0, -5, -26], [-1, 12, -30], [-10, 46, -36], s);
+/** the highway truck (shot 5): x of its centre, nose toward -x, stops at SPOT.TRUCK5 at TRUCK5 */
+export const truckX = (f: number) => SPOT.TRUCK5[0] + 26 * (1 - easeOut((f - 410) / 30)) ** 1.6;
+/** the plunger's T-handle: 0 up .. 1 pushed down */
+export const plungerK = (id: number, f: number) => (id === 9 ? easeOut((f - EV.PUSH9 + 2) / 4) : id === 10 ? 1 : 0);
+/** whale state per shot: intact, bitten (after the blast), buried */
+export const whaleState = (id: number, f: number) => (id === 2 || (id === 10 && f >= EV.BOOM10) || id >= 14 ? "bitten" : "intact");
+/** the sand mound (shot 15): 0 .. 1 grown over the whale by MOUND15 */
+export const moundK = (id: number, f: number) => (id === 15 ? smooth((f - EV.CUT15 - 2) / (EV.MOUND15 - EV.CUT15 - 2)) : 0);
+/** the bulldozer (shot 15) pushing sand at the whale from +z: its centre */
+export const dozerAt = (f: number): V3 => { const u = smooth((f - EV.CUT15) / 30); return [3.6, 0.3, lerp(11.5, 6.0, u) + 0.4 * Math.sin(f * 0.4) * (1 - u)]; };
+/** the sedan (shot 13) flattened from CRUSH13; the falling chunk's height above the roof */
+export const carFlat = (f: number) => (f >= EV.CRUSH13 ? 1 : 0);
+export const chunk13Y = (f: number) => (f < EV.CRUSH13 ? 1.2 + 44 * ((EV.CRUSH13 - f) / 14) ** 1.7 : 1.05 - 0.15 * Math.exp(-(f - EV.CRUSH13) / 3) * Math.cos((f - EV.CRUSH13) * 1.3));
 
 // ---------------- camera ----------------
-// Grammar (look_reports/motion.md + composition.md): every key pushes in 0.2-0.35 %/f; every shot of >= 2 s carries one
-// glide (truck, arc, crane) of 24-45 f; rolls of 1-3 deg alternate sign between keys; reframes bigger than about half a
-// frame are cuts; impacts are 7-frame flip kicks.
 export type Cam = { pos: V3; look: V3; fov: number; roll: number };
 type Shot = Partial<Cam> & { pos: V3; look: V3 };
 type Key = { f: number; dur?: number; cut?: boolean; s: (f: number) => Shot };
@@ -245,128 +204,124 @@ const C = (pos: V3, look: V3, fov: number, roll = 0): Cam => ({ pos, look, fov, 
 
 /** card heights (cast.ts design: an adult's head top stands ~1.75 m, the head blob is ~0.48 m) */
 export const HEAD_TOP = 1.75, HEAD_H = 0.48;
-/** eye point of a card (DOF focus) */
+/** eye point of a card standing at p (DOF focus) */
 export const eyes = (p: V3, s = 1): V3 => [p[0], p[1] + 1.52 * s, p[2]];
+/** ground point on the beach */
+export const onB = (x: number, z: number): V3 => [x, beachY(x, z), z];
+const by = (x: number, z: number, h: number) => beachY(x, z) + h;
 
 // ---- per-shot cameras ----
-// 1 (0-113): in the night sky, the bomb drops into the frame centre, pops; the hero bat flies into the lens
+// 1 (0-135): low on the sand off the whale's head: the carcass fills the frame, the Engineer + plunger box in front;
+// slow push, a punch on "dynamite" as the sticks pop up
 const S1 = (f: number): Shot => {
-  const a = C([0.2, 8.4, 8.4], [0.1, 11.4, -10], 52, 0.03), b = C([0.0, 8.0, 7.9], [0.15, 10.6, -10], 50, -0.02);
-  const c = between(a, b, gl(f, 0, 100));
-  return zoom(c.pos, c.look, c.fov!, pushK(f, 0, 0.001) * pushK(f, EV.POP1, 0, 0.006, 14), { roll: c.roll });
+  const a = C([8.2, 1.25, 13.0], [-1.4, 3.0, -0.6], 54, 0.03), b = C([7.6, 1.2, 12.0], [-1.2, 3.0, -0.6], 52, -0.02);
+  return P(between(a, b, gl(f, 0, 110)), f, 0, 0.0016, 0.006, 16, EV.DYN1 - 2);
 };
-// 2 (114-170): the base at dusk past the soldier's shoulder (right third); the swarm dives in from the top left
-const S2 = (f: number): Shot => zoom([16.2, 1.55, 17.2], [-4, 4.4, -16], 48, pushK(f, 114, 0.0016) * pushK(f, 137, 0, 0.007, 14), { roll: -0.025 });
-// 3 (171-327): establishing wide over the overlook toward the cave mouth, glide down to Adams at the rail by "Adams";
-// tilt up with the column at 290, punch in on Adams' turn at 308
+// 2 (136-197): after: the sooty Engineer in MS, the smoking whale behind; push on the plop
+const S2 = (f: number): Shot => P({ pos: [5.4, by(5.4, 10.6, 1.5), 10.6], look: [2.9, by(2.9, 5.5, 1.55), 5.2], fov: 42, roll: -0.025 }, f, 136, 0.0024, 0.007, 12, EV.PLOP2);
+// 3 (198-333): establishing wide down the coast to the headland + lighthouse; crane down onto the whale by "whale"
 const S3 = (f: number): Shot => {
-  const a = C([10.5, 6.8, 8.5], [-0.5, -2.5, -30], 50, 0.03), b = C([7.0, 1.95, 0.4], [-0.4, -1.8, -30], 46, -0.02);
-  const c2 = C([7.0, 1.9, 0.4], [-0.6, 9.5, -30], 52, 0.02);
-  const d2 = C([7.4, 1.72, -0.5], [5.4, 3.2, -9], 50, -0.015);           // whip back down onto Adams for his turn
-  const u = gl(f, 176, 52), v = gl(f, 280, 20), w = gl(f, 301, 9);
-  const s = mix(mix(mix(a, b, u), c2, v), d2, w);
-  return zoom(s.pos, s.look, s.fov!, pushK(f, 228, 0.0016) * pushK(f, 305, 0, 0.007, 16), { roll: s.roll });
+  const a = C([48, 24, 40], [-70, 6, -30], 52, 0.02), b = C([16, 4.2, 19], [-1.5, 1.6, -1.5], 46, -0.02);
+  return P(between(a, b, gl(f, 210, 48)), f, 198, 0.0012, 0, 16);
 };
-// 4a (328-366): Adams behind his bench, the bulb pops; 4b (367-429): bench close-up; 4c (430-546): the planning model
-const S4a = (f: number): Shot => P({ pos: [0.75, 1.56, 2.35], look: [0.02, 1.5, -0.9], fov: 42, roll: 0.02 }, f, 328, 0.0028, 0.008, 12, 330);
-const S4b = (f: number): Shot => {
-  const B = SPOT.BAT4, a = C([0.32, 1.22, 1.02], [B[0] - 0.02, 1.08, B[2] - 0.12], 40, -0.02), b = C([0.2, 1.16, 0.78], [B[0], 1.06, B[2] - 0.08], 38, 0.015);
-  return P(between(a, b, gl(f, 395, 26)), f, 367, 0.0022, 0.006, 14, 411);
+// 4 (334-421): the tug of war at the tail; the snap; the smell
+const S4 = (f: number): Shot => {
+  const a = C([-16.2, 1.55, 13.8], [-10.4, 1.15, 4.8], 50, 0.02), b = C([-15.8, 1.5, 13.0], [-10.4, 1.1, 5.0], 50, -0.02);
+  return P(between(a, b, gl(f, 380, 24)), f, 334, 0.0018, 0.007, 14, EV.SNAP4 - 2);
 };
-const S4c = (f: number): Shot => {
-  const Tb = SPOT.TABLE, a = C([Tb[0] + 1.6, 2.55, Tb[2] + 2.6], [Tb[0] - 0.1, 0.95, Tb[2] - 0.3], 46, 0.03), b = C([Tb[0] + 0.8, 2.35, Tb[2] + 2.3], [Tb[0] - 0.05, 1.0, Tb[2] - 0.35], 44, -0.02);
-  return P(between(a, b, gl(f, 436, 60)), f, 430, 0.0018, 0.006, 16, 512);
-};
-// 5 (547-652): the cutaway model house; push into the attic, then onto the timer; POOF
+// 5 (422-495): the car park: the orange truck pulls up, the crew + the Engineer
 const S5 = (f: number): Shot => {
-  const R = SPOT.RIDGE5;
-  const a = C([0.35, 1.0, 3.2], [0.0, 0.95, 0.0], 40, 0.02), b = C([0.12, 1.3, 1.05], [R[0], R[1] - 0.15, 0.0], 38, -0.02);
-  const c = C([0.05, 1.27, 0.62], [R[0], R[1] - 0.1, 0.0], 36, 0.01);
-  const s = mix(mix(a, b, gl(f, 551, 34)), c, gl(f, 596, 14));
-  return P(s, f, 547, 0.0016, 0.009, 12, 626);
+  const T = SPOT.TRUCK5, a = C([T[0] - 11, 1.7, T[2] + 11.5], [T[0] - 1.5, 1.7, T[2] - 1], 48, -0.02), b = C([T[0] - 9.5, 1.6, T[2] + 9.0], [T[0] - 3.2, 1.55, T[2] + 0.5], 44, 0.02);
+  return P(between(a, b, gl(f, 446, 26)), f, 422, 0.0018, 0.007, 12, EV.CONF5 - 2);
 };
-// 6 (653-732): the President's desk from the front-left, Adams on the right; push on the stamp
-const S6 = (f: number): Shot => {
-  const a = C([0.95, 1.5, 1.9], [0.0, 1.12, -1.6], 44, 0.025), b = C([0.7, 1.42, 1.25], [0.0, 1.12, -1.6], 44, -0.02);
-  return P(between(a, b, gl(f, 662, 40)), f, 653, 0.002, 0.008, 14, 709);
+// 6a (496-579): over the Engineer's shoulder at the whale, the thought bubble; 6b (580-647): the crates stack up
+const S6a = (f: number): Shot => {
+  const E = SPOT.ENG6;
+  return P({ pos: [E[0] + 2.4, by(E[0] + 2.4, E[2] + 4.6, 1.75), E[2] + 4.6], look: [E[0] - 0.3, by(E[0], E[2], 2.05), E[2] - 1.2], fov: 46, roll: 0.02 }, f, 496, 0.0018, 0.006, 14, EV.BUBBLE6 - 2);
 };
-// 7 (733-852): the lab two-shot; glide toward the bat on the bench for the flex
-const S7 = (f: number): Shot => {
-  const B = SPOT.BAT7, a = C([0.1, 1.48, 2.3], [0.0, 1.25, -0.4], 42, -0.02), b = C([-0.2, 1.22, 1.05], [B[0] + 0.08, 1.12, B[2] - 0.2], 40, 0.02);
-  return P(between(a, b, gl(f, 812, 28)), f, 733, 0.0018, 0.006, 14, 843);
+const S6b = (f: number): Shot => {
+  const Cr = SPOT.CRATES;
+  return P({ pos: [Cr[0] + 4.2, 2.3, Cr[2] + 8.4], look: [Cr[0] - 0.2, 1.5, Cr[2] - 0.6], fov: 46, roll: -0.02 }, f, EV.CUT6, 0.0022, 0.006, 12, EV.CRATES6 - 2);
 };
-// 8 (853-967): the test base on a bright day; glide in to the soldiers carrying the crate; the lid pops
+// 7a (648-743): the easel presentation; 7b (744-767): the seagulls on the log in bibs
+const S7a = (f: number): Shot => {
+  const E = SPOT.EASEL, a = C([E[0] - 0.2, 1.6, E[2] + 7.4], [E[0] - 0.75, 1.45, E[2] - 0.2], 46, 0.02), b = C([E[0] - 0.3, 1.6, E[2] + 6.4], [E[0] - 0.7, 1.5, E[2] - 0.2], 46, -0.02);
+  return P(between(a, b, gl(f, 690, 30)), f, 648, 0.0018, 0.006, 14, 708);
+};
+const S7b = (f: number): Shot => {
+  const L = SPOT.LOG7, y = beachY(L[0], L[2]);
+  return P({ pos: [L[0] + 0.3, y + 0.75, L[2] + 2.9], look: [L[0], y + 0.72, L[2]], fov: 44, roll: 0.02 }, f, EV.CUT7, 0.003);
+};
+// 8 (768-889): the crowd on the dune crest, from the seaward slope (sky behind them); glide right to the TV crew
 const S8 = (f: number): Shot => {
-  const a = C([20, 4.4, 26], [-2, 3.2, -8], 52, 0.02), b = C([13.6, 1.9, 19.0], [8.6, 1.35, 10.0], 46, -0.02);
-  return P(between(a, b, gl(f, 858, 46)), f, 853, 0.0016, 0.006, 14, 938);
+  const Cw = SPOT.CROWD, R = SPOT.REPORTER;
+  const a = C([Cw[0] + 13, by(Cw[0] + 13, 37.4, 1.7), 37.4], [Cw[0] - 3, by(Cw[0] - 3, 41.5, 1.3), 41.5], 50, 0.02);
+  const b = C([R[0] - 1.4, by(R[0] - 1.4, 34.2, 1.6), 34.2], [R[0] - 1.0, by(R[0] - 1, 39.6, 1.1), 39.6], 50, -0.02);
+  return P(between(a, b, gl(f, EV.TV8 - 22, 20)), f, 768, 0.0018, 0.006, 14, 868);
 };
-// 9 (968-1109): follow the bat: the lens trails it low, beside and behind
+// 9 (890-937): the plunger close-up; an insert of the crowd holding its breath; the push
 const S9 = (f: number): Shot => {
-  const p = bat9At(f), q = bat9At(f + 10), d: V3 = [q[0] - p[0], 0, q[2] - p[2]], l = Math.hypot(d[0], d[2]) || 1;
-  const back: V3 = [-d[0] / l, 0, -d[2] / l], side: V3 = [-back[2], 0, back[0]];
-  const off = (k: number, s: number, h: number): V3 => [back[0] * k + side[0] * s, h, back[2] * k + side[2] * s];
-  const o = lerp3(off(1.4, 0.9, 0.35), off(1.6, 1.2, 0.55), smooth((f - 1080) / 30));
-  return { pos: add(p, o), look: [p[0], p[1] - 0.05, p[2]], fov: 46, roll: 0.02 * Math.sin(f * 0.05) };
+  const Pl = SPOT.PLUNGER, y = beachY(Pl[0], Pl[2]);
+  return P({ pos: [Pl[0] + 1.0, y + 1.25, Pl[2] + 2.3], look: [Pl[0] + 0.2, y + 0.85, Pl[2]], fov: 42, roll: 0.03 }, f, 890, 0.003, 0.009, 10, EV.PUSH9 - 2);
 };
-// smoothed follow (the raw path turns at the keys; low-pass the camera by averaging a few frames)
-const S9s = (f: number): Shot => {
-  let pos: V3 = [0, 0, 0], look: V3 = [0, 0, 0];
-  for (let k = -6; k <= 6; k += 2) { const s = S9(f + k); pos = add(pos, s.pos); look = add(look, s.look); }
-  return { pos: pos.map((v) => v / 7) as V3, look: look.map((v) => v / 7) as V3, fov: 46, roll: 0.02 * Math.sin(f * 0.05) };
+const S9i = (f: number): Shot => {
+  const Cw = SPOT.CROWD;
+  return P({ pos: [Cw[0] + 7.5, by(Cw[0] + 7.5, 38.2, 1.65), 38.2], look: [Cw[0] - 2, by(Cw[0] - 2, 40.6, 1.5), 40.6], fov: 40, roll: -0.02 }, f, EV.INSERT9[0], 0.004);
 };
-// 10 (1110-1149): low under the fuel tank, looking up along the pipe at the row of hanging bats
-const S10 = (f: number): Shot => zoom([SPOT.TANK[0] + 2.85, 1.0, 6.75], [SPOT.TANK[0] + 1.85, 1.9, 5.05], 52, pushK(f, 1110, 0.0025) * pushK(f, 1138, 0, 0.006, 14), { roll: -0.04 });
-// 11 (1150-1214): wide on the tank; WHOOMP
-const S11 = (f: number): Shot => P({ pos: [8, 4.2, 25], look: [-9, 4.6, 3], fov: 50, roll: 0.02 }, f, 1150, 0.0018, 0.006, 10, 1186);
-// 12 (1215-1301): the bucket line in the foreground, crane up to the whole base burning by 1274
+// 10 (938-987): the beach wide from the dune slope; BOOM: the column goes up the frame
+const S10 = (f: number): Shot => P({ pos: [9.5, 3.2, 21], look: [-0.5, 9.0, -1], fov: 60, roll: 0.02 }, f, 938, 0.0012, 0.004, 14, EV.BOOM10);
+// 11 (988-1061): the crowd from below on the seaward slope, the sky above them where the chunks come down
+const S11 = (f: number): Shot => {
+  const Cw = SPOT.CROWD, a = C([Cw[0] + 15, by(Cw[0] + 15, 38.0, 1.4), 38.0], [Cw[0] - 2, by(Cw[0] - 2, 41.4, 3.2), 41.4], 54, -0.02);
+  const b = C([Cw[0] + 14, by(Cw[0] + 14, 38.2, 1.5), 38.2], [Cw[0] - 2, by(Cw[0] - 2, 41.4, 1.8), 41.4], 52, 0.02);
+  return P(between(a, b, gl(f, 1026, 18)), f, 988, 0.0018, 0.006, 12, EV.SCATTER11 - 2);
+};
+// 12 (1062-1139): the reporter to camera, chunks thudding all round him
 const S12 = (f: number): Shot => {
-  const a = C([11.2, 1.25, 18.2], [6.5, 2.0, 9.5], 48, -0.02), b = C([20, 17, 34], [-3, 1.5, -10], 52, 0.02);
-  return P(between(a, b, gl(f, 1252, 24)), f, 1215, 0.0016);
+  const R = SPOT.REPORTER;
+  return P({ pos: [R[0] + 0.5, by(R[0] + 0.5, R[2] - 4.6, 1.5), R[2] - 4.6], look: [R[0] - 0.2, by(R[0], R[2], 1.25), R[2]], fov: 44, roll: -0.02 }, f, 1062, 0.002, 0.006, 12, EV.HEAD12 - 2);
 };
-// 13a (1302-1364): smoky glide past the burnt hangar frame; 13b (1365-1417): the General polishes his car
-const S13a = (f: number): Shot => {
-  const a = C([2.5, 3.2, -6.5], [-15, 4.6, -24], 48, 0.02), b = C([-4.0, 2.8, -9.5], [-18, 4.5, -24], 46, -0.02);
-  return between(a, b, gl(f, 1302, 62));
-};
-const S13b = (f: number): Shot => {
-  const Cr = SPOT.CAR;
-  return P({ pos: [Cr[0] + 4.6, 1.45, Cr[2] + 4.4], look: [Cr[0] + 1.1, 0.95, Cr[2] + 0.5], fov: 46, roll: -0.025 }, f, EV.CUT13, 0.0022, 0.008, 12, 1392);
-};
-// 14 (1418-1514): the grey office, the officer, the money bags, the wastebasket; push on the drop
+// 13 (1140-1227): the lonely sedan in the distant lot, the smoke cloud small on the horizon; the chunk; KICK
+const S13 = (f: number): Shot => P({ pos: [7.4, 1.6, 9.6], look: [-0.4, 2.2, -1.2], fov: 50, roll: 0.025 }, f, 1140, 0.0018, 0.007, 12, EV.CRUSH13 - 1);
+// 14 (1228-1321): the smoke clears off the whale; the sooty Engineer blinks in the foreground
 const S14 = (f: number): Shot => {
-  const a = C([-0.4, 1.5, 2.6], [0.15, 1.05, -0.9], 54, 0.02), b = C([-0.2, 1.45, 2.3], [0.15, 1.0, -0.9], 52, -0.02);
-  return P(between(a, b, gl(f, 1458, 36)), f, 1418, 0.0018, 0.006, 14, 1487);
+  const a = C([9.4, 2.0, 15.6], [-0.6, 2.6, 0], 52, 0.02), b = C([8.6, 1.8, 14.0], [-0.4, 2.4, 0.5], 50, -0.02);
+  return P(between(a, b, gl(f, 1236, 40)), f, 1228, 0.0018, 0.006, 12, EV.BLINK14 - 2);
 };
-// 15 (1515-1649): from inside the cave, out through the mouth at the moon; dolly along the line onto the medal bat on
-// the lip (it stays in front of the moon), then creep to the end
-const S15 = (f: number): Shot => {
-  const L = SPOT.LIP15, B: V3 = [L[0], L[1] - 0.22, L[2]], c0 = SPOT.CAM15, dir: V3 = [B[0] - c0[0], B[1] - c0[1], B[2] - c0[2]];
-  const len = Math.hypot(...dir), u = gl(f, 1528, 66), d = lerp(len, 1.25, u) * pushK(f, 1594, 0.0024);
-  const n: V3 = [dir[0] / len, dir[1] / len, dir[2] / len];
-  return { pos: [B[0] - n[0] * d, B[1] - n[1] * d, B[2] - n[2] * d], look: [B[0] + n[0] * 3, B[1] + n[1] * 3 - 0.09 * (d + 3), B[2] + n[2] * 3], fov: lerp(50, 42, u), roll: lerp(0.02, -0.03, u) };
+// 15a (1322-1423): the crew sigh, the Engineer face-palms; 15b (1424-1457): bulldozer + shovels bury it
+const S15a = (f: number): Shot => P({ pos: [5.8, 1.6, 13.4], look: [2.0, 1.5, 7.0], fov: 46, roll: 0.02 }, f, 1322, 0.0018, 0.007, 12, EV.PALM15 - 2);
+const S15b = (f: number): Shot => P({ pos: [14, 4.6, 20], look: [0.5, 1.6, 1.5], fov: 48, roll: -0.02 }, f, EV.CUT15, 0.0025, 0.007, 10, EV.MOUND15 - 2);
+// 16 (1458-1589): the sunny park; creeping push-in to the sign and the winking gull
+const S16 = (f: number): Shot => {
+  const a = C([0.7, 1.5, 10.0], [0.1, 1.45, 0.4], 52, 0.02), b = C([0.75, 1.55, 8.6], [0.25, 1.65, 0.0], 50, -0.015);
+  // creep in, then glide onto the gull on the sign for its wink (it lands at the sign's top-right)
+  const c = C([1.55, 2.55, 4.6], [1.2, 2.55, 0.1], 42, 0.0);
+  return P(between(mix(a, b, gl(f, 1470, 60)), c, gl(f, EV.LAND16 - 14, 22)), f, 1458, 0.0022);
 };
 
 const CAMS: Record<number, Key[]> = {
   1: [{ f: 0, s: S1 }],
-  2: [{ f: 114, s: S2 }],
-  3: [{ f: 171, s: S3 }],
-  4: [{ f: 328, s: S4a }, { f: EV.CU4, cut: true, s: S4b }, { f: EV.CUT4, cut: true, s: S4c }],
-  5: [{ f: 547, s: S5 }],
-  6: [{ f: 653, s: S6 }],
-  7: [{ f: 733, s: S7 }],
-  8: [{ f: 853, s: S8 }],
-  9: [{ f: 968, s: S9s }],
-  10: [{ f: 1110, s: S10 }],
-  11: [{ f: 1150, s: S11 }],
-  12: [{ f: 1215, s: S12 }],
-  13: [{ f: 1302, s: S13a }, { f: EV.CUT13, cut: true, s: S13b }],
-  14: [{ f: 1418, s: S14 }],
-  15: [{ f: 1515, s: S15 }],
+  2: [{ f: 136, s: S2 }],
+  3: [{ f: 198, s: S3 }],
+  4: [{ f: 334, s: S4 }],
+  5: [{ f: 422, s: S5 }],
+  6: [{ f: 496, s: S6a }, { f: EV.CUT6, cut: true, s: S6b }],
+  7: [{ f: 648, s: S7a }, { f: EV.CUT7, cut: true, s: S7b }],
+  8: [{ f: 768, s: S8 }],
+  9: [{ f: 890, s: S9 }, { f: EV.INSERT9[0], cut: true, s: S9i }, { f: EV.INSERT9[1], cut: true, s: S9 }],
+  10: [{ f: 938, s: S10 }],
+  11: [{ f: 988, s: S11 }],
+  12: [{ f: 1062, s: S12 }],
+  13: [{ f: 1140, s: S13 }],
+  14: [{ f: 1228, s: S14 }],
+  15: [{ f: 1322, s: S15a }, { f: EV.CUT15, cut: true, s: S15b }],
+  16: [{ f: 1458, s: S16 }],
 };
 
 // impact kicks: the image offset flips sign every frame (~3 px at 720p per unit), decays to 0 in 7 f, roll +-0.23 deg
 // per unit; they start on the first frame at/after the event. No hand-held float.
-export const KICKS: [number, number][] = [[EV.KICK2 / FPS, 1.0], [EV.POOF5 / FPS, 0.8], [EV.YES6 / FPS, 0.9], [EV.TANK11 / FPS, 1.5], [EV.KICK13 / FPS, 1.0], [EV.DROP14 / FPS, 0.4]];
+export const KICKS: [number, number][] = [[EV.KICK2 / FPS, 1.0], [EV.PUSH9 / FPS, 0.4], [EV.BOOM10 / FPS, 1.6], [EV.SCATTER11 / FPS, 0.5],
+  [EV.HEAD12 / FPS, 0.6], [EV.KICK13 / FPS, 1.3], [EV.MOUND15 / FPS, 0.4]];
 export const kickAt = (t: number) => {
   let a = 0;
   for (const [t0, g] of KICKS) {
@@ -392,13 +347,12 @@ export const keyEnd = (id: number, f: number) => {
 
 // ---------------- foreground layer (composition.md 3.3, depth.md 3.5.4) ----------------
 /** Near framing props, cut by a frame edge and blurred by the shot's DOF. space "cam": pos is in camera space (x right,
- *  y up, z forward, metres) so the prop stays framed through the push-ins; "world": a world position. Drawn by build.ts
- *  fgUpdate from these kit names. Kits: yucca, jars, flask, sandbags, crate. */
+ *  y up, z forward, metres); "world": a world position. Drawn by build.ts fgUpdate from these kit names.
+ *  Kits: grass (a beach-grass clump), driftwood, crate. */
 export type Fg = { a: number; b: number; kit: string; pos: V3; s?: number; yaw?: number; space?: "world" | "cam"; tilt?: number };
 export const FOREGROUND: Fg[] = [
-  { a: 171, b: 328, kit: "yucca", pos: [8.6, 0, -1.6], yaw: 0.4, s: 1.0 },             // cave overlook: a yucca on the left
-  { a: 853, b: 968, kit: "sandbags", pos: [15.2, 0, 16.2], yaw: -0.6, s: 1.0 },         // test base: sandbags bottom right
-  { a: 1215, b: 1302, kit: "crate", pos: [12.2, 0, 16.6], yaw: 0.5, s: 1.0 },
+  { a: 768, b: 890, kit: "grass", pos: [-3.6, 0, 34.2], yaw: 0.2, s: 1.2 },
+  { a: 1062, b: 1140, kit: "grass", pos: [15.6, 0, 37.0], yaw: -0.3, s: 1.0 },
 ];
 
 // ---------------- lens: depth of field ----------------
@@ -406,40 +360,31 @@ export const FOREGROUND: Fg[] = [
  *  CU 12-16, MS 10-12, wides / aerials 0. Entries switch on cuts (no dur) or ramp with the camera move they share
  *  f / dur with. focus = world point (else the camera look point). */
 export type Dof = { f: number; dur?: number; cInf: number; focus?: (f: number) => V3 };
-/** hero bat of the hook (cast.ts flies it; the lens focuses on it) */
-export const hero1At = (f: number): V3 => {
-  const B = SPOT.BOMB1, c = camAt(1, Math.min(f, 112));
-  const d: V3 = [c.look[0] - c.pos[0], c.look[1] - c.pos[1], c.look[2] - c.pos[2]], l = Math.hypot(...d);
-  const end: V3 = [c.pos[0] + (d[0] / l) * 1.45, c.pos[1] + (d[1] / l) * 1.45 - 0.12, c.pos[2] + (d[2] / l) * 1.45];
-  const u = easeOut((f - EV.POP1) / 15);
-  const p = lerp3([B[0], B[1], B[2]], end, u);
-  return [p[0] + 0.25 * Math.sin(u * Math.PI) , p[1] + 0.03 * Math.sin(f * 0.6), p[2]];
-};
+const at = (p: V3, h: number): V3 => [p[0], beachY(p[0], p[2]) + h, p[2]];
 export const DOF: Dof[] = [
-  { f: 0, cInf: 6, focus: (f) => lerp3(bombAt(1, f).pos, hero1At(f), smooth((f - 82) / 12)) }, // bomb, then rack to the hero bat
-  { f: 114, cInf: 9, focus: () => eyes(SPOT.SOLDIER2) },
-  { f: 171, cInf: 0 },                                                       // cave establishing
-  { f: 200, dur: 40, cInf: 8, focus: () => eyes(SPOT.ADAMS3) },
-  { f: 328, cInf: 10, focus: () => eyes(SPOT.ADAMS4) },
-  { f: EV.CU4, cInf: 13, focus: () => [SPOT.BAT4[0], SPOT.BAT4[1] + 0.12, SPOT.BAT4[2]] },
-  { f: EV.CUT4, cInf: 6, focus: () => [SPOT.TABLE[0], SPOT.TABLE_Y + 0.3, SPOT.TABLE[2] - 0.2] },
-  { f: 547, cInf: 9, focus: () => [0, 1.2, 0] },
-  { f: 600, dur: 28, cInf: 13, focus: () => [SPOT.RIDGE5[0], SPOT.RIDGE5[1] - 0.25, 0] },
-  { f: 653, cInf: 9, focus: () => [0.6, 1.3, -1.0] },
-  { f: 733, cInf: 9, focus: () => eyes(SPOT.CHEM7) },
-  { f: 812, dur: 28, cInf: 12, focus: () => [SPOT.BAT7[0], SPOT.BAT7[1] + 0.14, SPOT.BAT7[2]] },
-  { f: 853, cInf: 0 },
-  { f: 858, dur: 46, cInf: 7, focus: () => [9.6, 1.4, 12.4] },
-  { f: 968, cInf: 10, focus: (f) => bat9At(f) },
-  { f: 1110, cInf: 11, focus: () => [SPOT.TANK[0] + 2.3, 1.95, 5.05] },
-  { f: 1150, cInf: 0 },
-  { f: 1215, cInf: 7, focus: () => [9, 1.4, 13] },
-  { f: 1252, dur: 24, cInf: 0 },
-  { f: 1302, cInf: 3, focus: () => [-16, 4, -14] },
-  { f: EV.CUT13, cInf: 8, focus: () => eyes([SPOT.CAR[0] + 1.5, 0, SPOT.CAR[2] + 1.4]) },
-  { f: 1418, cInf: 9, focus: () => eyes(SPOT.OFFICER14) },
-  { f: 1515, cInf: 5, focus: () => SPOT.LIP15 },
-  { f: 1530, dur: 60, cInf: 12, focus: () => [SPOT.LIP15[0], SPOT.LIP15[1] - 0.22, SPOT.LIP15[2]] },
+  { f: 0, cInf: 6, focus: () => at(SPOT.ENG1, 1.5) },
+  { f: 136, cInf: 11, focus: () => at(SPOT.ENG1, 1.5) },
+  { f: 198, cInf: 0 },
+  { f: 334, cInf: 5, focus: () => at(ropeAt(5.5), 1.3) },
+  { f: 422, cInf: 7, focus: () => [SPOT.TRUCK5[0] - 3, 1.5, SPOT.TRUCK5[2] + 1.5] },
+  { f: 496, cInf: 9, focus: () => at(SPOT.ENG6, 1.6) },
+  { f: EV.CUT6, cInf: 6, focus: () => [SPOT.CRATES[0], 1.2, SPOT.CRATES[2] + 0.6] },
+  { f: 648, cInf: 9, focus: () => at(SPOT.EASEL, 1.5) },
+  { f: EV.CUT7, cInf: 13, focus: () => at(SPOT.LOG7, 0.75) },
+  { f: 768, cInf: 8, focus: () => at([SPOT.CROWD[0] + 4, 0, 40.5], 1.5) },
+  { f: EV.TV8 - 16, dur: 22, cInf: 10, focus: () => at(SPOT.REPORTER, 1.5) },
+  { f: 890, cInf: 13, focus: () => at(SPOT.PLUNGER, 0.9) },
+  { f: EV.INSERT9[0], cInf: 12, focus: () => at([SPOT.CROWD[0] + 3.5, 0, 40.2], 1.5) },
+  { f: EV.INSERT9[1], cInf: 13, focus: () => at(SPOT.PLUNGER, 0.9) },
+  { f: 938, cInf: 0 },
+  { f: 988, cInf: 6, focus: () => at([SPOT.CROWD[0] + 5, 0, 41], 1.6) },
+  { f: 1062, cInf: 11, focus: () => at(SPOT.REPORTER, 1.5) },
+  { f: 1140, cInf: 5, focus: () => [0, 1.2, 0] },
+  { f: 1228, cInf: 2.5, focus: () => at([6.4, 0, 9.2], 1.5) },
+  { f: 1322, cInf: 9, focus: () => [2.0, 1.5, 7.0] },
+  { f: EV.CUT15, cInf: 0 },
+  { f: 1458, cInf: 6, focus: () => [0.2, 1.5, 1.6] },
+  { f: EV.LAND16 - 14, dur: 22, cInf: 9, focus: () => [SPOT.SIGN[0] + 0.5, 2.65, 0.1] },
 ];
 export const dofAt = (f: number) => {
   let i = 0; while (i + 1 < DOF.length && f >= DOF[i + 1].f) i++;

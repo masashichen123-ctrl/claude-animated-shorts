@@ -185,7 +185,6 @@ export class GradeEffect extends Effect {
 // reds / oranges x1.12), coloured darks (black point ~ (22,10,13)), vignette per mood (lighting.md 3.3 border/inner).
 //                      hue:  red   orng  yel   chart green sprng cyan  azure blue  viol  mag   rose
 const HUE_DAY =         [1.15, 1.12, 1.0,  0.78, 0.78, 0.8,  0.78, 0.92, 1.0,  1.0,  1.0,  1.1];
-const HUE_WARM =        [1.1,  1.0,  0.95, 0.8,  0.8,  0.85, 0.9,  1.0,  1.1,  1.15, 1.1,  1.1];
 export const GRADE_DAY2: GradeParams = {
   ky: [0.03, 0.1, 0.26, 0.535, 0.79, 0.93, 1],
   sat: [0.9, 1.12, 1.1],
@@ -193,47 +192,9 @@ export const GRADE_DAY2: GradeParams = {
   vig: [0.16, 0.45],
   hueSat: HUE_DAY,
 };
-export const GRADE_MORNING: GradeParams = {   // sunrise: soft S, rose darks, peach-cream highlights, framing vignette (.82)
-  ky: [0.045, 0.115, 0.28, 0.565, 0.815, 0.935, 1],
-  sat: [0.85, 1.02, 1.05],
-  tintS: [0.016, -0.004], tintM: [-0.008, 0.004], tintH: [-0.018, 0.008],
-  vig: [0.24, 0.42],
-  hueSat: [1.12, 1.1, 1.0, 0.8, 0.8, 0.82, 0.85, 0.95, 1.0, 1.05, 1.05, 1.12],
-};
-export const GRADE_GOLDEN2: GradeParams = {
-  ky: [0.04, 0.1, 0.255, 0.54, 0.8, 0.93, 1],
-  sat: [0.88, 1.06, 1.08],
-  tintS: [0.022, -0.006], tintM: [-0.008, 0.004], tintH: [-0.016, 0.008],
-  vig: [0.24, 0.4],
-  hueSat: HUE_WARM,
-};
-export const GRADE_DUSK: GradeParams = {   // deeper S, blue-violet darks, warm lamp-lit highlights
-  ky: [0.035, 0.1, 0.26, 0.55, 0.8, 0.93, 1],
-  sat: [0.95, 1.08, 1.1],
-  tintS: [0.02, 0.0], tintM: [-0.008, 0.008], tintH: [-0.02, 0.012],
-  vig: [0.3, 0.38],
-  hueSat: HUE_WARM,
-};
-export const GRADE_NIGHT: GradeParams = {   // moonlight: blue darks kept coloured (not crushed), silver highlights, framing vignette
-  ky: [0.035, 0.1, 0.235, 0.49, 0.75, 0.9, 1], sat: [1.05, 1.12, 1.0],
-  tintS: [0.05, -0.006], tintM: [0.03, -0.004], tintH: [-0.006, 0.004], vig: [0.34, 0.34],
-  hueSat: [1.12, 1.15, 1.05, 0.8, 0.8, 0.85, 0.95, 1.05, 1.1, 1.0, 1.0, 1.0],
-};
-export const GRADE_INTERIOR: GradeParams = {   // warm lamp-lit room: gentle S, cream highlights, cool-neutral darks
-  ky: [0.035, 0.1, 0.26, 0.545, 0.8, 0.93, 1], sat: [0.9, 1.08, 1.06],
-  tintS: [0.012, -0.004], tintM: [-0.008, 0.006], tintH: [-0.016, 0.008], vig: [0.26, 0.4],
-  hueSat: HUE_WARM,
-};
-export const GRADE_LAB: GradeParams = {   // cool lab: crisp S, teal-neutral mids, the green glow kept saturated
-  ky: [0.03, 0.1, 0.26, 0.54, 0.8, 0.93, 1], sat: [0.9, 1.06, 1.06],
-  tintS: [0.014, -0.008], tintM: [0.006, -0.004], tintH: [-0.006, 0.0], vig: [0.24, 0.4],
-  hueSat: [1.1, 1.05, 1.0, 0.95, 1.0, 1.0, 0.95, 1.0, 1.0, 1.0, 1.0, 1.05],
-};
 export type GradeName = LightName;
-export const GRADES: Record<GradeName, GradeParams> = {
-  day: GRADE_DAY2, dusk: GRADE_GOLDEN2, night: GRADE_NIGHT, interior: GRADE_INTERIOR, lab: GRADE_LAB, office: GRADE_DUSK,
-};
-export const GRADE_STRENGTH: Record<GradeName, number> = { day: 1, dusk: 1, night: 1, interior: 1, lab: 1, office: 1 };
+export const GRADES: Record<GradeName, GradeParams> = { day: GRADE_DAY2, sunny: { ...GRADE_DAY2, sat: [0.92, 1.15, 1.12], vig: [0.18, 0.45] } };
+export const GRADE_STRENGTH: Record<GradeName, number> = { day: 1, sunny: 1 };
 /** Apply the preset of a light to the effect (only touches uniforms when the light changes). */
 export function gradeFor(fx: GradeEffect, light0: GradeName) {
   // the caller passes story.ts SHOTS[].light; lights.ts SHOT_LIGHT may refine it (world.update just ran for this layer)

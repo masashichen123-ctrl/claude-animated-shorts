@@ -3,7 +3,7 @@
 # usage: scripts/render_shots.sh [shot numbers...]   (default: all missing)
 cd "$(dirname "$0")/.."
 export REMOTION_TMP=$PWD/.rtmp TMPDIR=$PWD/.rtmp
-R=(0 114 171 328 547 653 733 853 968 1110 1150 1215 1302 1418 1515 1650)
+R=(0 136 198 334 422 496 648 768 890 938 988 1062 1140 1228 1322 1458 1590)
 mkdir -p out/whale/final
 SHOTS=${@:-$(seq 1 15)}
 for s in $SHOTS; do

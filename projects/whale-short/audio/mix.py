@@ -1,9 +1,9 @@
-# Final mix of "The Bat Bomb": voice (gain only) + original score (ducked under speech, per-section level
+# Final mix of "The Exploding Whale": voice (gain only) + original score (ducked under speech, per-section level
 # automation relative to the voice) + synthesized SFX stem (lightly ducked under speech). Keying = words.json spans,
 # widened by the voice's own measured activity (analysis only: the voice itself is never processed beyond gain).
 # Master gain to -14 LUFS integrated; own 4x-oversampled look-ahead limiter for <= -1 dBTP;
-# exactly 55.000 s = 2,640,000 samples / 48 kHz / stereo / 24-bit.
-# Writes public/bat/mix.wav + voice/mix_final.wav (same file), audio/out/stem_*.wav, audio/cues.md.
+# exactly 53.000 s = 2,544,000 samples / 48 kHz / stereo / 24-bit.
+# Writes public/whale/mix.wav + voice/mix_final.wav (same file), audio/out/stem_*.wav, audio/cues.md.
 # One command:  python3 audio/mix.py      (music cached in audio/out/_cache/; --fresh re-renders everything)
 import os
 import sys
@@ -13,29 +13,32 @@ import shutil
 import subprocess
 import numpy as np
 from scipy import ndimage, signal
-from dsp import (SR, ns, st, dbg, read_wav, write_wav, integrated, momentary, short_term, lra, true_peak, fades, hp)
+from dsp import (SR, ns, st, dbg, read_wav, write_wav, integrated, momentary, short_term, lra, true_peak, fades, hp, bp)
 import timeline as T
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 OUT = os.path.join(HERE, "out")
 CACHE = os.path.join(OUT, "_cache")
-N = ns(T.DUR)                    # 2,640,000 samples = 55.000 s
+N = ns(T.DUR)                    # 2,544,000 samples = 53.000 s
 TARGET_LUFS = -14.0
 CEIL_DBTP = -1.3                 # limiter ceiling (spec: true peak <= -1.0 dBTP)
 DUCK_DB = -3.0                   # gentle music dip while the voice speaks (slow attack / release, no pumping)
 SFX_DUCK_DB = -3.0               # SFX dip while the voice speaks
-MUSIC_UNDER = -17.6              # music vs voice, LU, over the spoken parts of each section (after the duck)
+MUSIC_UNDER = -18.0              # music vs voice, LU, over the spoken parts of each section (after the duck)
 GAP_BLOOM_DB = 6.5               # extra lift in narration gaps >= GAP_MIN s (with the duck release: ~ -11 LU under the voice)
 GAP_MIN = 0.55
 
 # per-section offsets (dB) on top of MUSIC_UNDER
-SEC_OFFSET = {"tank": -1.0, "ending": -1.0}
+SEC_OFFSET = {}
 # rides on the music only (start, end, dB)
-RIDES = [(3.76, 4.03, -20.0),    # a beat of near-silence after the FLASH for the very short 'Then' (3.83-3.93)
-         (40.32, 41.12, -4.0)]   # 'Unluckily,' (Kokoro's weakest word here) right after the WHOOMP: a clean onset
-# rides on the SFX only (start, end, dB)
-SFX_RIDES = [(3.76, 4.03, -20.0), (40.32, 41.12, -9.0)]
+RIDES = [(21.42, 22.24, -24.0),   # a breath of silence for the very soft 'The plan?' (any bed there made whisper hear 'A plan')
+         (40.86, 41.24, -24.0)]  # the weak 'And' (41.12-41.2): the returning groove fades up under 'most' instead (whisper dropped 'And' at -6 dB)
+# rides on the SFX only (start, end, dB): the BOOM tail steps back for 'Unluckily,' (33.06-33.55) after peaking in the gap
+SFX_RIDES = [(21.60, 21.80, -6.0),    # the beds' crossfade into shot 7 stays out of the very soft 'The' of 'The plan?'
+             (33.02, 33.60, -6.0),
+             (40.80, 41.24, -15.0)]   # the soft 'And' after the hubcap: the shot-14 surf comes up under 'most' 
+SFX_RIDE_RAMP = 0.06
 
 
 def log(*a):
@@ -148,7 +151,7 @@ def section_curve(m_d, v, mask):
         else:
             Lm, Lv = integrated(m_d[:, seg]), integrated(v[:, seg]) if np.any(v[:, seg]) else -99
         g = (Lv + MUSIC_UNDER + SEC_OFFSET.get(name, 0.0) - Lm) if (np.isfinite(Lm) and Lv > -90) else prev
-        if name == "oops":                      # music stops for the WHOOMP (only the 'oops' figure): keep the previous level
+        if name == "hold":                      # music stops for the tense hold and the BOOM: keep the previous level
             g = prev
         gains[name] = float(np.clip(g, -30, 30))
         prev = gains[name]
@@ -158,7 +161,7 @@ def section_curve(m_d, v, mask):
         curve[t >= a] = gains[name]
     sm = ndimage.uniform_filter1d(curve, ns(0.12), mode="nearest")      # 120 ms crossfade between section levels
     hard = np.zeros(N, bool)
-    for tb in (T.fr(T.FLASH), T.fr(T.WHOOMP)):                              # silent / hit boundaries switch instantly
+    for tb in (T.fr(T.FLASH), T.fr(T.HOLD[0])):                             # silent / hit boundaries switch instantly
         hard[ns(tb - 0.1): ns(tb + 0.1)] = True
     curve = np.where(hard, curve, sm)
     for a, b, db in RIDES:
@@ -270,6 +273,31 @@ def ffmpeg_ebur(path):
     return "\n".join(out)
 
 
+def word_margins(gv, gm, gs):
+    """speech-band (300-5000 Hz) voice vs sfx / music / bed level over every words.json word"""
+    band = lambda x: bp(x.mean(0), 300, 5000, 2)
+    V, M, S = band(gv), band(gm), band(gs)
+    Bd = M + S
+    rows = []
+    for w_ in T.words():
+        a, b_ = ns(float(w_["s"])), ns(float(w_["e"]) + 0.10)
+        e = lambda x: float(np.mean(x[a:b_] ** 2)) + 1e-20
+        h = ns(0.05)
+        ks = list(range(a, max(a + 1, b_ - h + 1), ns(0.01)))
+        evs = [float(np.mean(V[k:k + h] ** 2)) + 1e-20 for k in ks]
+        worst = 99.0
+        for k, ev in zip(ks, evs):
+            if ev > 10 ** -1.5 * max(evs):               # frames within 15 dB of the word's loudest 50 ms (its body, not the tail)
+                worst = min(worst, 10 * np.log10(ev / (float(np.mean(S[k:k + h] ** 2)) + 1e-20)))
+        rows.append((w_["w"].strip(".,?"), float(w_["s"]), float(w_["e"]), 10 * np.log10(e(V) / e(S)), worst,
+                     10 * np.log10(e(V) / e(M)), 10 * np.log10(e(V) / e(Bd))))
+    return rows
+
+
+KEY_WORDS = ["dynamite", "whale", "move", "smell", "Highway", "boulder", "plan", "seagulls", "filming", "plunger", "exploded",
+             "everyone", "blubber", "crowd", "car", "beach", "avoid", "buried", "park"]
+
+
 # ================================================================ main
 def main():
     fresh = "--fresh" in sys.argv
@@ -306,7 +334,7 @@ def main():
     for a_, b_, db_ in SFX_RIDES:
         d_ = np.zeros(N)
         d_[ns(a_): ns(b_)] = db_
-        s_ride += ndimage.uniform_filter1d(d_, ns(0.06), mode="nearest")
+        s_ride += ndimage.uniform_filter1d(d_, ns(SFX_RIDE_RAMP), mode="nearest")
     s_st = s_raw * dbg(duck_curve(spans, SFX_DUCK_DB, att=0.03, rel=0.25) + s_ride)[None, :]
     log("sfx", f"{lufs(s_st):.2f} LUFS")
 
@@ -325,7 +353,7 @@ def main():
     # stems carry the master gain AND the limiter's gain curve (+ the end fade), so voice + music + sfx = mix exactly
     endf = fades(np.ones((1, N)), 0.002, 0.03)[0]
     gv, gm, gs = (x_ * dbg(G) * (g3 * endf)[None, :] for x_ in (v, m, s_st))
-    mix_path = os.path.join(ROOT, "public", "bat", "mix.wav")
+    mix_path = os.path.join(ROOT, "public", "whale", "mix.wav")
     os.makedirs(os.path.dirname(mix_path), exist_ok=True)
     write_wav(mix_path, y)
     shutil.copyfile(mix_path, os.path.join(ROOT, "voice", "mix_final.wav"))
@@ -353,14 +381,22 @@ def main():
     lg |= tc_ >= spans[-1][1] + 0.2
     gap_under = float(lufs(gv) - np.median(Mm_[lg]))
     sp_ = np.array([r[7] for r in rows if np.isfinite(r[7])])
-    music_cuts = [T.fr(T.FLASH), T.fr(T.STAMP) - 0.28, T.fr(T.STAMP), T.fr(T.WHOOMP) - 0.06, 40.40, 41.12, T.fr(T.WINK)]
+    music_cuts = [T.fr(T.FLASH), 4.70, T.fr(T.HOLD[0]) - 0.04, T.fr(T.OOPS), 35.45, 40.45, 40.95, 22.27, T.fr(T.WINK)]
     n_chk, bad = click_check(y, gs, gm, [(e[0], e[1], e[2], e[3] * dbg(G)) for e in events], music_cuts)
     clip = int((np.abs(y) >= 0.9999).sum())
+    mrows = word_margins(gv, gm, gs)
+    mask_key = [r_ for r_ in mrows if r_[0] in KEY_WORDS]
+    mask_low = [r_ for r_ in mrows if r_[3] < 12.0]
+    for r_ in mask_key:
+        log(f"mask {r_[0]:<10} {r_[1]:6.2f} v-sfx {r_[3]:5.1f} worst {r_[4]:5.1f} v-mus {r_[5]:5.1f} v-bed {r_[6]:5.1f}")
+    log("words with v-sfx < 12 dB: " + ", ".join(f"{r_[0]}@{r_[1]:.2f}({r_[3]:.1f})" for r_ in mask_low))
     eb = ffmpeg_ebur(mix_path)
     stats = dict(I=I, TP=TP, LRA=LRA, Mmax=Mmax, Smax=Smax, G=G, gr=gr_stats, v_ref=v_ref, voice_I=lufs(gv), music_I=lufs(gm),
                  sfx_I=lufs(gs), sec_gains=sec_gains, gap_under=gap_under, speech_under_med=float(np.median(sp_)), n_chk=n_chk, bad=bad, clip=clip, samples=y.shape[1],
-                 voice_peak=float(20 * np.log10(np.abs(gv).max())), voice_Mmax=float(np.max(momentary(gv))))
-    log(json.dumps({k: (round(v_, 2) if isinstance(v_, float) else v_) for k, v_ in stats.items() if k not in ("sec_gains",)}, default=str))
+                 voice_peak=float(20 * np.log10(np.abs(gv).max())), voice_Mmax=float(np.max(momentary(gv))),
+                 mask_key=mask_key, mask_low=mask_low, mask_n=len(mrows), mask_min=min(mrows, key=lambda r_: r_[3]),
+                 mask_bed_min=min(mrows, key=lambda r_: r_[6]))
+    log(json.dumps({k: (round(v_, 2) if isinstance(v_, float) else v_) for k, v_ in stats.items() if not k.startswith(("sec_gains", "mask"))}, default=str))
     for r in rows:
         log(f"{r[0]:<9} voice {r[3]:6.1f} music {r[4]:6.1f} sfx {r[5]:6.1f} | speech: v-music {r[7]:5.1f} v-bed med {r[8]:5.1f} p10 {r[9]:5.1f} | bloom {r[10]:4.1f}")
     print(eb)
@@ -374,11 +410,12 @@ def write_cues(C, b, st_, rows, eb, spans, v):
     vI = st_["voice_I"]
     L = []
     w = L.append
-    w("# The Bat Bomb - soundtrack cue sheet")
+    w("# The Exploding Whale - soundtrack cue sheet")
     w("")
     w("All sound is original and synthesized in numpy/scipy: instruments in `instruments.py` (guitar pluck, Rhodes, upright bass, "
-      "brushes, shaker, soft kick, vibes from the shared kit + celesta and pizzicato added here), SFX in `sfx_bat.py` (bats, fire, "
-      "timers, stamp, whoomp...) with helpers from `sfx_gen.py` / `sfx_emu.py`; placed by `music.py` / `sfx.py` from `timeline.py` "
+      "brushes, shaker, soft kick, vibes, celesta, pizzicato, whistle from the shared kit + a ukulele added in `music.py`), SFX in "
+      "`sfx_whale.py` (surf, gulls, dynamite, rope, truck, crates, camera, plunger, BOOM, splats, car crunch, bulldozer, park...) "
+      "with helpers from `sfx_gen.py` / `sfx_emu.py` / `sfx_bat.py`; placed by `music.py` / `sfx.py` from `timeline.py` "
       "(frames from SHOTS.md), mixed by `mix.py`.")
     w("Voice = `voice/voice.wav`, gain only (no EQ, no compression, no pitch, no time change). Rebuild everything + verify: "
       "`bash audio/build.sh` (about 1.5 min; mix only: `python3 audio/mix.py --fresh`).")
@@ -386,7 +423,7 @@ def write_cues(C, b, st_, rows, eb, spans, v):
     w("## Files")
     w("| file | content |")
     w("|---|---|")
-    w(f"| `public/bat/mix.wav` = `voice/mix_final.wav` | final mix, 48 kHz, stereo, 24-bit, {st_['samples']:,} samples = {st_['samples'] / SR:.3f} s |")
+    w(f"| `public/whale/mix.wav` = `voice/mix_final.wav` | final mix, 48 kHz, stereo, 24-bit, {st_['samples']:,} samples = {st_['samples'] / SR:.3f} s |")
     w("| `audio/out/stem_voice.wav` / `stem_music.wav` / `stem_sfx.wav` | stems at mix gain, after the master limiter's gain curve: voice + music + sfx = mix.wav |")
     w("| `audio/check.py` | verification: whisper transcription of voice.wav vs the mix (faster-whisper small.en), sample count |")
     w("")
@@ -400,7 +437,7 @@ def write_cues(C, b, st_, rows, eb, spans, v):
     w(f"- Master limiter (4x oversampled look-ahead, ceiling {CEIL_DBTP} dBTP): max gain reduction {gr['max']:.2f} dB, active (>0.1 dB) on "
       f"{gr['pct_over_0_1']:.2f} % of samples; inside speech: max {gr['speech_max']:.2f} dB, 90th / 99th percentile {gr['speech_p90']:.2f} / {gr['speech_p99']:.2f} dB, "
       f"active on {gr['speech_pct_over_0_1']:.1f} % of speech samples. "
-      "This peak limiting is the only processing besides gain that reaches the narration (same approach as the emu mix): the TTS voice's "
+      "This peak limiting is the only processing besides gain that reaches the narration (same approach as the emu and bat mixes): the TTS voice's "
       "true-peak-to-loudness ratio is too high to reach -14 LUFS at <= -1 dBTP with gain alone.")
     w(f"- Discontinuity check: {st_['n_chk']} boundaries (start + end of every placed SFX event, every music cut / re-entry) checked on the "
       f"SFX and music stems, {len(st_['bad'])} suspicious" + (": " + ", ".join(f"{t} s {n} {k} (+{d} dB)" for t, n, k, d in st_['bad']) if st_['bad'] else "."))
@@ -420,7 +457,7 @@ def write_cues(C, b, st_, rows, eb, spans, v):
     w("")
     w("| section | time s | voice | music | sfx | voice-music (speech, med) | voice-bed med | voice-bed p10 | bloom |")
     w("|---|---|---|---|---|---|---|---|---|")
-    f = lambda x: "-" if (not np.isfinite(x) or x <= -98) else f"{x:.1f}"
+    f = lambda x: "-" if (not np.isfinite(x) or x <= -98 or abs(x) > 90) else f"{x:.1f}"
     for r in rows:
         w(f"| {r[0]} | {r[1]:.2f}-{r[2]:.2f} | {f(r[3])} | {f(r[4])} | {f(r[5])} | {f(r[7])} | {f(r[8])} | {f(r[9])} | {f(r[10])} |")
     w("")
@@ -429,15 +466,16 @@ def write_cues(C, b, st_, rows, eb, spans, v):
     w("")
     w("Applied section gains (dB): " + ", ".join(f"{k} {v_:+.1f}" for k, v_ in st_["sec_gains"].items()) + "." +
       ((" Music rides: " + ", ".join(f"{a:.2f}-{b_:.2f} s {db:+.1f} dB" for a, b_, db in RIDES)) if RIDES else "") +
-      ((" SFX rides: " + ", ".join(f"{a:.2f}-{b_:.2f} s {db:+.1f} dB" for a, b_, db in SFX_RIDES) + " (60 ms ramps), to keep the short 'Then' and 'Unluckily' clear.") if SFX_RIDES else ""))
+      ((" SFX rides: " + ", ".join(f"{a:.2f}-{b_:.2f} s {db:+.1f} dB" for a, b_, db in SFX_RIDES) + " (60 ms ramps): the BOOM tail steps back for 'Unluckily,', and the beds dip for the soft 'And'.") if SFX_RIDES else ""))
     w("")
     w("Narration gaps (measured on voice.wav), where the louder hits and the music blooms go: " +
       ", ".join(f"{spans[i][1]:.2f}-{spans[i + 1][0]:.2f}" for i in range(len(spans) - 1)) + ".")
     w("")
-    w(f"## Music map (chill score: laid-back acoustic / lo-fi bed, {music.BPM:.0f} bpm, swung eighths; D-dorian night colour, F-major day)")
+    w(f"## Music map (chill seaside score: laid-back acoustic bed, {music.BPM:.0f} bpm, swung eighths, G major)")
     w("Fingerpicked nylon guitar, warm Rhodes, round upright bass, brushes + shaker + soft kick (no snare, no crashes, no rolls), "
-      "vibes sparkles; for the bats a light pizzicato BAT figure (D5 F5 E5 D5 A4 . B4 C5, swung) and a soft celesta. "
-      "Loops: night Dm9 Bbmaj7 Gm9 A7b9, day Fmaj7 Am7 Bbmaj7 C9, lab Gm9 C9 Fmaj7 Dm9; resolve on Fmaj9 at the wink. All composed here. "
+      "vibes sparkles; seaside colour: a light ukulele chopping the & of 2 and 4, and a soft whistled WHALE motif "
+      "(D5 E5 A5 . G5 E5 D5, swung; only ever inside narration gaps). Loops: day Gmaj7 Em9 Cmaj9 D9sus, dunes Cmaj9 Bm7 Em9 D9sus, "
+      "soft Am7 Fmaj7 Cadd9; held D7 before the hold; resolve on Gmaj9 at the wink. All composed here (no existing melodies). "
       "The emu short's brass march stays in `music_march.py` for reference (not used).")
     w("")
     w("| time s | frame | music |")
@@ -448,8 +486,25 @@ def write_cues(C, b, st_, rows, eb, spans, v):
     w("## SFX events")
     w("naive = the event's level vs the voice stem (max momentary, LU); applied = naive - 8 dB + offsets; beds are integrated loudness. "
       "'mix LUFS' = the event's max momentary at mix gain, before the -3 dB speech duck (compare: voice max momentary "
-      f"{st_['voice_Mmax']:.1f} LUFS, integrated {vI:.1f} LUFS). Frames not pinned in SHOTS.md, chosen here: sniffs {T.SNIFFS}, head shake {T.SHAKE}, "
-      f"buckets {T.BUCKETS}, polish squeaks ~{T.POLISH}, and the small squeaks placed in narration gaps (frames listed).")
+      f"{st_['voice_Mmax']:.1f} LUFS, integrated {vI:.1f} LUFS). Frames not pinned in SHOTS.md, chosen here (mostly inside measured gaps): "
+      f"tumble {T.TUMBLE}, gull thud {T.FAINT_THUD}, truck doors {T.TRUCK_DOORS}, crates {T.CRATE_TIMES}, oops {T.OOPS}, hubcap {T.HUBCAP}, "
+      f"far gull calls {T.GULL_CALLS}, plus the shovels, whoas and squishes listed below.")
+    w("")
+    w("## Speech-band masking check (key words)")
+    w("For every word of words.json (window = word start .. end + 0.10 s): voice level minus SFX / music / bed (music + sfx) "
+      "level, both band-passed 300-5000 Hz (the consonant / formant band), at mix gain after duck and limiter. 'worst 50 ms' = the "
+      "smallest voice-minus-SFX margin over 50 ms frames inside the word. Rule from the bat short: SFX >= 12 dB under the voice "
+      "in this band on every word (low sub content below 300 Hz is allowed, it does not mask consonants).")
+    w("")
+    w("| word | time s | voice-SFX dB | worst 50 ms | voice-music dB | voice-bed dB |")
+    w("|---|---|---|---|---|---|")
+    for r_ in st_["mask_key"]:
+        w(f"| {r_[0]} | {r_[1]:.2f}-{r_[2]:.2f} | {r_[3]:.1f} | {r_[4]:.1f} | {r_[5]:.1f} | {r_[6]:.1f} |")
+    w("")
+    lo = st_["mask_low"]
+    w(f"All {st_['mask_n']} words: minimum voice-SFX margin {st_['mask_min'][3]:.1f} dB ('{st_['mask_min'][0]}' @ {st_['mask_min'][1]:.2f} s); "
+      f"minimum voice-bed margin {st_['mask_bed_min'][6]:.1f} dB ('{st_['mask_bed_min'][0]}' @ {st_['mask_bed_min'][1]:.2f} s). "
+      + ("Words with voice-SFX < 12 dB: " + ", ".join(f"'{r_[0]}' {r_[1]:.2f} s ({r_[3]:.1f} dB)" for r_ in lo) + "." if lo else "No word has the SFX within 12 dB."))
     w("")
     w("| # | time s | frame | cue | what | naive | applied | mix LUFS | pan |")
     w("|---|---|---|---|---|---|---|---|---|")
