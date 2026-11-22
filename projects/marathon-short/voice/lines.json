@@ -1,0 +1,122 @@
+[
+ {
+  "line": 0,
+  "text": "At the 1904 Olympics, the marathon winner was given rat poison.",
+  "s": 0.12,
+  "e": 4.257
+ },
+ {
+  "line": 0,
+  "text": "And that wasn't even the strangest part.",
+  "s": 4.477,
+  "e": 6.317
+ },
+ {
+  "line": 1,
+  "text": "The race was in Saint Louis, in ninety-degree heat, on dusty dirt roads.",
+  "s": 6.867,
+  "e": 10.901
+ },
+ {
+  "line": 2,
+  "text": "Cars drove ahead of the runners, kicking up huge clouds of dust.",
+  "s": 11.221,
+  "e": 14.689
+ },
+ {
+  "line": 3,
+  "text": "And there were only two places to get water on the entire course.",
+  "s": 15.009,
+  "e": 18.181
+ },
+ {
+  "line": 4,
+  "text": "The first man across the finish line was Fred Lorz.",
+  "s": 18.681,
+  "e": 21.445
+ },
+ {
+  "line": 4,
+  "text": "The crowd cheered.",
+  "s": 21.665,
+  "e": 22.626
+ },
+ {
+  "line": 4,
+  "text": "Then they found out he'd ridden ten miles of it in a car.",
+  "s": 22.846,
+  "e": 25.349
+ },
+ {
+  "line": 5,
+  "text": "One runner from Cuba stopped to eat apples from an orchard.",
+  "s": 25.669,
+  "e": 28.584
+ },
+ {
+  "line": 5,
+  "text": "They were rotten.",
+  "s": 28.804,
+  "e": 29.572
+ },
+ {
+  "line": 5,
+  "text": "So he lay down and took a nap.",
+  "s": 29.792,
+  "e": 31.332
+ },
+ {
+  "line": 5,
+  "text": "He still finished fourth.",
+  "s": 31.552,
+  "e": 32.751
+ },
+ {
+  "line": 6,
+  "text": "Another runner was chased a mile off course by dogs.",
+  "s": 33.071,
+  "e": 35.726
+ },
+ {
+  "line": 7,
+  "text": "And the real winner, Thomas Hicks, was barely alive.",
+  "s": 36.046,
+  "e": 38.603
+ },
+ {
+  "line": 7,
+  "text": "His trainers kept him going with egg whites, brandy, and strychnine.",
+  "s": 38.823,
+  "e": 42.066
+ },
+ {
+  "line": 8,
+  "text": "Luckily, he made it to the finish line.",
+  "s": 42.386,
+  "e": 44.124
+ },
+ {
+  "line": 8,
+  "text": "Unluckily, his trainers had to carry him across it.",
+  "s": 44.344,
+  "e": 46.942
+ },
+ {
+  "line": 9,
+  "text": "Out of thirty-two runners, only fourteen finished.",
+  "s": 47.392,
+  "e": 49.888
+ },
+ {
+  "line": 10,
+  "text": "And the man who rode in the car? The next year, he won the Boston Marathon.",
+  "s": 50.388,
+  "e": 54.338
+ },
+ {
+  "line": 10,
+  "text": "On foot.",
+  "s": 54.558,
+  "e": 55.202
+ }
+]
