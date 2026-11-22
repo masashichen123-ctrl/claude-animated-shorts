@@ -1,16 +1,15 @@
-// Timeline of "The 1904 Olympic Marathon" (St. Louis, 30 Aug 1904): 15 shots locked to the voice (voice/words.json,
-// SHOTS.md), the event frames the sound is timed to, the set anchors shared by sets / cast / cameras, the props that move
-// (the 1904 cars, the finish tapes, the well bucket, the spinning sign arrow, the hay wagon), the camera grammar of the
-// template (continuous slow push-ins; symmetric smootherstep glides 18-40 f; big reframes are cuts; impacts are 7-frame
-// flip kicks; no hand-held float) and the per-shot depth of field.
+// Timeline of "Chicago Lifts a Hotel" (the raising of the Tremont House, 1861): 14 shots locked to the voice
+// (voice/words.json, SHOTS.md), the event frames the sound is timed to, the set anchors shared by sets / cast / cameras,
+// the props that move (the hotel's rise, the jackscrew turns, the measuring-board flag, the raised street, the coin),
+// the camera grammar of the template (continuous slow push-ins; symmetric smootherstep glides 18-40 f; big reframes are
+// cuts; impacts are 7-frame flip kicks; no hand-held float) and the per-shot depth of field.
 //
 // CONTRACTS (other owners import these; change them only together with the readers):
-//   SetName, Light, ShotDef, SHOTS, XFADE, FLASH_AT, layersAt, setOf    -> Marathon.tsx, world.ts, cast.ts, build.ts
-//   SPOT (set anchors in each set's own local frame; every set sits at the world origin, only one is visible)
-//   EV (event frames), prop timelines (carsAt, tapeK, bucketK, signSpin, wagonZ, runner paths)
-//   camAt, keyEnd, kickAt, dofAt, focusAt, FOREGROUND                  -> world.ts, Marathon.tsx, build.ts
+//   SetName, Light, ShotDef, SHOTS, XFADE, FLASH_AT, layersAt, setOf    -> Chicago.tsx, world.ts, cast.ts, build.ts
+//   SPOT, EV, riseAt / hotelY / screwTurn / fillAt / boardK ...             -> sets + cast
+//   camAt, keyEnd, kickAt, dofAt, focusAt, FOREGROUND                       -> world.ts, Chicago.tsx, build.ts
 export const FPS = 30;
-export const TOTAL = 1680;
+export const TOTAL = 1770;
 export type V3 = [number, number, number];
 
 export const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
@@ -23,35 +22,36 @@ export const add = (a: V3, b: V3): V3 => [a[0] + b[0], a[1] + b[1], a[2] + b[2]]
 export const lerp3 = (a: V3, b: V3, k: number): V3 => [lerp(a[0], b[0], k), lerp(a[1], b[1], k), lerp(a[2], b[2], k)];
 
 // ---------------- shots ----------------
-/** one THREE.Group per set in build.ts (buildSets); only the active set is visible.
- *  country: the dusty course (dirt road along z, runners heading +z, fields, cornfields, the orchard, the well, the creek,
- *  the distant stadium); stadium: the 1904 stadium finish; boston: the 1905 Boston spring street */
-export type SetName = "country" | "stadium" | "boston";
-/** light presets (lights.ts LIGHTS / LOOK, grade.ts GRADES): the hot St. Louis day, Boston spring */
-export type Light = "day" | "spring";
-/** alt: a cut inside the shot to another set from frame alt[0] (SHOTS.md 3 / 7 / 9) */
+/** one THREE.Group per set (build.ts buildSets); only the active set is visible.
+ *  town: the swamp-edge muddy street (mud, cattails, the lake, plank sidewalks, the clinic porch); hall: the council
+ *  hall; pit: the raised street over the old buildings; street: the Tremont House on its jackscrews (the hero set);
+ *  office: the contractors' office; cutaway: the hotel as a dollhouse (lobby / dining room / bedroom);
+ *  platform: the golden-dusk station with the steam train; sleeper: the Pullman car interior */
+export type SetName = "town" | "hall" | "pit" | "street" | "office" | "cutaway" | "platform" | "sleeper";
+/** light presets (lights.ts LIGHTS / LOOK, grade.ts GRADES) */
+export type Light = "day" | "overcast" | "interior" | "warm" | "golden";
+/** alt: a cut inside the shot to another set from frame alt[0] */
 export type ShotDef = { id: number; a: number; b: number; set: SetName; light: Light; alt?: [number, SetName] };
 // frame ranges from SHOTS.md (b = exclusive end)
 export const SHOTS: ShotDef[] = [
-  { id: 1, a: 0, b: 133, set: "country", light: "day" },                              // HOOK: Hicks, the poison bottle
-  { id: 2, a: 133, b: 204, set: "country", light: "day" },                            // Lorz waves from the car
-  { id: 3, a: 204, b: 340, set: "stadium", light: "day", alt: [262, "country"] },     // the start; the sun + the road
-  { id: 4, a: 340, b: 449, set: "country", light: "day" },                            // cars + the dust clouds
-  { id: 5, a: 449, b: 553, set: "country", light: "day" },                            // the well
-  { id: 6, a: 553, b: 686, set: "stadium", light: "day" },                            // Lorz breaks the tape
-  { id: 7, a: 686, b: 768, set: "country", light: "day", alt: [752, "stadium"] },     // flashback: Lorz in the car
-  { id: 8, a: 768, b: 886, set: "country", light: "day" },                            // the orchard: the rotten apple
-  { id: 9, a: 886, b: 988, set: "country", light: "day", alt: [947, "stadium"] },     // the nap; fourth
-  { id: 10, a: 988, b: 1078, set: "country", light: "day" },                          // chased by dogs
-  { id: 11, a: 1078, b: 1273, set: "country", light: "day" },                         // Hicks and his trainers
-  { id: 12, a: 1273, b: 1331, set: "stadium", light: "day" },                         // the long lens at the finish
-  { id: 13, a: 1331, b: 1415, set: "stadium", light: "day" },                         // the carry
-  { id: 14, a: 1415, b: 1507, set: "country", light: "day" },                         // 32 -> 14
-  { id: 15, a: 1507, b: TOTAL, set: "boston", light: "spring" },                      // Boston 1905, on foot
+  { id: 1, a: 0, b: 198, set: "street", light: "day" },                       // HOOK: the hotel rising on the jackscrew forest
+  { id: 2, a: 198, b: 300, set: "town", light: "overcast" },                  // swamp-edge town, the street of mud
+  { id: 3, a: 300, b: 389, set: "town", light: "overcast" },                  // the burping puddle
+  { id: 4, a: 389, b: 469, set: "town", light: "overcast" },                  // cholera: green faces on the clinic porch
+  { id: 5, a: 469, b: 618, set: "hall", light: "interior" },                  // the council hall + the easel
+  { id: 6, a: 618, b: 715, set: "pit", light: "day" },                        // the street goes up, the buildings sit in a pit
+  { id: 7, a: 715, b: 817, set: "street", light: "day" },                     // the Tremont House on the ground
+  { id: 8, a: 817, b: 937, set: "office", light: "interior" },                // Pullman and his partners
+  { id: 9, a: 937, b: 1072, set: "street", light: "day" },                   // under the hotel: the jackscrew
+  { id: 10, a: 1072, b: 1223, set: "street", light: "day" },                 // the signal, three turns
+  { id: 11, a: 1223, b: 1301, set: "street", light: "day" },                 // inch by inch, six feet
+  { id: 12, a: 1301, b: 1489, set: "cutaway", light: "warm" },               // the hotel never closed
+  { id: 13, a: 1489, b: 1570, set: "street", light: "day" },                 // not a single window broke
+  { id: 14, a: 1570, b: 1770, set: "platform", light: "golden", alt: [1619, "sleeper"] }, // Pullman rich; the sleeping car
 ];
 /** 5-frame anchored dissolves (place / time changes); a white flash after the hook */
-export const XFADE: Record<number, number> = { 3: 5, 15: 5 };
-export const FLASH_AT = 131;
+export const XFADE: Record<number, number> = { 5: 5, 7: 5, 14: 5 };
+export const FLASH_AT = 196;
 
 export const shotAt = (f: number) => SHOTS.find((s) => f >= s.a && f < s.b) ?? SHOTS[SHOTS.length - 1];
 /** the set a shot shows at frame f */
@@ -67,107 +67,95 @@ export const layersAt = (f: number): { id: number; alpha: number }[] => {
 
 // ---------------- event frames (SHOTS.md, locked: the sound is timed to them) ----------------
 export const EV = {
-  BOTTLE1: 99,      // the trainer holds up the skull bottle
-  GULP1: 110,       // Hicks gulps it, eyes go swirly
-  WAVE2: 162,       // Lorz waves from the back seat
-  DOUBLE2: 176,     // a runner's double take
-  PISTOL3: 210,     // the starter's pistol puff
-  CUT3: 262,        // cut to the blazing sun over the road
-  HEAT3: 269,       // runners already sweating
-  ROAD3: 308,       // the road stretching to the horizon
-  CARS4: 344,       // the two cars drive ahead
-  DUST4: 398,       // the dust clouds roll back over the runners
-  DUSTPEAK4: 427,
-  TWO5: 466, PANT5: 495, DROP5: 529,
-  FINISH6: 593, TAPE6: 607, LORZ6: 627, CHEER6: 661,
-  FOUND7: 692, PASS7: 740, CAR7: 750, CUT7: 752,
-  CUBA8: 790, PICK8: 822, BITE8: 830, ROT8: 867,
-  NAP9: 926, CUT9: 947, FOUR9: 965,
-  CHASE10: 1013, MILE10: 1028, DOGS10: 1055,
-  HICKS11: 1112, ALIVE11: 1140, EGG11: 1204, BRANDY11: 1235, POISON11: 1246,
-  FINISH12: 1304,
-  LIFT13: 1378, CARRY13: 1381, TAPE13: 1399, MEDAL13: 1409, // medal plonk @1409 = audio/cues.md 46.97 s
-  COUGH4: 379, SWIRL1: 125, SPLASH14: 1497, // audio/cues.md cue frames (picture free in SHOTS.md)
-  N32_14: 1427, DROPS14: 1440, N14_14: 1465, DONE14: 1477,
-  CAR15: 1543, BOSTON15: 1600, TAPE15: 1604, FEET15: 1637, HONK15: 1650, WINK15: 1660,
+  WAVE1: 168, SLEEP1: 172, SPOON1: 176, RISE1: 100,                   // hook: guests wave from the windows
+  FROG2: 250, MUD2: 280, SCHLORP2: 296, CUT2: 268,                    // the frog, the river of mud, the boot
+  BUBBLE3: 328, FLOW3: 343, STINK3: 358,                              // burp, the circling flow, the dog holds his nose
+  COUGH4: 398, SHAKE4: 427,                                           // sneezes, the doctor shakes his head
+  WILD5: 473, GAVEL5: 496, CUTIN5: 505, ARROW5: 541, PIPE5: 574, GASP5: 585,
+  SHOVEL6: 623, DUMP6: 641, PULL6: 660, BONK6: 685,
+  CREST7: 740, ROOF7: 788,
+  PLAN8: 823, SMILE8: 859, HANDS8: 890, CHAIN8: 906,
+  SCREW9: 974, PULLBACK9: 1000, MARCH9: 1033,
+  FLAG10: 1079, WHISTLE10: 1082, TURN10: 1142, TURN10B: 1168, TURN10C: 1194,
+  MARK11: 1234, MARK11B: 1248, MARK11C: 1261, MARK11D: 1276,
+  OPEN12: 1309, DINER12: 1360, SLEEPER12: 1385, CLERK12: 1409, PULLOUT12: 1442,
+  TAP13: 1526, DRY13: 1535, WINK13: 1550,
+  BEAM14: 1588, COIN14: 1596, CUT14: 1619, PUSH14: 1676, WINDOW14: 1698,
 };
 
 // ---------------- set anchors (each set's local frame = world frame) ----------------
-// country: the dirt road runs along z at x = 0 (5.2 m wide), the runners head toward +z; the stadium stands far up the
-// road at z ~ 520. Down the road (-z): the well (z -120), the orchard (x > 5, z -260..-200), the cornfield lane (z -360)
-// and fields to the horizon. The creek crosses at z 110.
-// stadium: the cinder track runs along x (runners toward +x), the finish line at x = 0, the grandstand along -z, the end
-// stand at -x. boston: the street runs along x (runners toward +x), the finish banner at x = 0, brick rows at z = +-10.
+// street: the Tremont House stands with its front face on the plane z = 0 (x -9..9), the body running back to z = -22;
+//   the plaza opens toward +z; the jackscrew field is a grid under the footprint. The hotel's group is lifted by
+//   hotelY(id, f); the timber grillage under it by 0.5 m.
+export const HOTEL = { W: 18, D: 22, FH: [0, 4.4, 8.0, 11.6, 15.2, 18.8, 22.4] as number[], TOP: 22.4 };
+export const SCREWS = { COLS: 18, ROWS: 18, DX: 1.0, DZ: 1.2 };
+export const screwX = (i: number) => -8.5 + SCREWS.DX * i;
+export const screwZ = (j: number) => -0.9 - SCREWS.DZ * j;
 export const SPOT = {
-  ROAD_W: 5.2,
-  WELL: [4.3, 0, -120] as V3,
-  TREE8: [6.4, 0, -229.5] as V3,            // the apple tree the Cuban picks from and naps under
-  CUBAN8: [4.85, 0, -227.6] as V3,          // where he stands to pick
-  NAP9: [6.0, 0, -228.4] as V3,             // where he lies (head toward the tree)
-  LANE_Z: -360,                             // the cornfield lane (runs along -x from the road)
-  SIGN10: [-3.4, 0, -356.4] as V3,          // the road sign at the lane junction
-  CREEK_Z: 110,
-  STADIUM_FAR: [0, 0, 520] as V3,
-  // stadium
-  TAPE_X: 0, START_X: -24, STARTER: [-19.5, 0, 4.9] as V3,
-  // boston
-  BANNER_X: 0,
+  HERO_SCREW: [1.5, 0, -0.9] as V3,      // the screw of the CU in shot 9 (a front-row screw)
+  FOREMAN: [-2.4, 0, 4.6] as V3,         // the foreman's crate
+  BOARD: [-13.2, 0, 5.5] as V3,          // the measuring board
+  WINDOW13: [-3.6, 0, 0] as V3,          // x of the bay of the window in shot 13 (floor 2)
+  // town
+  CLINIC: [-8, 0, -20] as V3,
+  // cutaway: x centre / room floor heights relative to the building base
+  CUT_W: 12, CUT_D: 6, ROOM_H: [0, 4.2, 8.0] as number[], CUT_TOP: 11.8,
+  // hall
+  EASEL: [3.6, 0, -1.2] as V3, MAYOR: [0, 0, -8.6] as V3,
+  // pit
+  PIT_STAIR_X: 6, SLAB_H: 2.6,
+  // office
+  TABLE: [0, 0.82, -0.2] as V3,
+  // platform
+  STATION: [0, 0, 0] as V3,
 };
 export const groundY = (_x: number, _z: number) => 0;
 
 // ---------------- prop / actor timelines ----------------
-/** Hicks' shuffle in the hook (toward +z) */
-export const hicks1Z = (f: number) => -4.2 + 0.03 * f;
-/** shot 11: Hicks shuffling with the trainers' car crawling beside him */
-export const hicks11Z = (f: number) => 150 + 0.032 * (f - 1078);
-/** shot 10: the runner sprinting down the cornfield lane (toward -x); before CHASE10 he jogs up the main road */
-export const chaser10 = (f: number): V3 => {
-  if (f < 1003) return [0.6 - 1.0 * smooth((f - 990) / 13), 0, SPOT.LANE_Z + 0.4 - 0.06 * (1003 - f)];
-  return [-0.4 - 0.25 * (f - 1003) - 0.0012 * (f - 1003) ** 2, 0, SPOT.LANE_Z + 0.4];
-};
-/** stadium runner positions along the track (x) */
-export const lorz6X = (f: number) => (f < EV.TAPE6 ? -0.24 * (EV.TAPE6 - f) : 2.6 * easeOut((f - EV.TAPE6) / 22));
-export const cuban9X = (f: number) => -0.2 * (960 - f);
-export const hicks12X = (f: number) => -9.6 + 0.12 * (f - 1273);
-/** shot 13: Hicks' x (shuffling, then carried through the tape at TAPE13) and lift height */
-export const hicks13X = (f: number) => (f < EV.LIFT13 ? -3.6 + 0.032 * (f - 1331) : -2.1 + 2.1 * ((f - EV.LIFT13) / (EV.TAPE13 - EV.LIFT13)) + 0.02 * Math.max(0, f - EV.TAPE13));
-export const hicks13Lift = (f: number) => 0.38 * easeOut((f - EV.LIFT13 + 2) / 6);
-/** Boston: Lorz's x (runs in, breaks the tape at TAPE15, slows to a stop) */
-export const lorz15X = (f: number) => (f < EV.TAPE15 ? -0.3 * (EV.TAPE15 - f) : 1.7 * easeOut((f - EV.TAPE15) / 16));
-/** finish tape state per shot: 0 intact .. >0 frames since it broke */
-export const tapeBreak = (id: number, f: number) => {
-  const t = id === 6 ? EV.TAPE6 : id === 13 ? EV.TAPE13 : id === 15 ? EV.TAPE15 : id === 12 ? Infinity : -Infinity;
-  return f >= t ? f - t : -1;
-};
-/** the well bucket: height above the well lip 0 (down the shaft) .. 1 (up at the windlass) */
-export const bucketK = (f: number) => smooth((f - 500) / 26);
-/** the road sign arrow's yaw (shot 10: it spins round, then points the wrong way) */
-export const signSpin = (f: number) => (f < 996 ? 0 : f < 1024 ? (f - 996) * 0.45 * (1 - (f - 996) / 56) : 28 * 0.45 * 0.5) + 0;
-/** the hay wagon (shot 14): its z on the road */
-export const wagonZ = (f: number) => 58 + 0.05 * (f - 1415);
-
-export type CarPose = { k: number; x: number; z: number; yaw: number; bob: number };
-/** the 1904 cars: k = which car (0 Lorz's red tourer, 1 the officials' green car, 2 the black car, 3 the trainers' maroon
- *  car), centre position on the ground, yaw (0 = nose toward +z), putter bob. Pure function of shot + frame. */
-export const carsAt = (id: number, f: number): CarPose[] => {
-  const bob = (k: number) => 0.012 * Math.sin(f * 2.3 + k) + 0.006 * Math.sin(f * 5.1 + k * 2);
+const step = (f: number, f0: number, dur = 8) => glide((f - f0) / dur);
+/** the hotel's height above its resting place, per shot (see hotelY) */
+export const riseAt = (id: number, f: number): number => {
   switch (id) {
-    case 1: return [{ k: 3, x: -1.4, z: hicks1Z(f) - 15, yaw: 0, bob: bob(3) }];
-    case 2: return [{ k: 0, x: -0.9, z: -40 + 0.2 * (f - 133), yaw: 0, bob: bob(0) }];
-    case 4: return [{ k: 1, x: -0.9, z: 40 + 0.46 * (f - 344), yaw: 0, bob: bob(1) }, { k: 2, x: 0.7, z: 33 + 0.46 * (f - 344), yaw: 0, bob: bob(2) }];
-    case 7: return f < EV.CUT7 ? [{ k: 0, x: -0.9, z: -84 + 0.2 * (f - 686), yaw: 0, bob: bob(0) }] : [];
-    case 11: return [{ k: 3, x: -1.35, z: hicks11Z(f) - 0.4, yaw: 0, bob: bob(3) }];
-    case 15: return [{ k: 2, x: -7.5 + 0.05 * (f - 1600) * (f > 1600 ? 1 : 0), z: -2.4, yaw: Math.PI / 2, bob: bob(2) }];
+    case 1: return 1.5 * glide((f - EV.RISE1) / 98);
+    case 10: return 0.18 * (step(f, EV.TURN10, 10) + step(f, EV.TURN10B, 10) + step(f, EV.TURN10C, 10));
+  case 11: return 0.54 + 0.4 * (step(f, EV.MARK11) + step(f, EV.MARK11B) + step(f, EV.MARK11C) + step(f, 1268) + step(f, 1272) + step(f, EV.MARK11D));
+    case 12: return 2.94 + 1.4 * glide((f - 1301) / 188);
+    case 13: return 4.34 + 0.8 * smooth((f - 1489) / 81);
   }
-  return [];
+  return 0;
 };
-/** car layout shared by build.ts (meshes) and cast.ts (riders): seat centres in the car frame (x right, z forward) */
-export const CAR_SEAT = { frontL: [-0.34, 1.0, 0.05] as V3, frontR: [0.34, 1.0, 0.05] as V3, rearL: [-0.36, 1.12, -0.95] as V3, rearR: [0.36, 1.12, -0.95] as V3 };
-/** world position of a car-frame point */
-export const carPt = (c: CarPose, p: V3): V3 => {
-  const cs = Math.cos(c.yaw), sn = Math.sin(c.yaw);
-  return [c.x + p[0] * cs + p[2] * sn, p[1] + c.bob, c.z - p[0] * sn + p[2] * cs];
+/** height of the hotel's underside above the ground */
+export const hotelY = (id: number, f: number): number => {
+  if (id === 7) return 0;                  // before the lift: the hotel stands on its plinth
+  if (id === 1) return 3.4 + riseAt(1, f);
+  if (id === 9) return 2.6;
+  return 2.6 + riseAt(id, f);
 };
+/** the cutaway house's base height in shot 12 (the dollhouse sits on its own jackscrews) */
+export const cutY = (f: number) => 3.0 + riseAt(12, f);
+/** shot 11 measuring-board flag: marks 0..6 */
+export const boardK = (f: number) => (riseAt(11, f) - 0.54) / 0.4;
+/** quarter-turns of a worker's crossbar since the start (radians): a ripple moves back one row every 0.55 f */
+const TURNS = [1130, 1156, 1182, 1225, 1239, 1252, 1259, 1263, 1267];
+export const screwTurn = (f: number, row: number) => {
+  let a = 0;
+  for (const t0 of TURNS) a += (Math.PI / 2) * glide((f - t0 - 0.55 * row) / 14);
+  return a;
+};
+/** 0..1 lean pulse of a worker while his bar is turning (for the acting) */
+export const turnPulse = (f: number, row: number) => {
+  let m = 0;
+  for (const t0 of TURNS) { const u = (f - t0 - 0.55 * row) / 14; if (u > 0 && u < 1) m = Math.max(m, Math.sin(Math.PI * u)); }
+  return m;
+};
+/** shot 9: the march of the workers into their rows (z of a worker whose row z is zt, starting behind) */
+export const marchZ = (f: number, zt: number, k: number) => {
+  const arrive = 1018 + 1.5 * (-zt) + (k % 5) * 3;
+  return zt + Math.max(0, (arrive - f) * 0.11);
+};
+/** the raised street (shot 6): the fill height */
+export const fillAt = (f: number) => SPOT.SLAB_H * smooth((f - 628) / 40);
+/** shot 12 cutaway lobby clock hands etc. are time-based in the set tick */
 
 // ---------------- camera ----------------
 export type Cam = { pos: V3; look: V3; fov: number; roll: number };
@@ -198,13 +186,13 @@ const pushK = (f: number, f0: number, rate: number, punch = 0, n = 35) => {
 /** dolly push: camera slides toward the look point by factor k */
 const dolly = (pos: V3, look: V3, k: number, rest: Partial<Cam> = {}): Shot =>
   ({ pos: [look[0] + (pos[0] - look[0]) * k, look[1] + (pos[1] - look[1]) * k, look[2] + (pos[2] - look[2]) * k], look, ...rest });
-/** zoom push (camera stays put, for long lenses / moving subjects): tan(fov/2) shrinks by k */
+/** zoom push (camera stays put): tan(fov/2) shrinks by k */
 const zoom = (pos: V3, look: V3, fov: number, k: number, rest: Partial<Cam> = {}): Shot =>
   ({ pos, look, fov: (360 / Math.PI) * Math.atan(Math.tan((fov * Math.PI) / 360) * k), ...rest });
 /** push a shot in from frame f0 at `rate` (punch as in pushK, starting at punchAt) */
 const P = (s: Shot, f: number, f0: number, rate = 0.0025, punch = 0, n = 35, punchAt = f0): Shot =>
   dolly(s.pos, s.look, pushK(f, f0, rate) * (punch ? pushK(f, punchAt, 0, punch, n) : 1), { fov: s.fov, roll: s.roll });
-/** zoom version of P (the lens stays put: never dollies past a foreground subject) */
+/** zoom version of P */
 const Z = (s: Shot, f: number, f0: number, rate = 0.0025, punches: [number, number, number][] = []): Shot => {
   let k = pushK(f, f0, rate);
   for (const [at, rt, n] of punches) k *= pushK(f, at, 0, rt, n);
@@ -220,111 +208,110 @@ export const HEAD_TOP = 1.75, HEAD_H = 0.48;
 export const eyes = (p: V3, s = 1): V3 => [p[0], p[1] + 1.52 * s, p[2]];
 
 // ---- per-shot cameras ----
-// 1 (0-132): low on the road ahead of Hicks, looking back down the road: he shuffles toward us, ~40 % of the frame;
-// the lens stays ahead of him (tracks at his pace), zoom-push, punches on the bottle and the gulp
+// 1 (0-197): HOOK. Low on the plaza, the whole six-story hotel filling the frame on its forest of jackscrews with a gap
+// of daylight beneath it; it rises; push-in; the camera tilts up with the roof.
 const S1 = (f: number): Shot => {
-  const z = hicks1Z(f);
-  return Z({ pos: [1.05, 1.22, z + 5.7], look: [0.0, 1.12, z - 0.6], fov: 42, roll: 0.025 - 0.0003 * f }, f, 0, 0.0016, [[EV.BOTTLE1 - 3, 0.006, 10], [EV.GULP1 - 2, 0.007, 12]]);
+  const H = hotelY(1, f), look: V3 = [0, 9.5 + 0.5 * H, 0];
+  return P({ pos: [1.6, 1.25, 58], look, fov: 40, roll: 0.012 - 0.0002 * f }, f, 0, 0.0015, 0);
 };
-// 2 (133-203): side-on beside the road, crawling with the putt-putting car: Lorz waves from the back seat
-const S2 = (f: number): Shot => {
-  const cz = -25.5 + 0.03 * (f - 133);
-  return Z({ pos: [2.7, 1.55, cz], look: [-1.1, 1.35, cz - 10], fov: 44, roll: -0.02 }, f, 133, 0.0018, [[EV.WAVE2 - 3, 0.005, 10], [EV.DOUBLE2 - 2, 0.006, 10]]);
+// 2a (198-267): the lake edge: cattails, frogs, mist, the puddle. 2b (268-299): the river of mud
+const S2a = (f: number): Shot => P({ pos: [2.2, 0.75, 33.5], look: [-0.6, 0.55, 18], fov: 44, roll: 0.02 }, f, 198, 0.0035, 0.007, 12, EV.FROG2 - 3);
+const S2b = (f: number): Shot => P({ pos: [4.4, 1.35, 22.5], look: [0.2, 1.2, 9.5], fov: 44, roll: -0.02 }, f, EV.CUT2, 0.002, 0.006, 12, EV.SCHLORP2 - 3);
+// 3 (300-388): low over the puddle that is the whole street; bubbles, the circling flow, the stink; the dog
+const S3 = (f: number): Shot => {
+  const a = C([1.8, 0.55, -2.0], [0.0, 0.3, -12.5], 46, 0.025), b = C([-1.0, 0.8, -3.0], [0.9, 0.9, -12], 44, -0.02);
+  return P(between(a, b, gl(f, EV.STINK3 - 20, 26)), f, 300, 0.0022, 0.006, 12, EV.BUBBLE3 - 3);
 };
-// 3a (204-261): high wide on the stadium: the field at the start line, the starter, the full stand
-const S3a = (f: number): Shot => P({ pos: [-12.5, 3.4, 8.2], look: [-25.5, 1.3, -0.8], fov: 50, roll: 0.02 }, f, 204, 0.0022, 0.005, 12, EV.PISTOL3 - 2);
-// 3b (262-339): low on the road: the blazing sun over sweating runners; crane up + back to the road to the horizon
-const S3b = (f: number): Shot => {
-  const a = C([0.9, 0.95, 47], [-0.2, 3.4, 30], 50, 0.02), b = C([1.6, 4.6, 52], [0, 1.0, -60], 48, -0.01);
-  return P(between(a, b, gl(f, EV.ROAD3 - 20, 30)), f, EV.CUT3, 0.0018);
-};
-// 4 (340-448): ahead of the cars, off the road's edge: the cars come at us, the dust wall rolls over everything
+// 4 (389-468): the clinic porch: a bench of green-faced townsfolk, the doctor with his bag
 const S4 = (f: number): Shot => {
-  const a = C([2.9, 1.45, 64], [-0.5, 1.7, 42], 48, 0.02), b = C([1.5, 1.5, 49.5], [-0.4, 1.4, 36], 46, -0.02);
-  return P(between(a, b, gl(f, 410, 30)), f, 340, 0.0016, 0.006, 12, EV.DUST4 - 2);
+  const C0 = SPOT.CLINIC, a = C([C0[0] + 11.0, 1.55, C0[2] + 5.0], [C0[0] + 2.2, 1.3, C0[2] - 0.3], 44, 0.02);
+  const b = C([C0[0] + 8.0, 1.5, C0[2] + 3.8], [C0[0] + 2.0, 1.35, C0[2] - 0.3], 42, -0.02);
+  return P(between(a, b, gl(f, 420, 30)), f, 389, 0.0016, 0.006, 12, EV.SHAKE4 - 3);
 };
-// 5 (449-552): the lone well: the queue of panting runners along the road; the bucket comes up with a single drop
-const S5 = (f: number): Shot => {
-  const W = SPOT.WELL, a = C([W[0] + 4.6, 1.75, W[2] + 7.6], [W[0] - 1.2, 1.25, W[2] - 4.5], 46, 0.02);
-  const b = C([W[0] + 2.9, 1.45, W[2] + 4.2], [W[0] - 0.1, 1.55, W[2] - 0.2], 42, -0.02);
-  return P(between(a, b, gl(f, 506, 26)), f, 449, 0.0018, 0.006, 10, EV.DROP5 - 2);
+// 5a (469-504): down the council table to the mayor in front of the arched windows; 5b (505-617): the easel
+const S5a = (f: number): Shot => P({ pos: [0.2, 1.45, 4.2], look: [0, 1.7, -8.6], fov: 46, roll: 0.02 }, f, 469, 0.003, 0.007, 12, EV.GAVEL5 - 3);
+const S5b = (f: number): Shot => {
+  const E = SPOT.EASEL, a = C([E[0] - 3.6, 1.7, E[2] + 4.6], [E[0] + 0.1, 1.9, E[2] - 0.2], 44, 0.02), b = C([E[0] - 2.4, 1.8, E[2] + 3.2], [E[0] + 0.15, 1.85, E[2] - 0.2], 42, -0.015);
+  return P(between(a, b, gl(f, EV.PIPE5 - 14, 26)), f, EV.CUTIN5, 0.0018, 0.006, 10, EV.GASP5 - 3);
 };
-// 6 (553-685): the stadium finish from just past the line: Lorz breaks the tape, the crowd leaps, boaters fly
+// 6a (618-659): MS on the fill, the shovellers and the dumping wagon; 6b (660+): pulls back and up: the buildings in the pit
 const S6 = (f: number): Shot => {
-  const a = C([8.6, 1.5, 1.8], [-4.0, 1.6, -0.9], 46, 0.02), b = C([9.0, 1.6, 2.2], [-1.0, 2.2, -1.3], 50, -0.02);
-  return P(between(a, b, gl(f, EV.CHEER6 - 14, 24)), f, 553, 0.0018, 0.006, 12, EV.TAPE6 - 2);
+  const a = C([-4.5, 3.4, 15.0], [0.5, 2.2, 3.5], 46, 0.02), b = C([-17.0, 11.5, 26.0], [3.0, 1.2, 6.8], 46, -0.015);
+  return P(between(a, b, gl(f, EV.PULL6 - 8, 36)), f, 618, 0.0014, 0.006, 12, EV.BONK6 - 3);
 };
-// 7a (686-751): flashback, tracking side-on with the car: Lorz lounging, waving at the runners it overtakes
-const S7a = (f: number): Shot => {
-  const cz = -84 + 0.2 * (f - 686) - 0.2;
-  return Z({ pos: [6.2, 1.7, cz + 3.4], look: [-0.7, 1.35, cz - 0.7], fov: 44, roll: 0.02 }, f, 686, 0.0018, [[EV.PASS7 - 2, 0.005, 12]]);
+// 7 (715-816): low hero crane up the front of the hotel to the roof flag
+const S7 = (f: number): Shot => {
+  const a = C([3.2, 1.0, 37], [0.0, 3.2, 0], 40, 0.02), b = C([1.5, 9.5, 36], [0, 19.5, 0], 42, -0.018);
+  return P(between(a, b, gl(f, 732, 62)), f, 715, 0.0012, 0, 12);
 };
-// 7b (752-767): insert: the crowd in the stand, jaws dropped, boaters frozen mid-air
-const S7b = (f: number): Shot => P({ pos: [-1.6, 3.1, -3.0], look: [-3.0, 3.6, -9.6], fov: 46, roll: -0.03 }, f, EV.CUT7, 0.004);
-// 8 (768-885): the orchard: the Cuban jogs up, grins, picks, bites; push to a close-up for the rotten apple
+// 8 (817-936): the office: the blueprint, the partners, the handshake chain
 const S8 = (f: number): Shot => {
-  const Cb = SPOT.CUBAN8, a = C([Cb[0] - 2.3, 1.55, Cb[2] + 4.3], [Cb[0] + 0.5, 1.5, Cb[2] - 0.8], 44, 0.02);
-  const b = C([Cb[0] - 1.05, 1.6, Cb[2] + 2.45], [Cb[0] + 0.05, 1.42, Cb[2] + 0.05], 47, -0.02);
-  return P(between(a, b, gl(f, EV.ROT8 - 26, 24)), f, 768, 0.0016, 0.007, 12, EV.ROT8 - 2);
+  const a = C([-1.9, 1.55, 4.3], [0.3, 1.25, -0.4], 44, 0.02), b = C([0.3, 1.55, 3.4], [0.4, 1.35, -0.5], 44, -0.02);
+  return P(between(a, b, gl(f, 880, 28)), f, 817, 0.0018, 0.006, 12, EV.SMILE8 - 3);
 };
-// 9a (886-946): napping under the tree, Z bubbles; 9b (947-987): he jogs over the finish line, four fingers up
-const S9a = (f: number): Shot => {
-  const N = SPOT.NAP9;
-  return P({ pos: [N[0] - 3.6, 1.9, N[2] + 3.4], look: [N[0] - 0.2, 0.55, N[2] - 0.2], fov: 46, roll: 0.02 }, f, 886, 0.0022, 0.006, 12, EV.NAP9 - 2);
+// 9a (937-999): CU of the iron jackscrew under the timber beam; 9b (1000-1071): pull back: the forest, the march
+const S9 = (f: number): Shot => {
+  const H = SPOT.HERO_SCREW;
+  const a = C([H[0] + 1.35, 1.15, H[2] + 3.0], [H[0] - 0.05, 1.28, H[2]], 40, 0.03), b = C([0.4, 1.35, 5.8], [0.0, 1.9, -15], 48, -0.02);
+  const c = C([-2.5, 1.6, 10.5], [0.8, 2.0, -6.5], 46, 0.0);
+  const u1 = gl(f, EV.PULLBACK9 - 6, 34), u2 = gl(f, 1048, 22);
+  return P(between(between(a, b, u1) as Cam, c, u2), f, 937, 0.0014, 0.007, 12, EV.SCREW9 - 3);
 };
-const S9b = (f: number): Shot => P({ pos: [6.6, 1.45, 1.4], look: [-2.0, 1.45, -0.3], fov: 44, roll: -0.02 }, f, EV.CUT9, 0.0024, 0.007, 12, EV.FOUR9 - 2);
-// 10 (988-1077): the cornfield lane: tracking ahead of the runner, three-quarter, dogs at his heels; the spinning sign
+// 10a (1072-1117): the foreman raises the flag and blows the whistle; 10b (1118+): low down the line of workers
 const S10 = (f: number): Shot => {
-  const r = chaser10(Math.max(f, 1003)), L = SPOT.LANE_Z;
-  const a = C([-9.2, 1.7, L + 5.6], [-3.0, 1.8, L + 2.2], 48, 0.02);
-  const b = C([r[0] - 4.0, 1.3, L + 3.9], [r[0] + 1.1, 0.95, L - 0.3], 46, -0.02);
-  return Z(between(a, b, gl(f, 1004, 18)), f, 988, 0.0016, [[EV.CHASE10 - 2, 0.005, 10], [EV.DOGS10 - 2, 0.006, 12]]);
+  const F = SPOT.FOREMAN;
+  const a = C([F[0] + 1.6, 1.45, F[2] + 5.4], [F[0] + 0.3, 2.0, F[2]], 44, 0.02), b = C([0.15, 0.85, 5.0], [0.0, 1.5, -14], 50, -0.025);
+  return P(between(a, b, gl(f, 1100, 26)), f, 1072, 0.0016, 0.006, 12, EV.TURN10 - 3);
 };
-// 11 (1078-1272): ahead of Hicks and the trainers' car crawling beside him; punches on each hand-off
+// 11 (1223-1300): the hotel wide from the right with the measuring board; slow push
 const S11 = (f: number): Shot => {
-  const z = hicks11Z(f);
-  return Z({ pos: [2.55, 1.6, z + 5.0], look: [-0.25, 1.3, z - 0.4], fov: 46, roll: 0.02 - 0.0002 * (f - 1078) }, f, 1078, 0.0012,
-    [[EV.HICKS11 - 2, 0.004, 10], [EV.EGG11 - 3, 0.005, 10], [EV.BRANDY11 - 3, 0.005, 8], [EV.POISON11 - 2, 0.006, 10]]);
+  const H = hotelY(11, f);
+  return P({ pos: [-7, 1.7, 56], look: [-3.8, 11.0 + 0.35 * H, 0], fov: 42, roll: 0.012 }, f, 1223, 0.0016, 0.004, 12, EV.MARK11 - 3);
 };
-// 12 (1273-1330): long lens down the track: Hicks weaves toward the tape on jelly legs, the crowd behind holds its breath
-const S12 = (f: number): Shot => Z({ pos: [36, 1.75, 1.2], look: [-3.0, 1.4, -0.6], fov: 7.2, roll: 0.0 }, f, 1273, 0.0024, [[EV.FINISH12 - 2, 0.004, 12]]);
-// 13 (1331-1414): the carry: two trainers lift him, legs still running, through the tape, the medal plonks
+// 12 (1301-1488): the cutaway: lobby, diner, sleeper, clerk, then all three rising
+const CZ = 7.2; // the camera plane
+const S12a = (f: number): Shot => { const y = cutY(f); return P({ pos: [-1.8, y + 2.9, CZ + 4.0], look: [-2.2, y + 2.0, -1.5], fov: 44, roll: 0.02 }, f, 1301, 0.0018, 0.005, 12, EV.OPEN12 - 3); };
+const S12b = (f: number): Shot => { const y = cutY(f); return P({ pos: [0.2, y + EV_ROOM(1) + 1.9, CZ + 0.0], look: [-0.2, y + EV_ROOM(1) + 1.5, -2.0], fov: 40, roll: -0.025 }, f, EV.DINER12 - 4, 0.0024, 0.006, 12, EV.DINER12 - 3); };
+const S12c = (f: number): Shot => { const y = cutY(f); return P({ pos: [-0.9, y + EV_ROOM(2) + 1.7, CZ - 1.0], look: [-1.1, y + EV_ROOM(2) + 1.2, -2.2], fov: 40, roll: 0.02 }, f, EV.SLEEPER12 - 4, 0.0024, 0.006, 12, EV.SLEEPER12 - 3); };
+const S12d = (f: number): Shot => { const y = cutY(f); return P({ pos: [-1.2, y + 1.9, CZ + 0.5], look: [-0.6, y + 1.6, -2.4], fov: 42, roll: -0.02 }, f, EV.CLERK12 - 4, 0.0022, 0.006, 12, EV.CLERK12 - 3); };
+const S12e = (f: number): Shot => P({ pos: [1.4, 7.4, 44], look: [0, 8.2, -2], fov: 42, roll: 0.01 }, f, EV.PULLOUT12, 0.0012, 0, 12);
+function EV_ROOM(i: number) { return SPOT.ROOM_H[i]; }
+// 13 (1489-1569): the window CU: the sill, the flower pot, the water glass; the inspector taps the glass
 const S13 = (f: number): Shot => {
-  const a = C([2.0, 1.55, 1.4], [-3.8, 1.5, -0.2], 44, 0.02), b = C([3.7, 1.6, 1.35], [-0.6, 1.8, -0.2], 44, -0.02);
-  return P(between(a, b, gl(f, EV.LIFT13 - 6, 26)), f, 1331, 0.0018, 0.007, 12, EV.CARRY13 - 2);
+  const y = hotelY(13, f) + HOTEL.FH[1] + 1.35, x = SPOT.WINDOW13[0];
+  const a = C([x + 1.4, y + 0.0, 5.6], [x - 0.15, y + 0.1, 0], 38, 0.02), b = C([x + 0.9, y + 0.1, 4.2], [x - 0.1, y + 0.05, 0], 38, -0.02);
+  return P(between(a, b, gl(f, EV.TAP13 - 10, 28)), f, 1489, 0.0018, 0.006, 12, EV.TAP13 - 3);
 };
-// 14 (1415-1506): high three-quarter view of the course: the column, the drop-outs, the stadium far ahead
-const S14 = (f: number): Shot => P({ pos: [-6, 11, 20], look: [2.0, 0, 50], fov: 48, roll: 0.0 }, f, 1415, 0.0016, 0.004, 14, EV.DROPS14);
-// 15 (1507-1679): Boston spring street: Lorz breaks the tape, looks down at his feet, the car honks, the wink; creeping push
-const S15 = (f: number): Shot => {
-  const lx = Math.min(lorz15X(f), -2.2), a = C([lx + 8.4, 1.6, 1.7], [lx - 1.5, 1.85, -0.5], 46, 0.02), b = C([6.4, 1.6, 1.5], [0.6, 1.65, -0.1], 44, -0.015);
-  const c = C([5.7, 1.62, 1.25], [1.5, 1.6, -0.05], 40, -0.01);
-  return P(between(mix(a, b, gl(f, EV.TAPE15 - 8, 30)), c, gl(f, EV.FEET15 - 4, 24)), f, 1507, 0.002, 0.005, 10, EV.WINK15 - 2);
+// 14a (1570-1618): the golden platform, Pullman beaming; 14b (1619-1769): inside the sleeping car; push in; the window
+const S14a = (f: number): Shot => P({ pos: [-2.6, 1.45, 8.2], look: [0.0, 1.55, 0.2], fov: 42, roll: 0.02 }, f, 1570, 0.002, 0.006, 12, EV.BEAM14 - 3);
+const S14b = (f: number): Shot => {
+  const a = C([0.2, 1.5, 4.0], [0.0, 1.35, -1.4], 52, 0.02), b = C([0.1, 1.3, 2.4], [-0.2, 1.15, -1.4], 36, -0.02), c = C([-0.5, 1.5, 1.7], [-0.7, 1.5, -1.5], 36, 0.015);
+  return P(between(between(a, b, gl(f, EV.PUSH14 - 6, 34)) as Cam, c, gl(f, EV.WINDOW14 - 8, 30)), f, EV.CUT14, 0.0012, 0.004, 12, EV.PUSH14 - 3);
 };
 
 const CAMS: Record<number, Key[]> = {
   1: [{ f: 0, s: S1 }],
-  2: [{ f: 133, s: S2 }],
-  3: [{ f: 204, s: S3a }, { f: EV.CUT3, cut: true, s: S3b }],
-  4: [{ f: 340, s: S4 }],
-  5: [{ f: 449, s: S5 }],
-  6: [{ f: 553, s: S6 }],
-  7: [{ f: 686, s: S7a }, { f: EV.CUT7, cut: true, s: S7b }],
-  8: [{ f: 768, s: S8 }],
-  9: [{ f: 886, s: S9a }, { f: EV.CUT9, cut: true, s: S9b }],
-  10: [{ f: 988, s: S10 }],
-  11: [{ f: 1078, s: S11 }],
-  12: [{ f: 1273, s: S12 }],
-  13: [{ f: 1331, s: S13 }],
-  14: [{ f: 1415, s: S14 }],
-  15: [{ f: 1507, s: S15 }],
+  2: [{ f: 198, s: S2a }, { f: EV.CUT2, cut: true, s: S2b }],
+  3: [{ f: 300, s: S3 }],
+  4: [{ f: 389, s: S4 }],
+  5: [{ f: 469, s: S5a }, { f: EV.CUTIN5, cut: true, s: S5b }],
+  6: [{ f: 618, s: S6 }],
+  7: [{ f: 715, s: S7 }],
+  8: [{ f: 817, s: S8 }],
+  9: [{ f: 937, s: S9 }],
+  10: [{ f: 1072, s: S10 }],
+  11: [{ f: 1223, s: S11 }],
+  12: [{ f: 1301, s: S12a }, { f: EV.DINER12 - 4, cut: true, s: S12b }, { f: EV.SLEEPER12 - 4, cut: true, s: S12c }, { f: EV.CLERK12 - 4, cut: true, s: S12d }, { f: EV.PULLOUT12 - 2, cut: true, s: S12e }],
+  13: [{ f: 1489, s: S13 }],
+  14: [{ f: 1570, s: S14a }, { f: EV.CUT14, cut: true, s: S14b }],
 };
 
 // impact kicks: the image offset flips sign every frame (~3 px at 720p per unit), decays to 0 in 7 f, roll +-0.23 deg
 // per unit; they start on the first frame at/after the event. No hand-held float.
-export const KICKS: [number, number][] = [[EV.GULP1 / FPS, 0.6], [EV.PISTOL3 / FPS, 0.7], [EV.DUST4 / FPS, 0.8], [EV.TAPE6 / FPS, 0.5],
-  [EV.CHEER6 / FPS, 0.5], [EV.ROT8 / FPS, 0.7], [EV.CAR7 / FPS, 0.3], [EV.POISON11 / FPS, 0.5], [EV.TAPE13 / FPS, 0.6], [EV.MEDAL13 / FPS, 0.4],
-  [EV.TAPE15 / FPS, 0.5], [EV.HONK15 / FPS, 0.4]];
+export const KICKS: [number, number][] = [[EV.FROG2 / FPS, 0.3], [EV.SCHLORP2 / FPS, 0.4], [EV.BUBBLE3 / FPS, 0.4], [EV.SHAKE4 / FPS, 0.3],
+  [EV.GAVEL5 / FPS, 0.8], [EV.GASP5 / FPS, 0.3], [EV.DUMP6 / FPS, 0.5], [EV.BONK6 / FPS, 0.6], [EV.CREST7 / FPS, 0.3], [EV.SCREW9 / FPS, 0.9],
+  [EV.WHISTLE10 / FPS, 0.4], [EV.TURN10 / FPS, 0.5], [EV.TURN10B / FPS, 0.5], [EV.TURN10C / FPS, 0.5], [EV.MARK11 / FPS, 0.25], [EV.MARK11B / FPS, 0.25],
+  [EV.MARK11C / FPS, 0.25], [EV.CLERK12 / FPS, 0.3], [EV.TAP13 / FPS, 0.4], [EV.COIN14 / FPS, 0.3]];
 export const kickAt = (t: number) => {
   let a = 0;
   for (const [t0, g] of KICKS) {
@@ -351,12 +338,13 @@ export const keyEnd = (id: number, f: number) => {
 // ---------------- foreground layer (composition.md 3.3, depth.md 3.5.4) ----------------
 /** Near framing props, cut by a frame edge and blurred by the shot's DOF. space "cam": pos is in camera space (x right,
  *  y up, z forward, metres); "world": a world position. Drawn by build.ts fgUpdate from these kit names.
- *  Kits: grass (a dry-grass clump), corn (a few corn stalks), fence (a rail-fence section). */
+ *  Kits: cattail (a clump of cattails), crib (a stack of timber cribbing). */
 export type Fg = { a: number; b: number; kit: string; pos: V3; s?: number; yaw?: number; space?: "world" | "cam"; tilt?: number };
 export const FOREGROUND: Fg[] = [
-  { a: 449, b: 553, kit: "grass", pos: [7.6, 0, -111.0], yaw: 0.2, s: 1.3 },
-  { a: 1004, b: 1078, kit: "corn", pos: [-1.35, -1.6, 3.4], space: "cam", yaw: 0.3, s: 0.6 },
-  { a: 1415, b: 1507, kit: "none", pos: [0, 0, 0] },
+  { a: 198, b: 268, kit: "cattail", pos: [1.45, -0.55, 3.4], space: "cam", yaw: 0.2, s: 1.0 },
+  { a: 198, b: 268, kit: "cattail", pos: [-1.6, -0.5, 4.2], space: "cam", yaw: -0.3, s: 1.1 },
+  { a: 300, b: 389, kit: "cattail", pos: [1.5, -0.35, 2.4], space: "cam", yaw: 0.2, s: 0.9 },
+  { a: 1072, b: 1117, kit: "crib", pos: [1.55, -1.1, 4.2], space: "cam", yaw: -0.4, s: 1.0 },
 ];
 
 // ---------------- lens: depth of field ----------------
@@ -365,27 +353,31 @@ export const FOREGROUND: Fg[] = [
  *  f / dur with. focus = world point (else the camera look point). */
 export type Dof = { f: number; dur?: number; cInf: number; focus?: (f: number) => V3 };
 export const DOF: Dof[] = [
-  { f: 0, cInf: 12, focus: (f) => [0.35, 1.5, hicks1Z(f)] },
-  { f: 133, cInf: 8, focus: (f) => [-0.9, 1.6, -40 + 0.2 * (f - 133) - 0.95] },
-  { f: 204, cInf: 4, focus: () => [SPOT.START_X - 1, 1.5, 0] },
-  { f: EV.CUT3, cInf: 6, focus: () => [0.2, 1.5, 38] },
-  { f: EV.ROAD3 - 20, dur: 30, cInf: 0 },
-  { f: 340, cInf: 5, focus: (f) => [-0.9, 1.4, Math.min(56, 40 + 0.46 * (f - 344))] },
-  { f: 449, cInf: 9, focus: () => [SPOT.WELL[0] - 0.4, 1.5, SPOT.WELL[2] - 0.6] },
-  { f: 553, cInf: 10, focus: (f) => [lorz6X(f), 1.5, 0.3] },
-  { f: 686, cInf: 8, focus: (f) => [-1.25, 1.6, -84 + 0.2 * (f - 686) - 0.95] },
-  { f: EV.CUT7, cInf: 10, focus: () => [-3.0, 3.8, -9.0] },
-  { f: 768, cInf: 9, focus: () => eyes(SPOT.CUBAN8) },
-  { f: EV.ROT8 - 26, dur: 24, cInf: 14, focus: () => eyes(SPOT.CUBAN8) },
-  { f: 886, cInf: 11, focus: () => [SPOT.NAP9[0], 0.5, SPOT.NAP9[2]] },
-  { f: EV.CUT9, cInf: 10, focus: (f) => [cuban9X(Math.min(f, 975)), 1.5, 0.3] },
-  { f: 988, cInf: 8, focus: (f) => { const r = chaser10(f); return [r[0], 1.3, r[2]]; } },
-  { f: 1078, cInf: 11, focus: (f) => [0.7, 1.5, hicks11Z(f)] },
-  { f: 1273, cInf: 7, focus: (f) => [hicks12X(f), 1.5, 0.3] },
-  { f: 1331, cInf: 10, focus: (f) => [hicks13X(f), 1.7, 0.3] },
-  { f: 1415, cInf: 0 },
-  { f: 1507, cInf: 6, focus: (f) => [Math.min(lorz15X(f), 1.7), 1.5, 0.0] },
-  { f: EV.TAPE15, dur: 30, cInf: 11, focus: (f) => [lorz15X(f), 1.5, 0.0] },
+  { f: 0, cInf: 0 },
+  { f: 198, cInf: 12, focus: () => [-0.2, 0.55, 16.5] },
+  { f: EV.CUT2, cInf: 8, focus: () => [0.2, 1.1, 10.5] },
+  { f: 300, cInf: 10, focus: () => [0.3, 0.4, -9] },
+  { f: 389, cInf: 8, focus: () => [SPOT.CLINIC[0] + 2.2, 1.3, SPOT.CLINIC[2]] },
+  { f: 469, cInf: 6, focus: () => [0, 1.6, -7.2] },
+  { f: EV.CUTIN5, cInf: 10, focus: () => [SPOT.EASEL[0] + 0.1, 1.9, SPOT.EASEL[2]] },
+  { f: 618, cInf: 6, focus: () => [0.5, 2.4, 3.5] },
+  { f: EV.PULL6 - 8, dur: 36, cInf: 0 },
+  { f: 715, cInf: 0 },
+  { f: 817, cInf: 8, focus: () => [0.2, 1.3, -0.4] },
+  { f: 937, cInf: 14, focus: () => [SPOT.HERO_SCREW[0], 1.3, SPOT.HERO_SCREW[2]] },
+  { f: EV.PULLBACK9 - 6, dur: 34, cInf: 4, focus: () => [0, 1.6, -8] },
+  { f: 1072, cInf: 11, focus: () => [SPOT.FOREMAN[0], 1.6, SPOT.FOREMAN[2]] },
+  { f: 1100, dur: 26, cInf: 5, focus: () => [0, 1.4, -4.5] },
+  { f: 1223, cInf: 0 },
+  { f: 1301, cInf: 3, focus: () => [-2.2, 3.6, -2] },
+  { f: EV.DINER12 - 4, cInf: 12, focus: (f) => [-0.2, cutY(f) + SPOT.ROOM_H[1] + 1.4, -2.2] },
+  { f: EV.SLEEPER12 - 4, cInf: 12, focus: (f) => [-1.1, cutY(f) + SPOT.ROOM_H[2] + 1.0, -2.2] },
+  { f: EV.CLERK12 - 4, cInf: 11, focus: (f) => [-0.6, cutY(f) + 1.5, -2.4] },
+  { f: EV.PULLOUT12 - 2, cInf: 0 },
+  { f: 1489, cInf: 11, focus: (f) => [SPOT.WINDOW13[0] - 0.1, hotelY(13, f) + HOTEL.FH[1] + 1.4, 0] },
+  { f: 1570, cInf: 7, focus: () => [0, 1.6, 0.2] },
+  { f: EV.CUT14, cInf: 7, focus: () => [0, 1.3, -1.4] },
+  { f: EV.PUSH14 - 6, dur: 34, cInf: 12, focus: () => [-0.2, 1.1, -1.4] },
 ];
 export const dofAt = (f: number) => {
   let i = 0; while (i + 1 < DOF.length && f >= DOF[i + 1].f) i++;

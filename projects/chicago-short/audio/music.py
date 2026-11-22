@@ -1,30 +1,31 @@
-# Chill score for "The 1904 Olympic Marathon" (same approved chill style as the emu, bat and whale re-scores, new
-# material). A laid-back, warm, sparse acoustic bed at 92 bpm with swung eighths and a light ragtime-period wink:
-# a soft honky-tonk upright piano (two slightly detuned strings per note, felt-soft hammers) playing lazy offbeat
-# comping and a little syncopated 'RAG' motif, fingerpicked steel-less nylon guitar, round upright bass (two-beat),
-# brushes + shaker + a soft kick (no snare cracks, no crashes, no rolls). F major, ragtime circle loops
-# (F6 D7 G7 C7, F6 Bb6 F6 C7 ...). All composed here (no existing melodies: no Maple Leaf Rag, no Entertainer).
-# Comedy beats are soft: an 'uh-oh' two-note piano at the bottle @99, a reversed shimmer into the flash @131, a lone
-# piano plink after the single drop @529, a little piano 'ta-da' after 'cheered', a soft drop-out where the cheering
-# stops dead @752, a soured detuned piano at the rotten apple @867, a celesta lullaby for the nap @926, a cheerful
-# chord @965, a skittering (still soft) feel for the dogs, a woozy detuned half-time for Hicks with little blips on
-# each hand-off, a held breath @1304, a warm chord on the tape @1399 + low piano 'plonk' for the medal, a deflating
-# chromatic line for the drop-outs, a bright Boston groove and a warm resolve on F6/9 with a celesta 'ting' @1660.
+# Chill score for "Chicago Lifts a Hotel" (1861) (same approved chill style as the marathon / emu / bat / whale re-scores, new
+# material, new key and feel). A laid-back, warm, sparse acoustic bed at 88 bpm with swung eighths and a light 1860s parlour
+# flavour: a soft honky-tonk upright piano (two slightly detuned strings per note, felt-soft hammers) playing lazy offbeat
+# comping and a little syncopated tune, fingerpicked nylon guitar, round upright bass (two-beat, walking for the work shots),
+# brushes + shaker + a soft kick (no snare cracks, no crashes, no rolls) and a light banjo plink. G major, parlour loops
+# (G6 E7 A7 D7, G6 C6 G6 D7, G6 Em7 Am7 D9sus ...), and a rocking 6/8 (80 dotted-quarter bpm, one bar = 1.5 s, the rails'
+# "ta-dak" every 0.75 s) for the sleeping car. All composed here (no existing melodies).
+# Comedy beats are soft: a rising 3-note lift in the hook gap and a reversed vibes shimmer into the flash @196, a frog-plop pizz and
+# a banjo 'plink-plink' @250, pizz bloops for the puddle, a sad 3-note pizz for the doctor @427, a low piano 'dun' for the gavel @496
+# and the gasp @541, a dull low piano 'plonk' for the head bonk @685, an ascending pizz chain for the handshakes, a low bass
+# accent for the jackscrew @974, three rising piano steps (one per turn) in the gaps @1142 / 1168 / 1194, a fanfare chord + celesta
+# run @1276, a celesta lullaby for the sleeper @1385, a bright chord at the desk bell @1409, a pizz 'ting' for the wink @1550, a
+# rocking 6/8 for the sleeping car and a warm resolve on G6/9 after 'them.'
 import numpy as np
 from dsp import SR, TAU, ns, tt, rng, pan, place, dbg, make_ir, convolve_st, integrated, lp, hp, fades
 import instruments as I
 import timeline as T
 
 N = ns(T.DUR)
-BPM = 92.0
-B = 60.0 / BPM            # one beat = 0.652 s
+BPM = 88.0
+B = 60.0 / BPM            # one beat = 0.682 s
 SW = 2 / 3                # swung eighth
 F = I.m2f
 fr = T.fr
 
-# chord: (bass root, piano comp voicing, guitar picking notes [thumb, thumb 2, finger, finger])
-CH = {
-    "F6": (41, [57, 60, 62, 65], [41, 48, 57, 62]),
+# chord: (bass root, piano comp voicing, guitar picking notes [thumb, thumb 2, finger, finger]); defined in F then moved up a tone to G
+_F = {
+    "6": (41, [57, 60, 62, 65], [41, 48, 57, 62]),        # F6
     "D7": (38, [54, 57, 60, 62], [38, 45, 54, 60]),
     "G7": (43, [53, 55, 59, 62], [43, 50, 53, 59]),
     "C7": (36, [52, 55, 58, 62], [48, 55, 58, 64]),
@@ -36,21 +37,24 @@ CH = {
     "Am7": (45, [55, 57, 60, 64], [45, 52, 55, 60]),
     "F69": (41, [57, 62, 65, 67], [41, 48, 57, 67]),
     "Fmaj9": (41, [57, 60, 64, 67], [41, 48, 57, 64]),
-    "Abdim7": (44, [53, 56, 59, 62], [44, 50, 56, 59]),
-    "E7": (40, [56, 59, 62, 64], [40, 47, 56, 62]),
-    "Bbm6": (46, [53, 55, 58, 61], [46, 53, 58, 61]),
 }
-RAG = ["F6", "D7", "G7", "C7"]                 # the ragtime circle I - VI7 - II7 - V7
-LAZY = ["F6", "Bb6", "F6", "C7"]
-SUN = ["F6", "Dm7", "Gm7", "C9sus"]
-WOOZY = ["Gm7", "C7", "F6", "Abdim7"]
-BOSTON = ["Bb6", "Bdim7", "F6", "D7"]
+_MAP = {"G6": "6", "E7": "D7", "A7": "G7", "D7": "C7", "C6": "Bb6", "Cdim7": "Bdim7", "Em7": "Dm7", "Am7": "Gm7",
+        "D9sus": "C9sus", "Bm7": "Am7", "G69": "F69", "Gmaj9": "Fmaj9"}
+CH = {k: (v[0] + 2, [m + 2 for m in v[1]], [m + 2 for m in v[2]]) for k, v in ((nm, _F[src]) for nm, src in _MAP.items())}
+CH["B7"] = (47, [54, 57, 59, 63], [47, 54, 57, 63])
+CH["Cmaj7"] = (36, [55, 59, 62, 64], [48, 55, 59, 64])
 
-# the RAG motif (piano right hand): a lazy syncopated 'da-da . DUM . da da-da DUM' in F (offset beats, length, midi)
-MOTIF = [(0.0, 0.4, 69), (SW, 0.3, 72), (1 + SW, 0.8, 74), (2 + SW, 0.3, 77), (3.0, 0.3, 76), (3 + SW, 0.3, 74), (4.0, 1.2, 72)]
-ANSWER = [(0.0, 0.3, 77), (SW, 0.3, 74), (1.0, 0.9, 72)]
+RAG = ["G6", "E7", "A7", "D7"]                 # the parlour circle I - VI7 - II7 - V7
+LAZY = ["G6", "C6", "G6", "D7"]
+SUN = ["G6", "Em7", "Am7", "D9sus"]
+SWAMP = ["Em7", "Am7", "B7", "Em7"]
+WOOZY = ["Am7", "D7", "G6", "Cdim7"]
 
-R = rng(1904)
+# the TUNE (piano right hand): a lazy syncopated 'G A B . D . C B A' (offset beats, length, midi)
+MOTIF = [(0.0, 0.4, 67), (SW, 0.3, 69), (1.0, 0.4, 71), (2.0, 0.9, 74), (3 + SW, 0.3, 72), (4.0, 0.3, 71), (4 + SW, 1.2, 69)]
+ANSWER = [(0.0, 0.3, 79), (SW, 0.3, 76), (1.0, 0.9, 74)]
+
+R = rng(1861)
 
 
 def _r():
@@ -94,7 +98,7 @@ def piano(f, vel=0.5, r=None, dur=1.0, honky=7.0, rel=0.12, wobble=0.0):
 
 class Band:
     def __init__(self):
-        self.tr, self.cues = {}, []
+        self.tr, self.cues, self.cuts = {}, [], []
 
     def add(self, name, x, t, p=0.0, g=1.0):
         if name not in self.tr:
@@ -139,6 +143,8 @@ def groove(b, t0, t1, chords, layers=("gtr", "bass", "piano", "brush", "shaker",
                 if hit:
                     m = m - 12 if m > 47 else m
                     b.add("bass", lp(I.pluck(F(m), 0.8 * vel, _r(), dur=1.1 if not half else 1.8, bright=0.05, pos=0.35), 900, 2), t + 0.01, 0.0)
+            if "banjo" in layers and beat in (1, 3):
+                b.add("banjo", I.banjo(F(gt[2 + (beat // 2)] + 12), 0.34 * vel * R.uniform(0.85, 1.05), _r(), 0.5, 0.5), t + SW * B + 0.01, 0.35)
             if "kick" in layers and beat in ((0,) if half else (0, 2)):
                 b.add("kick", I.soft_kick(0.5 * vel, _r()), t)
             if "brush" in layers and beat in (1, 3):
@@ -177,6 +183,7 @@ def pizz_run(b, t0, notes, gap=0.1, vel=0.4, p=0.1):
 
 def cut(b, t, fade=0.06):
     """fade every track out at t (only what is already written: later material is added after the cut)"""
+    b.cuts.append(t)
     g = np.ones(N)
     a = ns(t)
     g[a:a + ns(fade)] = np.linspace(1, 0, ns(fade)) ** 1.5
@@ -196,145 +203,195 @@ def chord_hit(b, t, name, vel=0.4, strum=0.05, bass=True, dur=1.8, honky=7.0):
         b.add("bass", lp(I.pluck(F(root if root <= 47 else root - 12), 0.8, _r(), dur=dur, bright=0.05, pos=0.35), 900, 2), t, 0.0)
 
 
+
+
+B68 = 0.75                # one dotted-quarter beat of the 6/8 (bar = 1.5 s)
+
+
+def groove68(b, t0, t1, chords, layers=("gtr", "bass", "piano", "brush", "shaker"), vel=1.0, honky=6.0):
+    """the rocking 6/8 of the railway: one chord per bar (1.5 s), fingerpicked arpeggio in eighths (0.25 s), bass on 1 and 4
+    ('da-dum' = the rails' 'ta-dak', 0.75 s), brushes on 1 and 4, a soft shaker on the eighths, piano sustaining the chord"""
+    seq = [(c, 1) if isinstance(c, str) else c for c in chords]
+    tb, i = t0, 0
+    E8 = B68 / 3
+    while tb < t1 - 0.05:
+        name = seq[i % len(seq)][0]
+        root, pv, gt = CH[name]
+        pat = [gt[0], gt[2], gt[3], gt[1], gt[2], gt[3]]
+        for k in range(6):
+            t = tb + k * E8
+            if t >= t1 - 0.02:
+                break
+            if "gtr" in layers:
+                b.add("gtr", I.pluck(F(pat[k]), (0.5 if k in (0, 3) else 0.36) * vel * R.uniform(0.9, 1.05), _r(), dur=0.9, bright=0.22, pos=0.22),
+                      t + R.normal(0, 0.005), -0.3)
+            if "bass" in layers and k in (0, 3):
+                m = root if k == 0 else root + 7
+                m = m - 12 if m > 47 else m
+                b.add("bass", lp(I.pluck(F(m), 0.75 * vel, _r(), dur=1.0, bright=0.05, pos=0.35), 900, 2), t + 0.01, 0.0)
+            if "brush" in layers and k in (0, 3):
+                b.add("brush", I.brush(0.36 * vel, _r(), dur=0.45, swish=True), t - 0.05, 0.15)
+            if "shaker" in layers:
+                b.add("shaker", I.shaker((0.2 if k in (0, 3) else 0.12) * vel, _r()), t, 0.4)
+            if "piano" in layers and k == 3:
+                for j, m in enumerate(pv):
+                    b.add("piano", piano(F(m), 0.2 * vel * R.uniform(0.85, 1.0), _r(), 1.0, honky), t + 0.02 + 0.01 * j, 0.3 - 0.12 * j)
+        tb += 2 * B68
+        i += 1
+
+
+def bass_note(b, t, m, vel=0.7, dur=1.0):
+    b.add("bass", lp(I.pluck(F(m), vel, _r(), dur=dur, bright=0.05, pos=0.35), 900, 2), t, 0.0)
+
+
 def build():
     b = Band()
     s = lambda i: T.shot_t(i)[0]
-
-    # 1 HOOK 0 - 4.37: guitar + soft piano comp + bass, no drums; the RAG motif answers 'Olympics,' in the first gap
-    groove(b, 0.0, fr(T.FLASH) - 0.02, [("F6", 4), ("D7", 2)], layers=("gtr", "piano", "bass"), vel=0.75)
-    line(b, 1.80, ANSWER, 0.36, beat=0.15)
-    b.cue(0.0, "HOOK: fingerpicked guitar + soft upright piano after-beats + upright bass (F6 - D7), no drums")
-    b.cue(1.80, "a tiny 3-note piano answer (F E-flat... F D C) in the gap after 'Olympics,' (1.77-2.09)")
-    line(b, fr(T.BOTTLE), [(0, 0.35, 68), (0.45, 0.8, 67)], 0.3, beat=0.5)
-    b.cue(fr(T.BOTTLE), "BOTTLE @99: a soft 'uh-oh' (A-flat - G) on the piano, high and quiet")
     tf = fr(T.FLASH)
-    for m in [77, 81, 84, 89]:
-        x = I.vibes(F(m), 0.24, _r(), dur=0.55, trem_depth=0.1)[::-1]
+
+    # 1 HOOK 0 - 6.53: guitar + soft piano after-beats + bass, no drums; a rising 3-note lift, a tiny answer, a shimmer into the flash
+    groove(b, 0.0, tf - 0.03, [("G6", 4), ("E7", 2), ("C6", 2)], layers=("gtr", "piano", "bass"), vel=0.72)
+    b.cue(0.0, "HOOK: fingerpicked guitar + soft upright piano after-beats + upright bass (G6 - E7 - C6), no drums; the hotel starts to rise @100")
+    line(b, 2.02, ANSWER, 0.34, beat=0.12)
+    b.cue(2.02, "a tiny 3-note piano answer (G E D) in the gap after '1861,' (1.99-2.37)")
+    line(b, 5.04, [(0, 0.3, 67), (0.5, 0.3, 71), (1.0, 0.5, 74)], 0.3, beat=0.14)
+    b.cue(5.04, "a rising 3-note lift (G B D) in the gap after 'air,' (5.01-5.35): the building goes up")
+    for m in [79, 83, 86, 91]:
+        x = I.vibes(F(m), 0.22, _r(), dur=0.5, trem_depth=0.1)[::-1]
         b.add("vibes", fades(x, 0.15, 0.02), tf - len(x) / SR, 0.2)
     cut(b, tf, 0.04)
-    b.cue(tf, "FLASH @131: a soft reversed-vibes shimmer swells into the frame; the band stops on it")
+    b.cue(tf, "FLASH @196: a soft reversed-vibes shimmer swells into the frame; the band stops on it")
 
-    # 2 THE CAR 4.43 - 6.8: a lazy putter of a vamp (bass + guitar + piano), no drums
-    groove(b, fr(T.CAR1) + 0.08, s(3) - 0.05, [("F6", 2), ("C7", 2)], layers=("gtr", "bass", "piano"), vel=0.7)
-    line(b, 6.38, ANSWER, 0.34, beat=0.16)
-    b.cue(fr(T.CAR1), "THE CAR @133: a lazy vamp (F6 - C7) under 'And that wasn't even the strangest part.'")
-    b.cue(6.38, "the 3-note piano answer in the gap after 'part.' (6.22-6.89)")
+    # 2 SWAMP 6.6 - 10.0: half-time, a little woozy; the frog plop + a banjo plink-plink
+    groove(b, s(2) + 0.04, s(3), SWAMP, layers=("gtr", "bass", "piano", "shaker"), vel=0.7, honky=12.0, wobble=8.0, half=True)
+    b.cue(s(2), "SWAMP-EDGE STREETS: a half-time, slightly woozy loop - guitar, bass, piano, shaker (Em7 Am7 B7 Em7)")
+    line(b, 6.66, ANSWER, 0.3, beat=0.15)
+    b.cue(6.66, "the 3-note piano answer in the gap after 'inside.' (6.59-7.23)")
+    b.add("pizz", I.pizz(F(55), 0.34, _r(), 0.4), fr(T.FROG) + 0.02, -0.2)
+    for k, m in enumerate([86, 83]):
+        b.add("banjo", I.banjo(F(m), 0.3, _r(), 0.45, 0.4), T.FROG_RING + 0.02 + 0.15 * k, 0.35)
+    b.cue(fr(T.FROG), "FROG @250: a soft low pizz 'bloop' (G3); a banjo 'plink-plink' (D6 B5) in the gap after 'swamp.' (8.73-9.04)")
 
-    # 3 START 6.8 - 11.33 (XF 204): the groove starts on the ragtime circle
-    groove(b, s(3), s(4), RAG)
-    b.cue(s(3), "STADIUM START (XF @204): the groove starts - guitar, upright bass, piano after-beats, brushes + shaker + soft kick (F6 D7 G7 C7)")
-    line(b, 10.85, MOTIF[:4], 0.36, beat=0.11)
-    b.cue(10.86, "the RAG motif's first half (A C D F) in the gap after 'roads.' (10.84-11.24)")
+    # 3 MUD 10.0 - 12.97: a slouching walk (walking bass, brushes), blips for the burps and a pizz 'uh-oh' for the snort
+    groove(b, s(3), s(4), [("Em7", 4), ("B7", 4)], layers=("gtr", "bass", "piano", "brush"), vel=0.72, honky=14.0, wobble=12.0, walk=True)
+    b.cue(s(3), "MUDDY STREET: a slouching walk - the bass walks, brushes, woozy piano after-beats (Em7 - B7)")
+    for tm, m in ((10.99, 52), (11.56, 55), (12.06, 50)):
+        b.add("pizz", I.pizz(F(m), 0.3, _r(), 0.35), tm + 0.02, 0.2)
+    b.cue(10.99, "@328 the puddle bubbles: three soft low pizz 'bloops' (E3 G3 D3) with the burps (11.0, 11.56, 12.06)")
+    pizz_run(b, 12.32, [64, 62], 0.14, 0.34, -0.1)
+    b.cue(12.32, "@358 the dog snorts: a two-note pizz 'uh-oh' (E4 D4) in the gap after 'go.' (12.26-12.66)")
 
-    # 4 CARS + DUST 11.33 - 14.97: groove continues, lazier loop
-    groove(b, s(4), s(5), SUN, vel=0.95)
-    b.cue(s(4), "CARS + DUST: the groove carries on (F6 Dm7 Gm7 C9sus)")
+    # 4 SICKROOM 12.97 - 15.63: woozy half-time, detuned piano; a sad 3-note pizz for the doctor
+    groove(b, s(4), s(5) - 0.02, WOOZY, layers=("gtr", "bass", "piano", "brush"), vel=0.8, honky=18.0, wobble=24.0, half=True)
+    b.cue(s(4), "SICKROOM: woozy half-time - piano out of tune with a slow pitch sway (Am7 D7 G6 Cdim7)")
+    pizz_run(b, 14.62, [64, 62, 59], 0.14, 0.34, -0.1)
+    b.cue(14.62, "@427 the doctor shakes his head: a falling 3-note pizz (E D B) in the gap after 'out,' (14.55-14.96)")
 
-    # 5 THE WELL 14.97 - 18.43: thin (guitar, bass, piano), the band waits on the drop
-    groove(b, 15.16, fr(T.DRIP), LAZY,                 # enters just after the very soft "And" (15.00-15.08), not on it
-            layers=("gtr", "bass", "piano", "shaker"), vel=0.85)
-    cut(b, fr(T.DRIP) + 0.02, 0.25)
-    b.add("bass", lp(I.pluck(F(36), 0.6, _r(), dur=1.0, bright=0.05, pos=0.35), 900, 2), fr(T.DRIP) + 0.02, 0.0)
-    b.cue(fr(T.DRIP), "THE DROP @529: the band lets go (250 ms), one low bass C holds...")
-    line(b, T.DRIP_LAND + 0.02, [(0, 0.9, 96)], 0.22, beat=1.0, honky=3.0)
-    b.cue(T.DRIP_LAND, "...and a lone high piano plink (C7) after the drop lands (gap after 'course.')")
+    # 5 COUNCIL 15.63 - 20.6: parlour dignity: a stately loop, a low 'dun' for the gavel and the gasp, a resolve in the gap
+    groove(b, s(5), 16.50, [("G6", 2), ("D7", 2)], layers=("gtr", "bass", "piano"), vel=0.7)
+    chord_hit(b, 16.58, "D7", 0.3, 0.03, dur=1.0)
+    b.add("piano", piano(F(38), 0.4, _r(), 0.8, 6.0) + piano(F(50), 0.3, _r(), 0.8, 6.0), 16.58, 0.0)
+    groove(b, 16.88, 18.30, [("C6", 2), ("D7", 2)], layers=("gtr", "bass", "piano", "brush"), vel=0.75)
+    b.add("piano", piano(F(38), 0.5, _r(), 0.9, 6.0) + piano(F(50), 0.35, _r(), 0.9, 6.0), T.GASP_T, 0.0)
+    groove(b, 18.70, 20.08, [("Em7", 2), ("A7", 2)], layers=("gtr", "bass", "piano"), vel=0.6, half=True)
+    chord_hit(b, T.GASP2_T + 0.02, "G69", 0.26, 0.04, dur=1.3)
+    b.cue(s(5), "COUNCIL HALL: a stately loop under 'so the city made a wild decision' (G6 D7), guitar + bass + piano")
+    b.cue(16.58, "GAVEL @496: a soft D7 stab with a low D 'dun' (D2 + D3) in the gap after 'decision,' (16.55-16.86)")
+    b.cue(T.GASP_T, "THE EASEL @541: a low piano octave 'dun' (D2 + D3) as the council gasps (gap after 'feet,' 18.35-18.66)")
+    b.cue(T.GASP2_T + 0.02, "a warm resolve on G6/9 (rolled guitar, piano, low G) in the gap after 'underneath.' (20.09-20.69)")
 
-    # 6 THE FINISH 18.43 - 22.87: full and bright; 'ta-da' after 'cheered,'
-    groove(b, s(6), s(7), RAG)
-    b.cue(s(6), "FINISH LINE: full groove on the ragtime circle")
-    line(b, 20.31, [(0, 0.25, 72), (0.33, 0.25, 77)], 0.3, beat=0.3)
-    b.cue(20.31, "TAPE @607: a two-note piano lift (C F) in the small gap after 'line' (20.31-20.50)")
-    line(b, 22.55, [(0, 0.3, 72), (0.5, 0.3, 76), (1.0, 1.4, 81)], 0.36, beat=0.1, octave=True)
-    b.cue(22.56, "CROWD CHEERS: a little piano 'ta-da' (C E A, octaves) in the gap after 'cheered,' (22.55-22.87)")
+    # 6 DIG 20.6 - 23.83: the work groove (banjo plinks), a dull 'plonk' for the bonk
+    groove(b, s(6), s(7), RAG, layers=("gtr", "bass", "piano", "brush", "shaker", "kick", "banjo"), vel=0.95)
+    b.add("piano", piano(F(40), 0.42, _r(), 0.7, 6.0) + piano(F(52), 0.3, _r(), 0.7, 6.0), fr(T.BONK) + 0.01, 0.0)
+    b.add("pizz", I.pizz(F(46), 0.3, _r(), 0.3), fr(T.BONK) + 0.2, -0.2)
+    line(b, 23.50, ANSWER, 0.3, beat=0.11)
+    b.cue(s(6), "RAISING THE STREET: the work groove - guitar, bass, piano after-beats, brushes, shaker, soft kick + a light banjo plink (G6 E7 A7 D7)")
+    b.cue(fr(T.BONK), "BONK @685: a dull low piano 'plonk' (E2 + E3) and a falling pizz")
+    b.cue(23.50, "the 3-note answer (G E D) in the gap after 'up too.' (23.46-23.86)")
 
-    # 7 THE FLASHBACK 22.87 - 25.07: groove carries on - then the soft drop-out where the cheering stops dead @752
-    groove(b, s(7), fr(T.STOP_DEAD) + 0.1, LAZY, vel=0.95)
-    cut(b, fr(T.STOP_DEAD), 0.15)
-    b.cue(fr(T.STOP_DEAD), "CHEERING STOPS DEAD @752: soft drop-out (150 ms fade), silence under the end of 'car.'")
-    pizz_run(b, 25.36, [53, 52], 0.14, 0.36, -0.1)
-    b.cue(25.36, "a flat two-note pizz 'hmph' (F - E) in the gap after 'car.' (25.26-25.69)")
+    # 7 HOTEL FRONT 23.83 - 27.23: bright, grand but soft: full groove, a carriage-trot feel
+    groove(b, s(7), s(8), [("G6", 2), ("C6", 2), ("G6", 2), ("D7", 2)], vel=1.0)
+    line(b, 26.80, MOTIF[:4], 0.34, beat=0.1)
+    b.cue(s(7), "THE TREMONT HOUSE (XF @715): the full groove brightens - guitar, bass, piano, brushes, shaker, soft kick (G6 C6 G6 D7)")
+    b.cue(26.80, "the TUNE's opening (G A B D) in the gap after 'hotel.' (26.77-27.17)")
 
-    # 8 ORCHARD 25.6 - 29.53: gently back in, no drums; the apple sours
-    groove(b, s(8) - 0.1, fr(T.SOUR[0]), LAZY, layers=("gtr", "bass", "piano", "shaker"), vel=0.8)
-    sparkle(b, fr(T.APPLE_PICK), [84, 88], 0.12, 0.35, 0.07)
-    b.cue(s(8), "ORCHARD: the band comes back gently - guitar, bass, piano, shaker (F6 Bb6 F6 C7)")
-    b.cue(fr(T.APPLE_PICK), "APPLE PICK @822: a tiny two-note celesta glint")
-    ts = fr(T.SOUR[0])
-    cut(b, ts, 0.1)
-    for k, m in enumerate([56, 59, 62]):
-        b.add("piano", piano(F(m), 0.3, _r(), 0.9, honky=28.0, wobble=35.0), ts + 0.03 * k, 0.1)
-    b.add("bass", lp(I.pluck(F(40), 0.55, _r(), dur=1.0, bright=0.05, pos=0.35), 900, 2), ts, 0.0)
-    b.cue(ts, "ROTTEN @867: the band stops, a soured, badly out-of-tune piano cluster wobbles (E bass)")
+    # 8 OFFICE 27.23 - 31.23: plucky: walking bass, banjo, a pizz handshake chain
+    groove(b, s(8), 30.70, RAG, layers=("gtr", "bass", "piano", "brush", "shaker", "banjo"), vel=0.85, walk=True)
+    for k, (tm, m) in enumerate(((29.73, 67), (29.94, 71), (30.15, 74), (30.35, 79))):
+        b.add("pizz", I.pizz(F(m), 0.3, _r(), 0.35), tm + 0.02, 0.25)
+    chord_hit(b, 30.78, "G6", 0.26, 0.03, dur=1.0, bass=False)
+    b.cue(s(8), "THE CONTRACTORS' OFFICE: a plucky walk with a light banjo (G6 E7 A7 D7)")
+    b.cue(29.73, "HANDSHAKES @890-912: a rising pizz chain (G B D G) as the partners shake hands, then a soft G6 in the gap after 'job.' (30.72-31.23)")
 
-    # 9 NAP 29.82 - 31.57: lullaby (half-time guitar + celesta 'Z's), then CUT @947 to the cheerful finish
-    groove(b, 29.84, s(9) + fr(947 - 886) - 0.02, [("F6", 2), ("Bb6", 2)], layers=("gtr", "bass"), vel=0.6, half=True)
-    for k, m in enumerate([84, 81, 77]):        # the Z bubbles rise @926; their notes wait for the gap after 'nap.' (31.28-31.58)
-        b.add("celesta", I.celesta(F(m), 0.2, _r(), 1.0), 31.35 + 0.06 * k, 0.3 - 0.2 * k)
-    b.cue(29.84, "NAP: a half-time lullaby - guitar + bass (F6 - Bb6)")
-    b.cue(31.35, "Z bubbles (@926): three soft descending celesta notes (C A F) in the gap after 'nap.'")
-    t947 = fr(947)
-    groove(b, t947, s(10), [("F6", 2), ("C7", 2), ("F6", 4)], vel=0.9)
-    chord_hit(b, fr(T.FINISH4), "F69", 0.32, 0.03, bass=False, dur=1.2)
-    line(b, 32.67, [(0.0, 0.3, 76), (SW, 0.3, 74), (1.0, 1.0, 72)], 0.34, beat=0.15)
-    b.cue(t947, "CUT @947 to the finish: the groove pops back in")
-    b.cue(fr(T.FINISH4), "FOURTH @965: a cheerful soft F6/9 chord on the four fingers; the motif's tail (E D C) after 'fourth.'")
+    # 9 JACKSCREWS 31.23 - 35.9: purposeful; a low accent on the clunk; the march from @1033
+    groove(b, s(9), fr(T.MARCH), [("C6", 4), ("D7", 4)], layers=("gtr", "bass", "piano", "brush"), vel=0.85)
+    bass_note(b, fr(T.CLUNK) + 0.01, 31, 0.8, 1.2)
+    b.add("piano", piano(F(43), 0.4, _r(), 0.8, 6.0), fr(T.CLUNK) + 0.01, 0.0)
+    b.cue(s(9), "UNDER THE HOTEL: a purposeful loop (C6 D7), guitar + bass + piano + brushes")
+    b.cue(fr(T.CLUNK), "CLUNK @974: a low G bass accent + a low piano G")
+    groove(b, fr(T.MARCH), s(10), [("G6", 4), ("D7", 4)], layers=("gtr", "bass", "piano", "brush", "shaker", "kick"), vel=1.0, walk=True)
+    b.cue(fr(T.MARCH), "MARCH @1033: the workers march in - a steady walking bass, soft kick and brushes on every beat at 88 bpm, in step with the boots (G6 D7)")
 
-    # 10 DOGS 32.93 - 35.93: a skittering feel (walking bass, triplet shaker) but soft
-    groove(b, s(10), 35.62, [("D7", 4), ("G7", 4), ("C7", 4)], layers=("gtr", "bass", "piano", "brush", "shaker"), vel=0.85, walk=True)
-    cut(b, 35.62, 0.12)
-    b.cue(s(10), "DOGS: the bass walks, triplet shaker, piano after-beats - skittering but soft (D7 G7 C7)")
-    b.cue(35.62, "the band lets go after 'dogs' so the bark volley has the gap (35.66-36.07)")
+    # 10 SIGNAL 35.9 - 40.77: sparse and tense; three rising piano steps, one per turn, in the gaps
+    groove(b, s(10), s(11) - 0.05, [("Em7", 4), ("A7", 4), ("Em7", 4), ("D7", 4)], layers=("gtr", "bass"), vel=0.5, half=True)
+    for tm, ms in ((38.47, [71]), (39.47, [74]), (40.30, [79, 83])):
+        for k, m in enumerate(ms):
+            b.add("piano", piano(F(m), 0.34, _r(), 0.5, 5.0), tm + 0.18 * k, 0.2)
+    b.cue(s(10), "THE SIGNAL: sparse and a little tense - half-time guitar + bass (Em7 A7 Em7 D7)")
+    b.cue(38.47, "@1142 / 1168 / 1194 each turn lifts the music a step: piano B4, D5, then G5 + B5 in the gaps after 'turn.' / 'another,' / 'another.'")
 
-    # 11 HICKS 35.93 - 42.43: woozy half-time, detuned piano; blips on each hand-off
-    groove(b, 36.25, s(12), WOOZY, layers=("gtr", "bass", "piano", "brush"), vel=0.85, honky=16.0, wobble=18.0, half=True)
-    b.cue(36.25, "HICKS: woozy half-time - piano more out of tune with a slow pitch sway, brushes swish (Gm7 C7 F6 Abdim7)")
-    for k, (t, m) in enumerate([(fr(T.EGG), 79), (fr(T.FLASK), 81)]):     # (none on the bottle: 'strychnine' stays clear)
-        b.add("pizz", I.pizz(F(m - 12), 0.34, _r(), 0.35), t + 0.02, 0.25)
-    b.cue(fr(T.EGG), "EGG @1204 / FLASK @1235: a soft pizz blip on each hand-off, climbing (G A); the bottle @1246 gets none (keeps 'strychnine' clear)")
-    line(b, 42.09, [(0, 0.3, 77), (0.5, 0.3, 76), (1.0, 0.3, 75), (1.5, 0.6, 74)], 0.3, beat=0.12, wobble=40.0, honky=20.0)
-    b.cue(42.09, "a woozy chromatic slide down (F E Eb D) in the gap after 'strychnine.' (42.01-42.41)")
+    # 11 THE BOARD 40.77 - 43.37: the groove builds, a fanfare resolve in the gap
+    groove(b, s(11), 41.55, [("G6", 4)], layers=("gtr", "bass"), vel=0.65)
+    groove(b, 41.55, 42.85, [("G6", 4)], layers=("gtr", "bass", "piano", "brush"), vel=0.85)
+    tc = T.CHIME_T - 0.02
+    chord_hit(b, tc, "G69", 0.34, 0.035, dur=1.8)
+    sparkle(b, tc + 0.03, [91, 95, 98], 0.2, 0.3, 0.08)
+    b.cue(s(11), "HOTEL WIDE: the groove builds as the board flag climbs - guitar + bass, then piano + brushes")
+    b.cue(tc, "FANFARE @1276: a warm G6/9 chord with a rising celesta run (G B D) in the gap after 'six feet,' (42.88-43.46)")
 
-    # 12 HELD BREATH 42.43 - 44.37: thin to a pedal + soft repeated piano; @1304 everything but a held chord stops
-    groove(b, s(12), fr(T.HELD_BREATH), [("C7", 4)], layers=("bass",), vel=0.6, half=True)
-    for k in range(int((fr(T.HELD_BREATH) - s(12)) / (B / 2))):
-        b.add("piano", piano(F(72), 0.12 + 0.02 * k, _r(), 0.18, 5.0), s(12) + k * B / 2, 0.2)
-    cut(b, fr(T.HELD_BREATH), 0.2)
-    for k, m in enumerate([52, 58, 62]):
-        b.add("piano", piano(F(m), 0.16, _r(), 0.85, 5.0), fr(T.HELD_BREATH) + 0.01 * k, 0.2 - 0.15 * k)
-    b.cue(s(12), "THE LONG LENS: bass pedal on C + a soft repeated piano C, slowly growing")
-    b.cue(fr(T.HELD_BREATH), "HELD BREATH @1304: the band stops, one quiet held C7 shell on the piano, then near-silence to 'Unluckily'")
+    # 12 HOTEL INTERIOR 43.37 - 49.63: warm lazy loop, a lullaby for the sleeper, a bright chord at the bell, a rise to the pull-back
+    groove(b, 43.50, fr(T.SNORE) - 0.02, LAZY, layers=("gtr", "bass", "piano", "brush", "shaker"), vel=0.8)
+    groove(b, fr(T.SNORE), fr(T.BELL) - 0.02, [("G6", 2), ("C6", 2)], layers=("gtr", "bass"), vel=0.5, half=True)
+    for k, m in enumerate([86, 83, 79]):
+        b.add("celesta", I.celesta(F(m), 0.14, _r(), 1.0), fr(T.SNORE) + 0.1 + 0.35 * k, 0.3 - 0.2 * k)
+    groove(b, fr(T.BELL), fr(1442), [("G6", 2), ("D7", 2)], vel=0.85)
+    chord_hit(b, fr(T.BELL), "G69", 0.22, 0.03, dur=1.2, bass=False)
+    groove(b, fr(1442), 49.0, [("C6", 4), ("D7", 4)], vel=0.95)
+    chord_hit(b, 49.05, "G69", 0.3, 0.035, dur=1.6)
+    sparkle(b, 49.08, [79, 83, 86, 91], 0.18, 0.3, 0.09)
+    b.cue(43.50, "THE HOTEL NEVER CLOSED: a warm lazy loop (G6 C6 G6 D7) - guitar, bass, piano after-beats, brushes, shaker")
+    b.cue(fr(T.SNORE), "SLEEPER @1385: a half-time lullaby (guitar + bass, G6 C6) with three falling celesta 'Z's (G5 B... D G)")
+    b.cue(fr(T.BELL), "CLERK @1409: the groove pops back, a warm G6/9 chord on the bell frame (G6 D7)")
+    b.cue(fr(1442), "PULL BACK @1442: all three scenes rising together - fuller groove (C6 D7)")
+    b.cue(49.05, "G6/9 + a rising celesta run (G B D G) in the gap after 'them.' (49.03-49.61)")
 
-    # 13 CARRIED 44.37 - 47.17: lumbering half-time back in; warm chord on the tape, low 'plonk' medal
-    groove(b, 44.40, fr(T.TAPE2), [("F6", 2), ("C7", 2)], layers=("gtr", "bass", "piano", "brush"), vel=0.8, half=True)
-    line(b, fr(T.LIFT), [(0, 0.3, 65), (0.5, 0.3, 69), (1.0, 0.5, 72)], 0.26, beat=0.16)
-    chord_hit(b, fr(T.TAPE2), "F69", 0.22, 0.035, dur=1.6)
-    b.add("piano", piano(F(36), 0.5, _r(), 0.9, 6.0) + piano(F(48), 0.35, _r(), 0.9, 6.0), T.MEDAL, 0.0)
-    b.add("celesta", I.celesta(F(84), 0.2, _r(), 1.2), T.MEDAL + 0.08, 0.3)
-    b.cue(44.40, "CARRIED: a lumbering half-time (F6 - C7), guitar, bass, piano, brushes")
-    b.cue(fr(T.LIFT), "LIFT @1378: a little piano step up (F A C)")
-    b.cue(fr(T.TAPE2), "TAPE @1399: a warm F6/9 chord; MEDAL: a low piano octave 'plonk' (C2+C3) + a celesta glint in the gap after 'it.'")
+    # 13 WINDOW 49.63 - 52.33: delicate; the wink gets a pizz 'ting' and a G6/9
+    groove(b, s(13), T.WINK_T - 0.04, [("G69", 4), ("Cmaj7", 4)], layers=("gtr", "bass"), vel=0.5, half=True)
+    sparkle(b, 50.30, [86, 91], 0.12, 0.3, 0.12)
+    b.add("pizz", I.pizz(F(91), 0.26, _r(), 0.3), fr(T.TAP) + 0.02, 0.3)
+    chord_hit(b, T.WINK_T - 0.02, "G69", 0.3, 0.04, dur=1.4)
+    b.add("pizz", I.pizz(F(86), 0.3, _r(), 0.4), T.WINK_T + 0.0, 0.25)
+    b.cue(s(13), "THE WINDOW: delicate - half-time guitar + bass (G6/9 Cmaj7), a celesta glint")
+    b.cue(fr(T.TAP), "TAP @1526: a tiny high pizz 'tick' (G6)")
+    b.cue(T.WINK_T - 0.02, "WINK @1550: a warm G6/9 chord with a pizz 'ting' (D6), in the gap after 'broke.' (51.59-52.18)")
 
-    # 14 DROP-OUTS 47.17 - 50.23: a deflating chromatic line, thin band
-    groove(b, 47.25, s(15) - 0.05, [("F6", 2), ("E7", 2), ("Bbm6", 2), ("F6", 2), ("C7", 4)], layers=("gtr", "bass", "piano", "shaker"), vel=0.8)
-    line(b, 48.45, [(0, 0.3, 72), (0.5, 0.3, 71), (1.0, 0.8, 70)], 0.3, beat=0.08)
-    line(b, 49.90, [(0, 0.3, 69), (0.5, 0.3, 68), (1.0, 0.4, 67), (1.5, 1.2, 65)], 0.3, beat=0.16)
-    b.cue(47.25, "DROP-OUTS: thin band (F6 E7 Bbm6 F6 C7), a deflating line")
-    b.cue(48.45, "piano 'deflate' C B Bb (gap after 'runners,'), then A Ab G F after 'finished.' (49.90-50.33)")
-
-    # 15 BOSTON 50.23 - 56.0 (XF 1507): bright, warm; resolve on F6/9 at the wink; motif in the gaps
-    tw = fr(T.WINK)
-    groove(b, s(15) - 0.05, tw - 0.03, [("Bb6", 4), ("Bdim7", 4), ("F6", 2), ("D7", 2), ("G7", 2), ("C7", 2)], vel=1.0)
-    line(b, 51.78, MOTIF[:3], 0.34, beat=0.13)
-    line(b, 54.22, ANSWER, 0.32, beat=0.14)
-    chord_hit(b, tw, "F69", 0.34, 0.04, dur=2.2)
-    b.add("bass", lp(I.pluck(F(29), 0.6, _r(), dur=1.6, bright=0.05, pos=0.35), 900, 2), tw, 0.0)
-    for k, m in enumerate([93, 96]):
-        b.add("celesta", I.celesta(F(m), 0.3, _r(), 1.6), tw + 0.03 + 0.09 * k, 0.25)
-    b.cue(s(15), "BOSTON (XF @1507): bright, full groove (Bb6 Bdim7 F6 D7 G7 C7)")
-    b.cue(51.78, "the RAG motif's opening in the gap after 'car?' (51.76-52.15); the answer after 'Marathon.' (54.20-54.58)")
-    b.cue(tw, "WINK @1660: warm resolve on F6/9 (rolled guitar, piano, low F) with a celesta 'ting' (A7 - C8)")
+    # 14 THE TRAIN 52.33 - 59.0: rocking 6/8 (bar 1.5 s), settling down to a lullaby; a warm resolve after 'them.'
+    groove68(b, s(14), fr(T.RAILS), ["G6", "Em7", "C6", "D7"], layers=("gtr", "bass", "piano"), vel=0.8)
+    groove68(b, fr(T.RAILS), 55.9, ["G6", "C6", "G6", "D7", "Em7", "C6", "G6", "D7"], vel=0.7)
+    groove68(b, 55.9, T.TWHISTLE_T - 0.06, ["Em7", "C6", "G6", "D9sus"], layers=("gtr", "bass", "piano", "brush", "shaker"), vel=0.55)
+    sparkle(b, 54.95, [79, 83, 86], 0.14, 0.3, 0.1)
+    sparkle(b, 56.22, [86, 83, 79], 0.13, 0.3, 0.1)
+    tw = 57.9
+    chord_hit(b, tw, "G69", 0.3, 0.045, dur=1.7)
+    bass_note(b, tw, 31, 0.6, 1.4)
+    for k, m in enumerate([91, 95]):
+        b.add("celesta", I.celesta(F(m), 0.26, _r(), 1.6), tw + 0.04 + 0.1 * k, 0.25)
+    b.cue(s(14), "THE PLATFORM (XF @1570): the 6/8 begins - a rocking fingerpicked arpeggio, bass on 1 and 4, soft piano chords (G6 Em7 C6 D7), 80 dotted-quarter bpm")
+    b.cue(fr(T.RAILS), "SLEEPING CAR @1619: the rails' 'ta-dak' joins - brushes + shaker on the 0.75 s pulse; the loop lulls (G6 C6 G6 D7 Em7 C6 G6 D7), lowering with every bar")
+    b.cue(54.95, "celesta lullaby glints (G5 B5 D6) / (D6 B5 G5) in the gaps after 'cars,' (54.91-55.22) and 'sleep,' (56.19-56.49)")
+    b.cue(tw, "RESOLVE: a warm G6/9 (rolled guitar, piano, low G) with a celesta 'ting' (G7 B7) after 'them.' (57.89), under the far train whistle")
     end = np.ones(N)
-    a = ns(55.2)
+    a = ns(58.0)
     end[a:] = np.linspace(1, 0, N - a) ** 1.3
     for k in b.tr:
         b.tr[k] *= end[None, :]
@@ -342,9 +399,9 @@ def build():
 
 
 TARGET = {"gtr": 0.0, "piano": -3.0, "lead": -4.0, "bass": -2.0, "kick": -9.0, "brush": -14.0, "shaker": -16.0, "pizz": -5.0,
-          "celesta": -8.0, "vibes": -8.0}
+          "celesta": -8.0, "vibes": -8.0, "banjo": -9.0}
 SEND = {"gtr": 0.12, "piano": 0.18, "lead": 0.2, "bass": 0.05, "kick": 0.03, "brush": 0.1, "shaker": 0.1, "pizz": 0.15,
-        "celesta": 0.3, "vibes": 0.25}
+        "celesta": 0.3, "vibes": 0.25, "banjo": 0.15}
 
 
 def render(b, ref=-20.0):
@@ -366,10 +423,11 @@ def render(b, ref=-20.0):
     return out, levels
 
 
+
+
 SECTIONS = [  # (name, start, end) for the level automation in mix.py
-    ("hook", 0.0, fr(T.FLASH)), ("car", fr(T.FLASH), fr(204)), ("start", fr(204), fr(340)), ("dust", fr(340), fr(449)),
-    ("well", fr(449), fr(553)), ("finish", fr(553), fr(686)), ("flashback", fr(686), fr(T.STOP_DEAD)),
-    ("dropout", fr(T.STOP_DEAD), fr(768) - 0.1), ("orchard", fr(768) - 0.1, fr(886)), ("nap", fr(886), fr(947)),
-    ("fourth", fr(947), fr(988)), ("dogs", fr(988), fr(1078)), ("hicks", fr(1078), fr(1273)), ("breath", fr(1273), 44.40),
-    ("carried", 44.40, fr(1415)), ("dropouts", fr(1415), fr(1507)), ("boston", fr(1507), T.DUR),
+    ("hook", 0.0, fr(T.FLASH)), ("swamp", fr(T.FLASH), fr(300)), ("mud", fr(300), fr(389)), ("sick", fr(389), fr(469)),
+    ("council", fr(469), fr(618)), ("dig", fr(618), fr(715)), ("hotel", fr(715), fr(817)), ("office", fr(817), fr(937)),
+    ("jack", fr(937), fr(1072)), ("signal", fr(1072), fr(1223)), ("board", fr(1223), fr(1301)), ("lobby", fr(1301), fr(1489)),
+    ("window", fr(1489), fr(1570)), ("train", fr(1570), fr(1619)), ("sleeper", fr(1619), 57.88), ("end", 57.88, T.DUR),
 ]

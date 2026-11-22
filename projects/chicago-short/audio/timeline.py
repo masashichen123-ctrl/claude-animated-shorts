@@ -1,14 +1,14 @@
-# Picture timeline of "The 1904 Olympic Marathon", mirrored (read-only) from SHOTS.md: 30 fps, TOTAL = 1680 f = 56.000 s.
+# Picture timeline of "Chicago Lifts a Hotel" (1861), mirrored (read-only) from SHOTS.md: 30 fps, TOTAL = 1770 f = 59.000 s.
 # Every frame number below is a locked picture event from the shot list; times are frame / 30.
-# Where a locked event sits on a key narration word, the bright / voice-like part of its sound is moved into the
-# nearest measured narration gap (the frame stays the visual sync point); those choices are marked "gap" here and
-# listed in cues.md.
+# Where a locked event sits on a key narration word, the bright / sustained / voice-like part of its sound is moved into the
+# nearest measured narration gap (the frame stays the visual sync point, and a dark short part of the sound sits on the
+# frame); those choices are marked "gap" here and listed in cues.md.
 import json
 import os
 
 FPS = 30
-TOTAL = 1680
-DUR = TOTAL / FPS            # 56.0 s exactly
+TOTAL = 1770
+DUR = TOTAL / FPS            # 59.0 s exactly = 2,832,000 samples
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 
@@ -19,65 +19,73 @@ def fr(f):
 
 # id: (first frame, end frame, set, light)
 SHOTS = {
-    1: (0, 133, "dusty road", "hot"), 2: (133, 204, "road, car", "hot"), 3: (204, 340, "stadium start / road", "hot"),
-    4: (340, 449, "dirt road, cars + dust", "hot"), 5: (449, 553, "roadside well", "hot"), 6: (553, 686, "stadium finish", "hot"),
-    7: (686, 768, "road flashback", "hot"), 8: (768, 886, "apple orchard", "hot"), 9: (886, 988, "orchard / finish", "hot"),
-    10: (988, 1078, "cornfield, dogs", "hot"), 11: (1078, 1273, "road, trainers' car", "hot"), 12: (1273, 1331, "finish, long lens", "hot"),
-    13: (1331, 1415, "finish, carried", "hot"), 14: (1415, 1507, "high 3/4 course", "hot"), 15: (1507, TOTAL, "Boston 1905", "spring"),
+    1: (0, 198, "Chicago street, the hotel rises", "bright"), 2: (198, 300, "swamp-edge streets", "overcast"),
+    3: (300, 389, "muddy street, the puddle", "overcast"), 4: (389, 469, "sickroom and street", "overcast"),
+    5: (469, 618, "city council hall", "warm"), 6: (618, 715, "street raised, the pit", "day"),
+    7: (715, 817, "grand hotel front", "bright"), 8: (817, 937, "contractors' office", "interior"),
+    9: (937, 1072, "under the hotel, jackscrews", "day"), 10: (1072, 1223, "the signal, the turns", "day"),
+    11: (1223, 1301, "hotel wide, board flag", "day"), 12: (1301, 1489, "hotel cutaway interior", "warm"),
+    13: (1489, 1570, "window close-up", "bright"), 14: (1570, TOTAL, "platform + sleeping car", "golden dusk"),
 }
-XF = [204, 1507]                     # 5-frame anchored dissolves
+XF = [469, 715, 1570]                # 5-frame anchored dissolves
 
 # locked picture events (frames, SHOTS.md)
-BOTTLE = 99                # trainer holds up the skull bottle
-GULP = 110                 # Hicks gulps it, eyes go swirly
-FLASH = 131
-CAR1 = 133                 # the open 1904 car putters past (shot 2)
-WAVE = 162                 # Lorz waves cheerfully from the back seat (horn honk near here)
-DOUBLE_TAKE = 176
-PISTOL = 210               # starter's pistol puff
-HEAT = 262                 # CUT to blazing sun: heat buzz / cicadas from here
-CARS = 344                 # two cars drive ahead
-DUST = (398, 427)          # dust clouds roll back over the runners
-TONGUES = 495
-DRIP = 529                 # the bucket comes up with a single drop
-TAPE1 = 607                # Lorz breaks the tape
-HATS = 661                 # crowd leaps up, boaters fly
-CAR_PASS = (740, 750)      # flashback: Lorz's car passes
-STOP_DEAD = 752            # the cheering stops dead (boaters freeze mid-air)
-APPLE_PICK = 822
-APPLE_BITE = 830
-SOUR = (867, 871)          # face turns green, worms, stink lines
-SNORE = 926                # Z bubbles
-FINISH4 = 965              # cheerful finish, four fingers
-DOGS = (1013, 1055)
-EGG = 1204
-FLASK = 1235
-BOTTLE2 = 1246
-HELD_BREATH = 1304
-LIFT = 1378
-TAPE2 = 1399               # carried through the tape, medal plonk
-DROPOUTS = (1440, 1477)
-BOSTON = 1507
-TAPE3 = 1604               # Lorz wins Boston
-LOOK_DOWN = 1637
-HONK = 1650
-WINK = 1660
+HOOK = (100, 198)
+FLASH = 196
+FROG = 250
+SLURP = (280, 303)
+PUDDLE = 328
+SNORT = 358
+COUGH = (389, 427)
+TUT = 427
+GAVEL = 496
+GASP = (541, 585)
+SHOVEL = (623, 650)
+BONK = 685
+HOTEL = (715, 788)
+BLUEPRINT = 823
+SHAKE = (890, 912)
+CLUNK = 974
+MARCH = 1033
+WHISTLE = 1079
+CLICKS = (1130, 1142)
+CLICK2, CLICK3 = 1168, 1194
+TICKS = (1234, 1248, 1261)
+FANFARE = 1276
+SIGN = 1309
+SOUP = 1360
+SNORE = 1385
+BELL = 1409
+TAP = 1526
+WINK = 1550
+STEAM = 1588
+COIN = 1596
+RAILS = 1619
+SNORE2 = 1676
+TRAIN_WHISTLE = 1727
 
-# chosen here (not pinned in SHOTS.md, or moved off a key word into a narration gap measured on voice.wav at -40 dB;
-# words.json is up to 0.15 s early at some line ends, so the gaps below are the measured ones)
-SWIRL = 4.17               # the swirly 'boing' after 'poison.' ends (4.13-4.17), before the flash @131 (4.37)
-COUGHS = [12.64, 14.59]                 # runners coughing in the dust (gaps 12.62-12.90 and 14.58-14.75: a very soft "And" starts at 15.0)
-DRIP_LAND = 18.21          # the single drop lands in the tin bucket (gap after 'course.' 18.12-18.70)
-HATS_FWIP = [22.56, 22.61, 22.67]       # boaters fly (gap after 'cheered,' 22.55-22.87)
-SCRATCH = 25.34            # the soft record-scratch tail of the stop (gap after 'car.' 25.26-25.69); the cheer itself stops dead @752
-BLERGH = 29.55             # the sour 'blergh' (gap after 'rotten,' 29.50-29.82)
-SNORE_OUT = 31.34          # the audible snore (gap after 'nap.' 31.28-31.58); a dark inhale starts @926
-BARKS_GAP = [35.67, 35.74, 35.80, 35.86]   # the clear bark volley (gap after 'dogs.' 35.66-36.07)
-MEDAL = 46.97              # the medal 'plonk' (gap after 'it.' 46.86-47.42)
-SIGHS = [48.46, 50.08]     # drop-out sighs (gaps 48.45-48.62 and 49.77-50.41)
-SPLASH = 49.90             # a runner sits down in the creek (gap 49.77-50.41)
-BOTTLE2_TINK = 42.04      # the bright glass tink of the skull bottle waits for the gap after 'strychnine.' (42.01-42.41): its 6 kHz sits on the word's 's'
-HONK_T = 55.08             # the honk @1650 starts as the final 't' of 'foot.' ends (55.07)
+# chosen here (moved into measured narration gaps; voice.wav activity at -40 dB; words.json edges are up to 0.15 s early)
+# measured gaps: 0.00-0.14 1.99-2.37 5.01-5.35 6.59-7.23 8.73-9.04 10.43-10.73 12.26-12.66 14.55-14.96 16.55-16.86 18.35-18.66
+# 20.09-20.69 21.71-22.01 23.46-23.86 26.77-27.17 29.04-29.34 30.72-31.23 33.65-34.00 35.35-35.76 38.41-38.77 39.42-39.72
+# 40.26-40.79 42.88-43.46 44.81-45.12 47.21-47.56 49.03-49.61 51.59-52.18 54.91-55.22 56.19-56.49 57.89-59.0
+FLASH_T = 6.62             # the soft flash 'pfoomf' in the gap after 'inside.'
+FROG_RING = 8.76           # the frog's bright droplet ring in the gap after 'swamp.'
+SCHLORP = 10.45            # the boot 'schlorp' (bright wet release) in the gap after 'mud,'
+SNORT_T = 12.30            # the dog's snort in the gap after 'go.'
+TUT_T = 14.58              # the doctor's tut in the gap after 'out,'
+SNEEZE_T = 14.74           # a last small sneeze in the same gap
+GAVEL_T = 16.57            # the gavel in the gap after 'decision,' (frame 496 = 16.53)
+GASP_T = 18.38             # the council's collective gasp in the gap after 'feet,'
+GASP2_T = 20.12            # ... and a second 'oooh' after 'underneath.'
+GRAVEL_T = 21.71           # the gravel dump rumble in the gap after 'easy,'
+BONK_STARS = 23.47         # the head-bonk 'bwoing' wobble in the gap after 'up too.'
+CHIME_T = 42.90            # the fanfare chime in the gap after 'six feet,'
+RING_T = 33.66             # the iron jackscrew's ring in the gap after 'building,'
+DING_T = 47.22             # the desk bell in the gap after 'in,'
+WINK_T = 51.62             # the wink 'ting' in the gap after 'broke.'
+WHISTLE_T = 36.29          # foreman's whistle in the short gap right after 'signal,'
+TWHISTLE_T = 57.93         # the soft train whistle after 'them.'
+MID_GAPS = [(54.91, 55.22)]
 
 def shot_t(i):
     a, b = SHOTS[i][:2]
@@ -89,7 +97,7 @@ def shot_at(t):
     for i, (a, b, *_r) in SHOTS.items():
         if a <= f < b:
             return i
-    return 15
+    return 14
 
 
 def words():

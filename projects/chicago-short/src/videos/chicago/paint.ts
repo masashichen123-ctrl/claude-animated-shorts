@@ -343,3 +343,82 @@ export const stoneHD = () => ctex("stoneHD", 512, 512, (g, r) => {
   for (let row = 0; row < 8; row++) for (let c = 0; c < 6; c++) { rr(g, c * 86 + (row % 2) * 43 + U(r, -4, 4) - 20, row * 64 + 4, 80, 56, 14); g.fillStyle = jit(r, "#b0a492", 0.14, 8, 0.25); g.fill(); }
   octaves(g, r, S, S, 256, "255,250,235", "40,35,30", 0.8);
 });
+
+// ---------------- Chicago 1861 textures ----------------
+/** wet street mud (1024 px = 4 m): chocolate brown with glossy sky-blue puddle patches, wheel ruts, boot prints */
+export const mudHD = (key = "mudHD", base = "#7a5636", puddle = 0.5) => ctex(key, 1024, 1024, (g, r) => {
+  const S = 1024;
+  g.fillStyle = base; g.fillRect(0, 0, S, S);
+  octaves(g, r, S, S, 200, "190,140,90", "50,30,16", 1.2);
+  for (const x of [250, 700]) { g.fillStyle = "rgba(60,36,18,0.3)"; g.fillRect(x - 50, 0, 100, S); g.fillStyle = "rgba(200,150,100,0.22)"; g.fillRect(x - 64, 0, 9, S); g.fillRect(x + 56, 0, 9, S); }
+  for (let i = 0; i < 9 * puddle + 2; i++) wrap2(S, S, U(r, 0, S), U(r, 0, S), 130, (x, y) => { // glossy puddles
+    g.save(); g.translate(x, y); g.rotate(r() * 3); g.scale(1, U(r, 0.45, 0.8));
+    const rad = U(r, 50, 120), gr = g.createRadialGradient(0, 0, 0, 0, 0, rad);
+    gr.addColorStop(0, "rgba(170,196,214,0.85)"); gr.addColorStop(0.8, "rgba(120,140,150,0.75)"); gr.addColorStop(1, "rgba(90,70,50,0)");
+    g.fillStyle = gr; g.beginPath(); g.arc(0, 0, rad, 0, TAU); g.fill(); g.restore();
+  });
+  for (let i = 0; i < 50; i++) { const x = U(r, 0, S), y = U(r, 0, S); g.fillStyle = "rgba(50,30,14,0.4)"; g.beginPath(); g.ellipse(x, y, U(r, 8, 16), U(r, 14, 26), U(r, -0.4, 0.4), 0, TAU); g.fill(); g.fillStyle = "rgba(200,160,110,0.3)"; g.beginPath(); g.ellipse(x - 2, y - 2, 4, 8, 0, 0, TAU); g.fill(); }
+  speckle(g, r, S, S, 1400, ["rgba(210,170,120,0.5)", "rgba(40,24,12,0.5)"], 1.2, 4);
+});
+/** murky swamp water / lake (1024 px = 8 m): teal-green with pale ripples and algae */
+export const waterHD = (key = "waterHD", base = "#5c8a7a") => ctex(key, 1024, 512, (g, r) => {
+  g.fillStyle = base; g.fillRect(0, 0, 1024, 512);
+  octaves(g, r, 1024, 512, 120, "200,235,220", "30,70,60", 1.3);
+  for (let i = 0; i < 70; i++) { const x = U(r, 0, 1024), y = U(r, 0, 512), l = U(r, 30, 110); g.strokeStyle = "rgba(235,250,245,0.5)"; g.lineWidth = 2.4; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + l / 2, y - 4, x + l, y); g.stroke(); }
+  for (let i = 0; i < 40; i++) blotch(g, U(r, 0, 1024), U(r, 0, 512), U(r, 20, 60), 2, "120,160,70", 0.25);
+});
+/** striped wallpaper (512 px = 2 m): vertical bands with a small diamond motif */
+export const wallpaperHD = (key: string, base: string, stripe: string) => ctex("wallpaperHD" + key, 512, 512, (g, r) => {
+  g.fillStyle = base; g.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 8; i++) { g.fillStyle = stripe; g.globalAlpha = 0.55; g.fillRect(i * 64 + 22, 0, 20, 512); g.globalAlpha = 1; }
+  for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) { g.fillStyle = "rgba(255,240,210,0.45)"; const x = i * 64 + 32, y = j * 64 + 32 + (i % 2) * 32; g.beginPath(); g.moveTo(x, y - 7); g.lineTo(x + 6, y); g.lineTo(x, y + 7); g.lineTo(x - 6, y); g.closePath(); g.fill(); }
+  octaves(g, r, 512, 512, 256, "255,245,225", "60,35,25", 0.5);
+});
+/** black-and-cream marble checker (512 px = 2 m, 4 x 4 tiles) */
+export const checkerHD = (a = "#f2ead8", b = "#4a4a54") => ctex("checkerHD" + a + b, 512, 512, (g, r) => {
+  for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { g.fillStyle = jit(r, (i + j) % 2 ? b : a, 0.05, 2, 0.05); g.fillRect(i * 128, j * 128, 128, 128); }
+  octaves(g, r, 512, 512, 256, "255,255,255", "40,40,50", 0.6);
+  g.strokeStyle = "rgba(60,50,40,0.4)"; g.lineWidth = 3; for (let i = 0; i <= 4; i++) { g.beginPath(); g.moveTo(i * 128, 0); g.lineTo(i * 128, 512); g.moveTo(0, i * 128); g.lineTo(512, i * 128); g.stroke(); }
+});
+/** carpet (512 px = 2 m): deep red with a gold border pattern and diamonds */
+export const carpetHD = (base = "#a02a30", trim = "#e0b050") => ctex("carpetHD" + base + trim, 512, 512, (g, r) => {
+  g.fillStyle = base; g.fillRect(0, 0, 512, 512);
+  g.strokeStyle = trim; g.lineWidth = 8; g.strokeRect(16, 16, 480, 480); g.lineWidth = 3; g.strokeRect(34, 34, 444, 444);
+  for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { const x = 64 + i * 128, y = 64 + j * 128; g.fillStyle = trim; g.globalAlpha = 0.8; g.beginPath(); g.moveTo(x, y - 34); g.lineTo(x + 34, y); g.lineTo(x, y + 34); g.lineTo(x - 34, y); g.closePath(); g.fill(); g.globalAlpha = 1; g.fillStyle = base; g.beginPath(); g.arc(x, y, 12, 0, TAU); g.fill(); }
+  octaves(g, r, 512, 512, 256, "255,200,180", "40,5,10", 0.6);
+});
+/** dark wood panelling (512 px = 2 m): raised panels with a light edge */
+export const panelHD = (base = "#6a4228") => ctex("panelHD" + base, 512, 512, (g, r) => {
+  g.fillStyle = base; g.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) { const x = 20 + i * 250, y = 20 + j * 250; g.fillStyle = jit(r, base, 0.08, 2, 0.05); g.fillRect(x, y, 222, 222); g.strokeStyle = "rgba(255,210,150,0.35)"; g.lineWidth = 5; g.strokeRect(x + 14, y + 14, 194, 194); g.strokeStyle = "rgba(20,8,0,0.5)"; g.strokeRect(x, y, 222, 222); }
+  for (let i = 0; i < 26; i++) grain(g, r, 512, U(r, 0, 512), U(r, 0, 512), U(r, 100, 300), 3, 2, "rgba(30,12,0,0.3)");
+});
+/** cream plaster (512 px = 2 m) */
+export const plasterHD = (base = "#efe3c6") => ctex("plasterHD" + base, 512, 512, (g, r) => {
+  g.fillStyle = base; g.fillRect(0, 0, 512, 512);
+  octaves(g, r, 512, 512, 128, "255,250,235", "120,90,60", 0.9);
+});
+/** roof shingles (512 px = 2 m): scalloped dark slate-brown rows */
+export const shingleHD = (base = "#6a4a46") => ctex("shingleHD" + base, 512, 512, (g, r) => {
+  g.fillStyle = "#2a1a1a"; g.fillRect(0, 0, 512, 512);
+  for (let row = 0; row < 16; row++) for (let c = -1; c < 9; c++) { const x = c * 64 + (row % 2) * 32, y = row * 32; g.fillStyle = jit(r, base, 0.12, 4, 0.1); g.beginPath(); g.moveTo(x + 2, y); g.lineTo(x + 62, y); g.lineTo(x + 62, y + 20); g.arc(x + 32, y + 20, 30, 0, Math.PI); g.closePath(); g.fill(); }
+  octaves(g, r, 512, 512, 256, "255,230,210", "20,10,10", 0.6);
+});
+/** dark iron with a dusting of rust (512 px = 1 m) */
+export const ironHD = (base = "#4a4e58") => ctex("ironHD" + base, 512, 512, (g, r) => {
+  g.fillStyle = base; g.fillRect(0, 0, 512, 512);
+  octaves(g, r, 512, 512, 256, "170,180,200", "10,10,16", 1.0);
+  for (let i = 0; i < 26; i++) blotch(g, U(r, 0, 512), U(r, 0, 512), U(r, 14, 50), 1.5, "150,80,40", 0.22);
+});
+/** screw thread bands (256 x 256): iron with diagonal light/dark stripes, for jackscrew shafts */
+export const threadHD = () => ctex("threadHD", 128, 256, (g, r) => {
+  g.fillStyle = "#6a6f7a"; g.fillRect(0, 0, 128, 256);
+  for (let i = -2; i < 18; i++) { const y = i * 16; g.fillStyle = "#9aa0ae"; g.beginPath(); g.moveTo(0, y + 6); g.lineTo(128, y - 6); g.lineTo(128, y + 2); g.lineTo(0, y + 14); g.closePath(); g.fill(); g.fillStyle = "#2c2f38"; g.beginPath(); g.moveTo(0, y + 14); g.lineTo(128, y + 2); g.lineTo(128, y + 8); g.lineTo(0, y + 20); g.closePath(); g.fill(); }
+  octaves(g, r, 128, 256, 128, "210,220,240", "10,10,20", 0.5);
+});
+/** distant farm field strips (1024 x 256 = 8 m x 2 m): golden / green stripes receding, for the train window */
+export const fieldHD = () => ctex("fieldHD", 1024, 256, (g, r) => {
+  const cols = ["#d8b14a", "#86a845", "#c9a040", "#6e9a3e", "#e0c060", "#9ab04a"];
+  for (let i = 0; i < 16; i++) { g.fillStyle = jit(r, cols[i % 6], 0.06, 3, 0.1); g.fillRect(i * 64, 0, 64, 256); }
+  for (let i = 0; i < 120; i++) { const x = U(r, 0, 1024); g.strokeStyle = "rgba(90,70,20,0.25)"; g.lineWidth = 2; g.beginPath(); g.moveTo(x, 0); g.lineTo(x + U(r, -4, 4), 256); g.stroke(); }
+});

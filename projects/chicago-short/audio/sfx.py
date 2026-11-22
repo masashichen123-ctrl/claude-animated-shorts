@@ -1,13 +1,12 @@
-# Every sound effect + ambience bed of "The 1904 Olympic Marathon" as a cue list locked to the picture (timeline.py),
-# rendered into one stereo SFX stem. Level convention (same as the emu, bat and whale shorts): each EVENT has a "naive"
-# level (LU relative to the voice stem's integrated loudness, measured as the event's max momentary loudness) and
-# is placed SFX_DB = -8 dB under it, plus per-cue offsets; ambience BEDS are integrated loudness and not reduced.
-# Rule from the bat / whale shorts: an SFX under a spoken word stays >= 12 dB under the voice in the speech band, is
-# dark (low-passed), or moves into a narration gap. So the hits that land on words here are built low and round (the
-# gulp, the car putter, the honk @162, the pistol pop, the tape snaps, the apple crunch, the egg, the glug, the lift)
-# or above the band (the bottle tinks), and the voice-like or bright details (the swirl boing, coughs, the drip, the
-# boater fwips, the record scratch, the 'blergh', the snore exhale, the clear bark volley, the medal, sighs, the
-# splash, the final honk and the wink) sit inside measured gaps (timeline.py lists them).
+# Every sound effect + ambience bed of "Chicago Lifts a Hotel" (1861) as a cue list locked to the picture (timeline.py),
+# rendered into one stereo SFX stem. Level convention (same as the marathon / emu / bat shorts): each EVENT has a "naive"
+# level (LU relative to the voice stem's integrated loudness, measured as the event's max momentary loudness) and is
+# placed SFX_DB under it, plus per-cue offsets; ambience BEDS are integrated loudness and not reduced.
+# Rule: an SFX under a spoken word stays >= 12 dB under the voice in the speech band (300-5000 Hz), is dark (low-passed),
+# or moves into a narration gap. So the hits that land on words here are built low and round (the frog plop, slurps, the
+# clunk, the bonk, the shovels, the creaks) or are tiny dry transients (ratchet clicks, board ticks, the tap), and the
+# bright or sustained details (the droplet ring, the schlorp pop, the tut, the gavel, the gasps, the gravel dump, the iron
+# ring, the whistle, the chime, the desk bell, the wink, the train whistle) sit inside measured gaps (timeline.py lists them).
 import numpy as np
 from dsp import (SR, ns, tt, rng, dbg, lp, hp, bp, pan, st, place, fades, widen, make_ir, convolve_st,
                  momentary_max, integrated)
@@ -15,10 +14,11 @@ import sfx_gen as G
 import sfx_emu as E
 import sfx_bat as B
 import sfx_marathon as M
+import sfx_chicago as C
 import timeline as T
 
 N = ns(T.DUR)
-SFX_DB = -8.0                      # chill style: SFX tamed; key hits get their level back via `naive`
+SFX_DB = -4.0                      # SFX are supportive; key hits get their level through `naive`
 fr = T.fr
 
 
@@ -32,7 +32,6 @@ class Cue:
 
 
 def ssum(*xs):
-    """sum stereo/mono clips of different lengths (zero-padded to the longest)"""
     xs = [st(x) for x in xs]
     n = max(x.shape[1] for x in xs)
     return sum(np.pad(x, ((0, 0), (0, n - x.shape[1]))) for x in xs)
@@ -52,203 +51,181 @@ def _bed(dur, fin, fout, parts, env_pts=None):
     return g
 
 
-def road(level=1.0, buzz=1.0):
-    return lambda d, r: M.heat_road(d, r, level, buzz)
-
-
-def breeze(level=1.0, bright=600):
-    return lambda d, r: M.dry_breeze(d, r, level, bright)
-
-
-def murmur(people=18, level=1.0, dark=1800):
-    return lambda d, r: M.stadium_crowd(d, r, people, level, dark)
-
-
-def cheer(level=1.0, dark=1600, env=None, people=16):
-    return lambda d, r: M.cheer(d, r, people, level, dark, env)
-
-
-def shuffle(level=1.0, rate=1.6):
-    return lambda d, r: pan(M.shuffle_feet(d, r, rate), 0.1) * level
-
-
 def cues():
-    C = []
-    R = rng(1904)
+    Cs = []
+    R = rng(1861)
     rr = lambda: rng(int(R.integers(1 << 30)))
-    add = C.append
-    s = lambda i: T.shot_t(i)[0]
+    add = Cs.append
     D = T.DUR
+    f30 = lambda t: int(round(t * 30))
 
     # ------------------------------------------------ ambience beds (integrated loudness vs the voice stem)
     beds = [
-        (0.0, 4.48, "amb_road_hook", "dusty country road, hot: a dry breeze, Hicks' exhausted shuffle, a faint far heat buzz (shot 1)", [road(1.0, 0.35), shuffle(0.6)], -40, None),
-        (4.38, 6.86, "amb_road_car", "the same road after the flash: dry breeze, faint heat buzz (shot 2)", [road(1.0, 0.35)], -42, None),
-        (6.76, 8.78, "amb_stadium_start", "1904 stadium at the start: a crowd murmuring in the stands (dark), a breeze in the bunting (shot 3a)", [murmur(18, 1.0, 1500)], -40, None),
-        (8.69, 11.38, "amb_heat", "@262 the blazing road: HEAT BUZZ - cicada choruses swelling (above the speech band), a dry breeze (shot 3b)", [road(1.0, 1.6)], -37, None),
-        (11.28, 15.01, "amb_road_cars", "dirt road: breeze, cicadas (shot 4)", [road(1.0, 1.1)], -40, None),
-        (14.92, 18.48, "amb_well", "the roadside well: cicadas, a dry breeze (shot 5)", [road(1.0, 1.2)], -40, None),
-        (18.38, 22.10, "amb_stadium_finish", "stadium finish: the crowd murmuring, expectant (dark) (shot 6)", [murmur(20, 1.0, 1500)], -39, None),
-        (22.80, 25.64, "amb_road_flash", "flashback road: breeze, cicadas (shot 7, under the cheer)", [road(0.9, 1.0)], -43, None),
-        (25.55, 29.58, "amb_orchard", "apple orchard: leaves rustling, softer cicadas, a far bird (shot 8)", [lambda d, r: M.orchard_bed(d, r)], -40, None),
-        (29.48, 31.60, "amb_orchard_nap", "orchard, the nap: leaves, soft cicadas (shot 9a)", [lambda d, r: M.orchard_bed(d, r)], -42, None),
-        (31.52, 32.98, "amb_finish4", "@947 the finish: a small crowd murmur (shot 9b)", [murmur(14, 1.0, 1500)], -42, None),
-        (32.88, 35.98, "amb_cornfield", "cornfield: dry stalks rustling in gusts, cicadas (shot 10)", [lambda d, r: M.corn_bed(d, r)], -40, None),
-        (35.88, 42.48, "amb_road_hicks", "the road with the trainers' car: breeze, cicadas, the car idling along beside him (dark), Hicks' shuffle (shot 11)",
-         [road(1.0, 1.0), lambda d, r: pan(M.old_car(d, r, 6.5, 0.35, 0.4), 0.45) * 0.5, shuffle(0.5, 1.3)], -38, None),
-        (42.38, 44.42, "amb_stadium_hush", "stadium, long lens: the crowd murmur thins and goes quiet for the held breath @1304 (shot 12)",
-         [murmur(20, 1.0, 1400), breeze(0.25)], -40, [(0, 1.0), (fr(T.HELD_BREATH) - 42.38 - 0.45, 0.8), (fr(T.HELD_BREATH) - 42.38, 0.08), (2.04, 0.1)]),
-        (44.32, 47.22, "amb_stadium_carry", "stadium: the crowd murmur creeps back, anxious (shot 13)", [murmur(18, 1.0, 1400)], -42, [(0, 0.4), (1.0, 1.0), (2.9, 1.0)]),
-        (47.12, 50.28, "amb_course_high", "high over the course: breeze, cicadas, a far crowd (shot 14)", [road(1.0, 0.9), murmur(10, 0.3, 1200)], -40, None),
-        (50.15, D, "amb_boston_spring", "@1507 Boston, spring 1905: sparrows + blackbirds, a soft breeze, a far street crowd (shot 15)", [lambda d, r: M.spring_bed(d, r)], -37, None),
-        # crowd cheers as beds (dark: they run under words; they bloom in the gaps through the music's gap logic)
-        (fr(T.PISTOL), 8.74, "cheer_start", "@210 the crowd cheers the start (dark, under 'race was in Saint Louis'), cut with the picture @262",
-         [cheer(1.0, 1300)], -37, [(0, 0.3), (0.4, 1.0), (1.2, 0.8), (1.74, 0.7)]),
-        (fr(T.HATS) - 0.05, fr(T.STOP_DEAD), "cheer_finish", "@661 the crowd leaps up and CHEERS (dark under 'cheered, then they found out...'), and STOPS DEAD @752",
-         [cheer(1.0, 1300, people=22)], -36, [(0, 0.4), (0.3, 1.0), (0.6, 1.0), (0.82, 0.45), (3.0, 0.45)]),
-        (32.58, 33.12, "cheer_fourth", "the small finish crowd cheers him in after 'fourth.' (gap 32.65-33.10)", [cheer(1.0, 1800, people=10)], -39, [(0, 0), (0.1, 1.0), (0.54, 0.6)]),
-        (46.90, 47.40, "cheer_carried", "the crowd cheers as he's carried through @1399 - held for the gap after 'it.' (46.90-47.40)", [cheer(1.0, 1400)], -38, [(0, 0.3), (0.12, 1.0), (0.5, 0.5)]),
-        (fr(T.TAPE3), 55.0, "cheer_boston", "@1604 the Boston street crowd cheers Lorz in (dark under 'Boston Marathon')", [cheer(1.0, 1300, people=14)], -39, [(0, 0.3), (0.5, 1.0), (1.2, 0.9), (1.53, 0.4)]),
+        (0.0, 6.75, "amb_street_hook", "Chicago street, bright day: a far crowd murmur, a breeze, sparrows, a far cart (shot 1)", [lambda d, r: C.street(d, r, 1.0, 12)], -37, None),
+        (3.30, 6.65, "groan_hook", "@100-198 the whole hotel creaking up on its jackscrews: a slow, deep timber + brick groan rising in rate and weight (dark, below ~1.1 kHz, under 'lifted a giant brick hotel into the air ... guests still inside')",
+         [lambda d, r: C.timber_groan(d, r)], -30, [(0, 0.0), (0.7, 0.55), (3.0, 1.0), (3.35, 0.7)]),
+        (3.25, 6.62, "cheer_hook", "@100-198 the workers cheer below (dark crowd cheer swelling as the hotel rises; under the narration, blooms in the flash gap)",
+         [lambda d, r: M.cheer(d, r, 18, 1.0, 1200)], -34, [(0, 0.0), (0.6, 0.6), (1.6, 1.0), (3.1, 1.0), (3.37, 0.8)]),
+        (6.55, 10.1, "amb_swamp", "swamp-edge streets, overcast: soft lake lapping, cattails hissing in a breeze, far frogs, flies (shot 2)", [lambda d, r: C.swamp(d, r, 1.0, 3)], -36, None),
+        (9.95, 13.0, "amb_mud", "the muddy street: sticky slop, flies, a faint far crowd (shot 3)", [lambda d, r: C.mud_street(d, r)], -38, None),
+        (10.85, 13.0, "puddle_bubbling", "@328 the puddle bubbling and burping (dark slow green bubbles; under 'sewage had nowhere to go')", [lambda d, r: C.puddle_bubbling(d, r)], -34, [(0, 0.0), (0.2, 1.0), (1.9, 1.0), (2.15, 0.0)]),
+        (12.92, 15.75, "amb_sickroom", "sickroom and street, overcast: dark room tone, a slow wall clock, a far murmur (shot 4)", [lambda d, r: C.sickroom(d, r)], -38, None),
+        (15.6, 20.75, "amb_council", "the council hall, warm interior: room tone, a murmuring council, creaking floorboards (shot 5)", [lambda d, r: C.council_hall(d, r)], -37, None),
+        (20.55, 23.95, "amb_dig", "the street being raised: a breeze, sparrows, workers murmuring, a far wagon (shot 6)", [lambda d, r: C.dig(d, r)], -38, None),
+        (23.78, 27.3, "amb_hotel_front", "the grand hotel front: a bright street, a carriage on cobbles (clip-clop + wheels), a far crowd (shot 7)",
+         [lambda d, r: C.street(d, r, 0.8, 8), lambda d, r: C.hooves(d, r, 2.0, 1.0, 0.7, -0.35)], -35, None),
+        (26.0, 27.3, "flag_hotel", "@788 the flag on the roof fluttering (dark, quiet)", [lambda d, r: pan(C.flag(d, r), 0.45) * 0.8], -41, [(0, 0.0), (0.5, 1.0), (1.3, 1.0)]),
+        (27.18, 31.3, "amb_office", "the contractors' office: quiet room tone, a wall clock, a pen scratching, a far street (shot 8)", [lambda d, r: C.office(d, r)], -38, None),
+        (31.18, 36.0, "amb_yard", "under the hotel, daylight: a breeze, a far street, flags, a far bird (shot 9)", [lambda d, r: C.yard(d, r)], -38, None),
+        (34.3, 36.0, "marching", "@1033 hundreds of workers march in and take their positions (a growing column of boots on packed earth, soft and dark)",
+         [lambda d, r: C.marching(d, r, 1.9, 26, 1.0, (0.2, 1.0))], -33, [(0, 0.0), (0.3, 0.7), (1.0, 1.0), (1.55, 0.8), (1.7, 0.0)]),
+        (35.9, 40.85, "amb_yard2", "the signal and the turns: a breeze, a hush over the yard, flags (shot 10)", [lambda d, r: C.yard(d, r, 0.8)], -39, None),
+        (40.7, 43.45, "amb_yard3", "hotel wide: breeze, far street (shot 11)", [lambda d, r: C.yard(d, r, 0.9)], -38, None),
+        (40.8, 43.4, "groan_wide", "@1223-1301 the whole hotel creaking slowly up, inch by inch (dark timber groan)",
+         [lambda d, r: C.timber_groan(d, r, 0.8)], -36, [(0, 0.0), (0.5, 0.8), (2.0, 1.0), (2.6, 0.0)]),
+        (43.3, 49.75, "amb_lobby", "hotel cutaway interior, warm: a lobby and dining-room murmur, a clock, cutlery tinks (shot 12)", [lambda d, r: C.lobby(d, r)], -37, None),
+        (43.35, 52.45, "lift_hum", "@1301-1570 the gentle hum of the whole building rising (low drones 54 / 82 / 108 Hz beating softly, a faint timber creak)",
+         [lambda d, r: C.lift_hum(d, r)], -34, [(0, 0.0), (0.6, 1.0), (6.3, 1.0), (7.5, 0.55), (9.1, 0.0)]),
+        (49.6, 52.45, "amb_window", "window close-up, bright day: a light breeze and a far street (shot 13)", [lambda d, r: C.street(d, r, 0.7, 5, 0.3, 0.6)], -39, None),
+        (52.28, 54.15, "amb_platform", "the platform at golden dusk: an idling steam engine (soft chuffs), a far station crowd, a breeze (shot 14a)", [lambda d, r: C.platform(d, r)], -36, None),
+        (53.9, D, "amb_sleeper", "@1619+ inside the sleeping car: rails clatter 'ta-dak ta-dak' soft and lulling at a slow 0.75 s cycle (the music rocks with it), a low carriage rumble, panels creaking",
+         [lambda d, r: C.sleeper_bed(d, r, 1.0, 0.75)], -33, [(0, 0.0), (0.35, 1.0), (3.5, 1.0), (5.0, 0.8)]),
     ]
     for i, (a, b, name, desc, parts, lvl, env) in enumerate(beds):
-        cut = name == "cheer_finish"
-        fo = 0.03 if cut else (0.12 if b < D - 0.01 else 0.8)
-        fi = 0.4 if a == 0 else (0.05 if name.startswith("cheer") else 0.08)
+        fo = 0.12 if b < D - 0.01 else 0.8
+        fi = 0.4 if a == 0 else 0.1
         g = _bed(b - a, fi, fo, parts, env)
-        add(Cue(a, name, desc, (lambda g=g, sd=200 + i: g(sd)), lvl, "bed", send=0.0 if not name.startswith("cheer") else 0.08))
+        add(Cue(a, name, desc, (lambda g=g, sd=300 + i: g(sd)), lvl, "bed", send=0.0))
 
     # ------------------------------------------------ XF air swells
     for f in T.XF:
         add(Cue(fr(f), "xf_air", f"soft warm-air swell through the dissolve @{f}",
-                (lambda r=rr(): (G.whoosh(0.6, r, 0.3, 300, 1500, 0.9, 0.2, 0.06), 0.3)), -20, lpf=2000, send=0.15, frame=f))
+                (lambda r=rr(): (G.whoosh(0.6, r, 0.3, 300, 1500, 0.9, 0.2, 0.06), 0.3)), -26, lpf=1800, send=0.15, frame=f))
 
     # ------------------------------------------------ shot 1: the hook
-    add(Cue(fr(T.BOTTLE), "bottle_tink", "@99 the skull bottle held up: a tiny high glass 'tink' (6 kHz, above the speech band)",
-            lambda: (M.glass_tink(rng(99)), 0.0), -12, p=0.25, send=0.2, frame=T.BOTTLE))
-    add(Cue(fr(T.GULP), "gulp", "@110 Hicks gulps it: a low round 'glunk' (dark, under 'poison')",
-            lambda: (M.gulp(rng(110)), 0.0), -14, p=0.0, send=0.05, frame=T.GULP))
-    add(Cue(T.SWIRL, "swirl_boing", "the swirly-eyes 'boing' (wobbly spring sliding down) in the gap after 'poison.' (4.17-4.50)",
-            lambda: (M.swirl_boing(rng(123), 0.3), 0.0), -9, p=-0.1, send=0.15, frame=int(round(T.SWIRL * 30))))
-    add(Cue(fr(T.FLASH), "flash_pff", "@131 the white FLASH: a soft muffled 'pfoomf' (sub + dark air), not a bang (in the gap)",
-            lambda: (M.flash_pff(rng(131)), 0.0), -8, send=0.1, frame=T.FLASH))
+    add(Cue(T.FLASH_T, "flash_pff", "@196 the white FLASH: a soft muffled 'pfoomf' (sub + dark air), not a bang (in the gap after 'inside.' 6.59-7.23)",
+            lambda: (M.flash_pff(rng(196)), 0.0), -8, send=0.1, frame=T.FLASH))
 
-    # ------------------------------------------------ shot 2: the car
-    add(Cue(fr(T.CAR1), "car_putter", "@133+ the open 1904 car putters past the runners (one-cylinder putt-putt, body rattle; dark, L to R, closest @162)",
-            lambda: (M.car_pass(6.85 - fr(T.CAR1), rng(133), 8.5, (fr(T.WAVE) - fr(T.CAR1)) / (6.85 - fr(T.CAR1)), 1.2), 0.0), -13, send=0.08, frame=T.CAR1))
-    add(Cue(fr(T.WAVE) - 0.06, "honk_soft", "near @162 Lorz waves: a soft rubber-bulb 'parp-parp' (low B-flat, dark: under 'strangest')",
-            lambda: (M.bulb_horn(rng(162), 233.0, 0.13, 2, 0.05), 0.0), -15, p=0.1, lpf=900, send=0.1, frame=T.WAVE))
+    # ------------------------------------------------ shot 2: swamp, frog, mud
+    add(Cue(fr(T.FROG), "frog_plop", "@250 a frog plops from the puddle: a soft dark 'bloop' (below 900 Hz, under 'swamp')",
+            lambda: (C.frog_plop(rng(250)), 0.0), -14, p=-0.3, send=0.1, frame=T.FROG))
+    add(Cue(T.FROG_RING, "droplets", "...and its three tiny droplet 'plip's in the gap after 'swamp.' (8.73-9.04)",
+            lambda: (C.droplet_ring(rng(251)), 0.0), -17, p=-0.3, send=0.25, frame=f30(T.FROG_RING)))
+    for k, (tm, sz, pp) in enumerate(((9.36, 1.0, -0.4), (9.72, 0.8, 0.35), (10.0, 1.2, -0.1))):
+        add(Cue(tm, "mud_slurp", f"the street is a river of mud: a sticky wet suction 'shlupp' ({k + 1}/3, dark, under 'streets were rivers')",
+                (lambda r=rr(), sz=sz: (C.mud_slurp(r, sz, 800), 0.0)), -15, p=pp, send=0.06, frame=f30(tm)))
+    add(Cue(T.SCHLORP, "boot_schlorp", "@303 the man loses his boot: a long wet suction + the bright 'schlorp' pop lands in the gap after 'mud,' (10.43-10.73)",
+            lambda: (C.schlorp(rng(303)), 0.42), -9, p=0.3, send=0.1, frame=f30(T.SCHLORP)))
 
-    # ------------------------------------------------ shot 3: the start, the heat
-    add(Cue(fr(T.PISTOL), "pistol_pop", "@210 the starter's pistol, softened: a dark 'pok' + smoke puff (under 'race')",
-            lambda: (M.pistol_pop(rng(210)), 0.0), -10, p=-0.3, send=0.2, frame=T.PISTOL))
-    add(Cue(fr(T.PISTOL) + 0.25, "start_feet", "32 runners set off: a soft patter of feet on the cinder track (dark)",
-            lambda: (lp(B.running(1.7, rng(211), 8, 3.0, 0.9), 1200, 2), 0.0), -22, send=0.05, frame=218))
+    # ------------------------------------------------ shot 3: the puddle, the dog
+    for k, tm in enumerate((10.98, 11.55, 12.05)):
+        add(Cue(tm, "puddle_burp", f"a green burp-bubble pops in the puddle ({k + 1}/3, dark)",
+                (lambda r=rr(): (C.burp(r), 0.0)), -17, p=[0.2, -0.3, 0.1][k], send=0.1, frame=f30(tm)))
+    add(Cue(T.SNORT_T, "dog_snort", "@358 the passing dog holds its nose and snorts 'pfft-pfft' (gap after 'go.' 12.26-12.66)",
+            lambda: (C.dog_snort(rng(358)), 0.0), -13, p=0.35, send=0.08, frame=f30(T.SNORT_T)))
 
-    # ------------------------------------------------ shot 4: cars + dust, coughs
-    add(Cue(fr(T.CARS) - 0.3, "cars_ahead", "@344 two open cars drive ahead of the runners (two putters, dark), into the dust",
-            lambda: (ssum(M.car_pass(3.4, rng(344), 9.5, 0.35, 0.6), M.car_pass(3.4, rng(345), 10.5, 0.5, -0.6) * 0.8), 0.0), -14, send=0.08, frame=T.CARS))
-    add(Cue(fr(T.DUST[0]) - 0.45, "dust_roll", "@398-427 huge brown dust clouds roll back over the runners (dark swell of grit and air)",
-            lambda: (M.dust_roll(1.65, rng(398)), 0.0), -15, lpf=900, frame=T.DUST[0]))
-    for k, tm in enumerate(T.COUGHS):
-        add(Cue(tm, "cough", f"a runner coughs in the dust ({k + 1}/{len(T.COUGHS)}, in the gaps 12.62-12.90 / 14.58-14.75)",
-                (lambda r=rr(), k=k: (M.cough(r, [2, 2][k], [120, 140][k]), 0.0)), [-16, -12][k],
-                p=[-0.5, 0.35][k], lpf=3000, send=0.12, frame=int(round(tm * 30))))
+    # ------------------------------------------------ shot 4: the sick
+    add(Cue(13.0, "sneeze_soft", "@389 a green-faced townsman sneezes 'ah-ah-choo' (muffled, dark: it sits under 'Diseases like cholera')",
+            lambda: (C.sneeze(rng(389)), 0.0), -15, lpf=700, p=-0.5, send=0.1, frame=389))
+    add(Cue(13.62, "cough_soft", "a 'COUGH' puff, muffled and dark (under 'kept breaking')",
+            lambda: (M.cough(rng(405), 2, 125), 0.0), -15, lpf=700, p=0.45, send=0.1, frame=f30(13.62)))
+    add(Cue(13.95, "thermo_tink", "a thermometer tinks on a cup (tiny, bright, sparse)",
+            lambda: (C.thermo_tink(rng(414)), 0.0), -20, p=0.5, send=0.2, frame=f30(13.95)))
+    add(Cue(T.TUT_T, "doctor_tut", "@427 the doctor shakes his head: a dry 'tsk, tsk' (in the gap after 'out,' 14.55-14.96)",
+            lambda: (C.tut(rng(427)), 0.0), -11, p=-0.15, send=0.08, frame=T.TUT))
+    add(Cue(T.SNEEZE_T + 0.06, "cough_last", "one last small cough from the back of the row (same gap, soft)",
+            lambda: (M.cough(rng(428), 1, 130), 0.0), -17, lpf=2500, p=0.5, send=0.1, frame=f30(T.SNEEZE_T + 0.06)))
 
-    # ------------------------------------------------ shot 5: the well
-    add(Cue(16.95, "well_winch", "the bucket is wound up: the well's wooden winch + rope creak (dark, low)",
-            lambda: (M.winch_creak(0.75, rng(509)), 0.0), -16, p=-0.2, send=0.08, frame=509))
-    add(Cue(T.DRIP_LAND, "drip", "@529 the bucket comes up with a single drop - it lands in the tin with a tiny 'plip' (gap after 'course.' 18.12-18.70)",
-            lambda: (M.drip(rng(529)), 0.0), -12, p=-0.15, send=0.3, frame=int(round(T.DRIP_LAND * 30))))
+    # ------------------------------------------------ shot 5: the council
+    add(Cue(T.GAVEL_T, "gavel", "@496 the mayor bangs the gavel: a crisp dry 'tok' + the oak table (in the gap after 'decision,' 16.55-16.86; the frame is 16.53)",
+            lambda: (C.gavel(rng(496)), 0.0), -7, p=0.0, send=0.15, frame=T.GAVEL))
+    add(Cue(T.GASP_T, "council_gasp", "@541-585 the councilmen gasp 'ooooh' at the easel picture (gap after 'feet,' 18.35-18.66)",
+            lambda: (C.gasp(rng(541), 5), 0.0), -12, p=0.0, send=0.15, frame=f30(T.GASP_T)))
+    add(Cue(fr(555), "gasp_soft", "@555 a murmuring 'ooh' under 'build the sewers' (dark, quiet)",
+            lambda: (C.gasp(rng(555), 3), 0.0), -18, lpf=700, p=-0.2, send=0.1, frame=555))
+    add(Cue(T.GASP2_T, "council_gasp2", "...and a second, smaller 'oooh' after 'underneath.' (gap 20.09-20.69)",
+            lambda: (C.gasp(rng(585), 4), 0.0), -15, p=0.15, send=0.15, frame=f30(T.GASP2_T)))
 
-    # ------------------------------------------------ shot 6: the finish, the cheer, the hats
-    add(Cue(fr(T.TAPE1), "tape_snap", "@607 Lorz breaks the tape: a soft dark 'thwip' (under 'line was')",
-            lambda: (M.tape_snap(rng(607), 1500), 0.0), -12, p=0.0, send=0.1, frame=T.TAPE1))
-    for k, tm in enumerate(T.HATS_FWIP):
-        add(Cue(tm, "hat_fwip", f"straw boaters fly into the air ({k + 1}/3, gap after 'cheered,' 22.55-22.87)",
-                (lambda r=rr(): (M.hat_fwip(r), 0.0)), -15, p=[-0.5, 0.4, -0.05][k], send=0.1, frame=int(round(tm * 30))))
+    # ------------------------------------------------ shot 6: the street dig, the bonk
+    for k, (tm, pp) in enumerate(((fr(623) + 0.05, -0.4), (21.12, 0.3), (21.4, -0.2))):
+        add(Cue(tm, "shovel", f"@623-650 a shovel bites into earth and scrapes ({k + 1}/3; dark, under 'streets were easy')",
+                (lambda r=rr(): (C.shovel(r), 0.0)), -17, p=pp, send=0.06, frame=f30(tm)))
+    add(Cue(T.GRAVEL_T, "gravel_dump", "@650 the wagon dumps its load: a pouring rush, tumbling stones, a deep thump (gap after 'easy,' 21.71-22.01; the frame is 21.67)",
+            lambda: (C.gravel_dump(rng(650)), 0.0), -12, p=0.2, send=0.08, frame=T.SHOVEL[1]))
+    add(Cue(fr(T.BONK), "head_bonk", "@685 the man bonks his head on the low window: a hollow wooden 'bonk' (dark, under 'go up')",
+            lambda: (C.bonk(rng(685)), 0.0), -12, p=-0.2, send=0.08, frame=T.BONK))
+    add(Cue(T.BONK_STARS, "bonk_stars", "...and the little wobbling 'bwoi-oi-oing' of seeing stars in the gap after 'too.' (23.46-23.86)",
+            lambda: (C.bonk_stars(rng(686)), 0.0), -14, p=-0.2, send=0.2, frame=f30(T.BONK_STARS)))
 
-    # ------------------------------------------------ shot 7: the car passes, the cheering stops dead
-    add(Cue(23.95, "car_pass", "@740-750 flashback: Lorz's car putters past (dark, R to L)",
-            lambda: (M.car_pass(1.6, rng(740), 9.0, 0.55, -1.2), 0.0), -15, send=0.08, frame=T.CAR_PASS[0]))
-    add(Cue(T.SCRATCH, "record_scratch", "@752 the cheer stops dead (the crowd bed is cut on the frame); the soft record-scratch 'zzwip' lands in the gap after 'car.' (25.26-25.69)",
-            lambda: (M.record_scratch(rng(752)), 0.0), -12, p=0.0, send=0.08, frame=int(round(T.SCRATCH * 30))))
+    # ------------------------------------------------ shot 7-8: the hotel, the office
+    add(Cue(fr(T.HOTEL[0]) + 0.1, "doorman", "@715 a carriage pulls up at the hotel: a leather-and-brass jingle of harness (dark, quiet)",
+            lambda: (lp(G.rattle(0.8, rng(716), 20, np.exp(-tt(0.8) / 0.3), True), 2200, 1), 0.0), -26, p=-0.4, send=0.1, frame=T.HOTEL[0]))
+    add(Cue(26.80, "blueprint_unroll", "@823 Pullman unrolls the blueprint on the table: a crackly paper curl, its end flopping flat on the frame (starts in the gap 26.77-27.17)",
+            lambda: (C.paper_unroll(rng(823), 0.62), 0.0), -14, p=0.25, send=0.1, frame=T.BLUEPRINT))
+    for k, (tm, a) in enumerate(((29.70, 0.8), (29.91, 0.9), (30.12, 1.0), (30.32, 0.9))):
+        add(Cue(tm, "handshake", f"@890-912 the partners shake hands in a chain ({k + 1}/4): a firm 'pap' of palms + cloth",
+                (lambda r=rr(), a=a: (C.hand_pat(r) * a, 0.0)), -16, p=-0.5 + 0.35 * k, send=0.08, frame=f30(tm)))
 
-    # ------------------------------------------------ shot 8: the orchard
-    add(Cue(fr(T.APPLE_PICK), "apple_pick", "@822 he picks a shiny apple: twig snap + leaf rustle (dark)",
-            lambda: (M.twig_pick(rng(822)), 0.0), -16, p=0.3, send=0.08, frame=T.APPLE_PICK))
-    add(Cue(fr(T.APPLE_BITE), "apple_crunch", "@830 he bites it: a crunchy bite kept below 1.8 kHz (under 'apples')",
-            lambda: (M.apple_crunch(rng(830)), 0.0), -13, p=0.1, send=0.05, frame=T.APPLE_BITE))
-    add(Cue(T.BLERGH, "blergh", "@867-871 his face turns green; the sour 'bleh-uh' lands in the gap after 'rotten,' (29.50-29.82)",
-            lambda: (M.blergh(rng(867)), 0.0), -11, p=0.1, send=0.1, frame=int(round(T.BLERGH * 30))))
+    # ------------------------------------------------ shot 9: the jackscrews
+    add(Cue(fr(T.CLUNK), "jackscrew_clunk", "@974 the worker sets the big iron jackscrew under the beam: a heavy low 'CLUNK' (dark; on 'jackscrews')",
+            lambda: (C.iron_clunk(rng(974)), 0.0), -10, p=0.0, send=0.08, frame=T.CLUNK))
+    add(Cue(T.RING_T, "iron_ring", "...and the iron ringing on a moment, bright, in the gap after 'building,' (33.65-34.00)",
+            lambda: (C.iron_ring(rng(975)), 0.0), -18, p=0.15, send=0.2, frame=f30(T.RING_T)))
 
-    # ------------------------------------------------ shot 9: the nap, the cheerful finish
-    add(Cue(fr(T.SNORE), "snore_in", "@926 Z bubbles: a dark fluttering snore inhale (lp 600 Hz, under 'a nap')",
-            lambda: (M.snore(rng(926), 0.36, 0.0, 550), 0.0), -18, p=-0.1, send=0.05, frame=T.SNORE))
-    add(Cue(T.SNORE_OUT, "snore_out", "...and the snore proper with a whistly exhale in the gap after 'nap.' (31.28-31.58)",
-            lambda: (M.snore(rng(927), 0.11, 0.07, 800), 0.0), -12, p=-0.1, send=0.08, frame=int(round(T.SNORE_OUT * 30))))
+    # ------------------------------------------------ shot 10: the signal
+    add(Cue(T.WHISTLE_T, "whistle", "@1079 the foreman blows his pea whistle: a short 'tweeet' (in the narrow gap after 'signal,' 36.29-36.52; the frame is 35.97)",
+            lambda: (C.pea_whistle(rng(1079), 2900.0, 0.23), 0.0), -9, p=-0.3, send=0.15, frame=T.WHISTLE))
+    ripples = [(fr(T.CLICKS[0]), 12, 0.40, "@1130-1142"), (fr(T.CLICK2), 11, 0.36, "@1168"), (fr(T.CLICK3), 11, 0.36, "@1194")]
+    for k, (tm, kk, sp, lab) in enumerate(ripples):
+        add(Cue(tm, "ratchet_ripple", f"{lab} the ripple of ratchet 'clicks' running down the line ({k + 1}/3: tiny dry transients)",
+                (lambda r=rr(), kk=kk, sp=sp: (C.ratchet(r, kk, sp, 2200), 0.0)), [-12, -11, -10][k], send=0.1, frame=f30(tm)))
+        add(Cue(tm + 0.05, "timber_creak", f"...each with a small timber creak as the beam takes the turn ({k + 1}/3, dark)",
+                (lambda r=rr(): (C.timber_creak(r, 0.55), 0.0)), [-17, -16, -15][k], p=0.0, send=0.08, frame=f30(tm + 0.05)))
 
-    # ------------------------------------------------ shot 10: the dogs
-    add(Cue(fr(T.DOGS[0]), "frantic_feet", "@1013 the runner sprints flat out (quick scuffy steps on dirt, dark) through the cornfield",
-            lambda: (pan(M.frantic_feet(36.05 - fr(T.DOGS[0]), rng(1013)), 0.15), 0.0), -16, send=0.05, frame=T.DOGS[0]))
-    add(Cue(fr(T.DOGS[0]) + 0.1, "barks_far", "@1013-1055 the dogs barking at his heels, far and dark (lp 900 Hz) under the words",
-            lambda: (M.bark_volley(35.62 - fr(T.DOGS[0]) - 0.1, rng(1014), 3, 2.2, 900, 0.8), 0.0), -18, send=0.12, frame=T.DOGS[0]))
-    add(Cue(T.BARKS_GAP[0], "barks", "@1055 the bark volley: 3 scrappy dogs, clear, in the gap after 'dogs.' (35.66-36.07)",
-            lambda: (ssum(*[pan(M.bark(rng(1055 + k), [420, 330, 520, 400][k], [1.35, 1.2, 1.55, 1.35][k]), [-0.4, 0.45, 0.0, -0.3][k]) for k in range(1)],
-                          *[np.pad(pan(M.bark(rng(1060 + k), [330, 520, 420][k], [1.2, 1.55, 1.35][k]), [0.45, 0.0, -0.3][k]), ((0, 0), (ns(T.BARKS_GAP[k + 1] - T.BARKS_GAP[0]), 0))) for k in range(3)]), 0.0),
-            -11, send=0.05, frame=int(round(T.BARKS_GAP[0] * 30))))
+    # ------------------------------------------------ shot 11: the rising board
+    for k, f in enumerate(T.TICKS):
+        add(Cue(fr(f), "board_tick", f"@{f} the board flag clicks up one mark (a dry wooden 'tok', tiny)",
+                (lambda r=rr(): (C.board_tick(r), 0.0)), [-13, -12, -11][k], p=0.4, send=0.1, frame=f))
+    add(Cue(T.CHIME_T, "fanfare_chime", "@1276 the flag tops six marks: a little three-note fanfare chime (G C E + sparkle) in the gap after 'six feet,' (42.88-43.46)",
+            lambda: (C.chime_fanfare(rng(1276)), 0.0), -9, p=0.2, send=0.25, frame=f30(T.CHIME_T)))
 
-    # ------------------------------------------------ shot 11: Hicks' hand-offs
-    add(Cue(fr(T.EGG), "egg_crack", "@1204 an egg cracked into a cup: small dull crack + the white slipping in (dark, under 'egg')",
-            lambda: (M.egg_crack(rng(1204)), 0.0), -18, p=0.3, send=0.06, frame=T.EGG))
-    add(Cue(fr(T.FLASK), "flask_glug", "@1235 the brandy flask: three low hollow glugs (dark, under 'brandy')",
-            lambda: (M.glug(rng(1235), 3), 0.0), -16, p=0.25, send=0.06, frame=T.FLASK))
-    add(Cue(fr(T.BOTTLE2), "bottle_tok", "@1246 the little skull bottle handed over: a dull glass 'tok' in the palm (dark, under 'strychnine')",
-            lambda: (M.glass_tok(rng(1246)), 0.0),
-            -20, p=0.3, send=0.05, frame=T.BOTTLE2))
-    add(Cue(T.BOTTLE2_TINK, "bottle_clink", "...and its bright glass 'tink' (6.6 kHz) in the gap after 'strychnine.' (it would sit on the word's 's')",
-            lambda: (M.glass_tink(rng(1249), 6600.0), 0.0), -14, p=0.3, send=0.2, frame=int(round(T.BOTTLE2_TINK * 30))))
+    # ------------------------------------------------ shot 12: the hotel keeps open
+    add(Cue(fr(T.SIGN), "sign_flip", "@1309 the bellhop flips the little key sign: a wooden 'clack-clack' + a settling jingle",
+            lambda: (C.sign_flip(rng(1309)), 0.0), -13, lpf=3200, p=-0.3, send=0.1, frame=T.SIGN))
+    add(Cue(fr(T.SOUP), "soup_slurp", "@1360 the diner slurps his soup (a soft 'shlrp', dark; under 'Guests kept')",
+            lambda: (C.soup_slurp(rng(1360)), 0.0), -16, p=0.3, send=0.08, frame=T.SOUP))
+    add(Cue(fr(T.SNORE), "snore", "@1385 the sleeper snores in his nightcap: a fluttering dark inhale (under 'sleeping')",
+            lambda: (M.snore(rng(1385), 0.55, 0.0, 480), 0.0), -15, p=-0.2, send=0.06, frame=T.SNORE))
+    add(Cue(46.72, "snore_out", "...and the whistly exhale (dark, quiet, under 'checking in')",
+            lambda: (M.snore(rng(1386), 0.01, 0.3, 700), 0.0), -19, p=-0.2, send=0.06, frame=f30(46.72)))
+    add(Cue(T.DING_T, "desk_bell", "@1409 the clerk rings the desk bell: one bright 'ding' (in the gap after 'in,' 47.21-47.56; the frame is 46.97)",
+            lambda: (C.desk_bell(rng(1409)), 0.0), -10, p=0.3, send=0.2, frame=T.BELL))
 
-    # ------------------------------------------------ shot 12-13: the held breath, the lift, the tape, the medal
-    add(Cue(fr(T.HELD_BREATH) - 0.42, "held_breath", "@1304 the crowd's collective sharp intake of breath (far, dark), then hush",
-            lambda: (M.held_breath(rng(1304), 0.45), 0.0), -20, lpf=1500, send=0.15, frame=T.HELD_BREATH))
-    add(Cue(fr(T.LIFT), "lift", "@1378 two trainers hoist him: a dark cloth swish + shoe scuff (under 'to carry')",
-            lambda: (M.cloth_lift(rng(1378), 0.3), 0.0), -20, lpf=900, p=0.0, send=0.05, frame=T.LIFT))
-    add(Cue(fr(T.TAPE2), "tape_snap", "@1399 carried through the tape: a soft dark 'thwip' (end of 'across')",
-            lambda: (M.tape_snap(rng(1399), 900), 0.0), -19, p=0.1, send=0.1, frame=T.TAPE2))
-    add(Cue(T.MEDAL, "medal_plonk", "the gold medal 'plonks' onto his limp neck (gap after 'it.' 46.86-47.42)",
-            lambda: (M.medal_plonk(rng(1408)), 0.0), -10, p=0.05, send=0.15, frame=int(round(T.MEDAL * 30))))
+    # ------------------------------------------------ shot 13: the window
+    add(Cue(fr(T.TAP), "glass_tap", "@1526 the inspector taps the glass with a knuckle: a small dry 'tok' + a glassy ring (tiny, on 'window')",
+            lambda: (C.glass_tap(rng(1526)), 0.0), -14, p=0.1, send=0.1, frame=T.TAP))
+    add(Cue(T.WINK_T, "wink_ting", "@1550 the inspector winks: a small bright 'ting' on A7 (gap after 'broke.' 51.59-52.18)",
+            lambda: (M.wink_ting(rng(1550)), 0.0), -9, p=0.25, send=0.25, frame=T.WINK))
 
-    # ------------------------------------------------ shot 14: the drop-outs
-    add(Cue(fr(1440), "flop", "@1440 a runner flops into the shade (soft dark thud)", lambda: (M.flop_thud(rng(1440), 1.0), 0.0),
-            -12, p=-0.4, send=0.05, frame=1440))
-    add(Cue(T.SIGHS[0], "sigh", "an exhausted 'haaah' as he lies there (gap after 'runners,' 48.45-48.62)", lambda: (M.sigh(rng(1452), 0.14, 110), 0.0),
-            -18, p=-0.4, send=0.1, frame=int(round(T.SIGHS[0] * 30))))
-    add(Cue(fr(1455), "wagon_creak", "@1455 a runner rides off on a hay wagon: wooden axle creaks + clops far off (dark)",
-            lambda: (M.wagon_creak(1.0, rng(1455)), 0.0), -17, p=0.45, send=0.08, frame=1455))
-    add(Cue(fr(1468), "flop", "@1468 another drops onto a fence rail to sleep (soft dark thud)", lambda: (M.flop_thud(rng(1468), 0.8, 800), 0.0),
-            -15, p=0.25, send=0.05, frame=1468))
-    add(Cue(T.SPLASH, "creek_splash", "a runner sits down in the creek: a small round splash (gap after 'finished.' 49.77-50.41)",
-            lambda: (M.creek_splash(rng(1477)), 0.0), -12, p=-0.3, send=0.12, frame=int(round(T.SPLASH * 30))))
-    add(Cue(T.SIGHS[1], "sigh", "...and a contented sigh from the creek (same gap, dark)", lambda: (M.sigh(rng(1501), 0.26, 100), 0.0),
-            -20, p=-0.3, lpf=1800, send=0.1, frame=int(round(T.SIGHS[1] * 30))))
-
-    # ------------------------------------------------ shot 15: Boston, the honk, the wink
-    add(Cue(fr(T.TAPE3), "tape_snap", "@1604 Lorz breaks the Boston tape: a soft dark 'thwip' (under 'Boston')",
-            lambda: (M.tape_snap(rng(1604), 1300), 0.0), -14, p=0.0, send=0.1, frame=T.TAPE3))
-    add(Cue(T.HONK_T, "honk", "@1650 the old car behind him honks: one rubber-bulb 'parp' (B-flat), right after 'foot.' ends",
-            lambda: (M.bulb_horn(rng(1650), 233.0, 0.2, 1), 0.0), -9, p=0.4, send=0.15, frame=T.HONK))
-    add(Cue(fr(T.WINK), "wink_ting", "@1660 the WINK: a small bright 'ting' on A7 (the 3rd of the final F6/9)",
-            lambda: (M.wink_ting(rng(1660)), 0.0), -9, p=0.25, send=0.25, frame=T.WINK))
-    return C
+    # ------------------------------------------------ shot 14: the railway
+    add(Cue(fr(T.STEAM), "steam_hiss", "@1588 the locomotive lets off steam beside rich Pullman: a soft dark 'pssshh' (below ~1.8 kHz, under 'rich')",
+            lambda: (C.steam_hiss(1.7, rng(1588), 1.0, 1700), 0.0), -15, p=-0.2, send=0.1, frame=T.STEAM))
+    add(Cue(fr(T.COIN), "coin_spin", "@1596 a gold coin spins on the platform: a bright quickening ring + a rattle as it settles (under 'building')",
+            lambda: (C.coin_spin(rng(1596)), 0.0), -17, p=0.35, send=0.2, frame=T.COIN))
+    add(Cue(fr(T.SNORE2), "snore2", "@1676 push in on a sleeper: a soft, slow snore (dark)",
+            lambda: (M.snore(rng(1676), 0.6, 0.12, 450), 0.0), -17, p=0.3, send=0.06, frame=T.SNORE2))
+    add(Cue(T.TWHISTLE_T, "train_whistle", "@1727 a soft far train whistle at the very end (after 'them.' 57.89; the frame is 57.57)",
+            lambda: (C.train_whistle(rng(1727), 1.07), 0.0), -12, p=0.1, send=0.3, frame=T.TRAIN_WHISTLE))
+    return Cs
 
 
 # ================================================================ render
 def render(v_ref, on_event=None):
     """v_ref = integrated loudness of the voice stem (stereo). Returns (stereo stem, cue list with measured levels)."""
-    C = cues()
+    Cs = cues()
     out = np.zeros((2, N))
     send = np.zeros(N)
-    for c in C:
+    for c in Cs:
         x, anchor = c.gen()
         x = np.asarray(x, float)
         x = pan(x, c.p) if x.ndim == 1 else x
@@ -271,4 +248,4 @@ def render(v_ref, on_event=None):
     out = hp(out, 28, 2)
     end = ns(T.DUR - 0.15)
     out[:, end:] *= np.linspace(1, 0, N - end)[None, :] ** 2
-    return out, C
+    return out, Cs

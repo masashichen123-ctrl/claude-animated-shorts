@@ -192,9 +192,21 @@ export const GRADE_DAY2: GradeParams = {
   vig: [0.16, 0.45],
   hueSat: HUE_DAY,
 };
+const HUE_WARM = [1.1, 1.0, 0.95, 0.8, 0.8, 0.85, 0.9, 1.0, 1.1, 1.15, 1.1, 1.1];
+export const GRADE_GOLDEN2: GradeParams = {
+  ky: [0.04, 0.1, 0.255, 0.54, 0.8, 0.93, 1], sat: [0.88, 1.06, 1.08],
+  tintS: [0.022, -0.006], tintM: [-0.008, 0.004], tintH: [-0.016, 0.008], vig: [0.24, 0.4], hueSat: HUE_WARM,
+};
+export const GRADE_INTERIOR: GradeParams = {
+  ky: [0.035, 0.1, 0.26, 0.545, 0.8, 0.93, 1], sat: [0.9, 1.08, 1.06],
+  tintS: [0.012, -0.004], tintM: [-0.008, 0.006], tintH: [-0.016, 0.008], vig: [0.26, 0.4], hueSat: HUE_WARM,
+};
 export type GradeName = LightName;
-export const GRADES: Record<GradeName, GradeParams> = { day: GRADE_DAY2, spring: { ...GRADE_DAY2, sat: [0.92, 1.15, 1.12], vig: [0.18, 0.45] } };
-export const GRADE_STRENGTH: Record<GradeName, number> = { day: 1, spring: 1 };
+export const GRADES: Record<GradeName, GradeParams> = {
+  day: GRADE_DAY2, overcast: { ...GRADE_DAY2, sat: [0.92, 1.16, 1.12], vig: [0.2, 0.45] }, interior: GRADE_INTERIOR,
+  warm: { ...GRADE_INTERIOR, vig: [0.2, 0.42] }, golden: GRADE_GOLDEN2,
+};
+export const GRADE_STRENGTH: Record<GradeName, number> = { day: 1, overcast: 1, interior: 1, warm: 1, golden: 1 };
 /** Apply the preset of a light to the effect (only touches uniforms when the light changes). */
 export function gradeFor(fx: GradeEffect, light0: GradeName) {
   // the caller passes story.ts SHOTS[].light; lights.ts SHOT_LIGHT may refine it (world.update just ran for this layer)
