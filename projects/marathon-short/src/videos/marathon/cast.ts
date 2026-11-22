@@ -529,7 +529,7 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
         armR: f >= EV.BOTTLE1 - 3 && f < EV.GULP1 - 4 ? "raise" : undefined, prop: f >= EV.BOTTLE1 - 3 && f < EV.GULP1 - 4 ? "poison" : null,
       }, "jog");
       if (f >= EV.BOTTLE1 - 1 && f < EV.BOTTLE1 + 14) sparkle(out, [tp[0] + 0.45, 2.15, tp[2] + 0.1], f, EV.BOTTLE1 - 1, 0.5, 1.5);
-      if (gulped) { stars(out, [0.42, 2.12, z + 0.05], 0.8, f); }
+      if (gulped) { stars(out, [0.42, 2.12, z + 0.05], f >= EV.SWIRL1 - 1 ? 1.1 : 0.8, f); if (f >= EV.SWIRL1 - 1 && f < EV.SWIRL1 + 12) sparkle(out, [0.42, 1.85, z + 0.1], f, EV.SWIRL1 - 1, 0.8, 1.4); }
       // the field strung out behind them, the trainers' car, heat over the road
       for (let k = 3; k < 9; k++) { const zz = z - 9 - 4.5 * (k - 3) + 0.4 * Math.sin(k); mover(out, cam, fieldWho(k), [(k % 2 ? 1.2 : -0.6) + 0.3 * Math.sin(k * 3), 0, zz], [0, 0, 1], zz + f * 0.03, t, { expr: k % 2 ? "pant" : "pained" }, "shuffle"); }
       for (const c of carsAt(1, F)) { rider(out, cam, W_(21, driver(0), "drv0"), c, CAR_SEAT.frontL, { expr: "neutral", facing: 1 }, t); rider(out, cam, W_(22, trainer(1), "tr1"), c, CAR_SEAT.frontR, { expr: "stern", facing: 1 }, t); }
@@ -592,7 +592,7 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
       for (let k = 0; k < 8; k++) {
         const zz = 33 + 0.07 * (f - 340) - 2.2 * k + (k > 4 ? -3 : 0), x = [-0.8, 0.8, 0.1, -1.6, 1.6, -0.4, 1.1, -1.2][k], w = fieldWho(k + 3);
         mover(out, cam, dusted ? { ...w, o: dusty(w.o), okey: w.okey + "D" } : w, [x, 0, zz], [0, 0, 1], zz, t,
-          { expr: dusted ? (k % 2 ? "cough" : "sick") : f > 380 ? "shock" : "pant", armL: dusted && k % 2 ? "pinch" : undefined, sweat: SWEAT(F, k) }, "shuffle");
+          { expr: dusted ? (k % 2 ? "cough" : "sick") : k === 0 && f >= EV.COUGH4 - 2 && f < EV.COUGH4 + 10 ? "cough" : f > 380 ? "shock" : "pant", armL: dusted && k % 2 ? "pinch" : undefined, sweat: SWEAT(F, k) }, "shuffle");
         if (dusted && k < 4 && (F + k * 5) % 14 < 7) puff(out, [x + 0.25, 1.6, zz + 0.3], ((F + k * 5) % 14) / FPS, 0.7, 0.3, k, DUST);
       }
       // the wall of dust: big lobes rolling toward the lens, densest at DUSTPEAK4, thinning out after
@@ -751,7 +751,7 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
         const kind = k % 6, dz = z;
         if (kind === 0) lying(out, cam, w, [9 - 1.5 + 0.8 * (k % 2), 0, 30 + (k % 3) - 1], { expr: "sleep" }, t, -1);             // flopped in the shade
         else if (kind === 1) out.places.push(person(cam, w, 1.0 + (k % 2 ? 0.4 : -0.4), 1.6, wagonZ(f) + (k % 4) * 0.5 - 0.5, { side: false, mirror: false }, { mode: "sit", expr: "smile_closed", armR: "wave", wave: q(0.5 + 0.5 * Math.sin(t * 7 + k), 4), blink: 0, facing: 1 }, {})); // on the hay wagon
-        else if (kind === 2) { out.places.push(person(cam, w, 3.6 + (k % 2), -0.1, SPOT.CREEK_Z + (k % 3) * 0.6 - 0.6, { side: false, mirror: false }, { mode: "sit", expr: "relief", blink: 0, facing: -1 }, {})); if (F % 10 < 5) puff(out, [3.6 + (k % 2), 0.2, SPOT.CREEK_Z], (F % 10) / FPS, 0.9, 0.3, k, "#cfe8ff"); } // in the creek
+        else if (kind === 2) { out.places.push(person(cam, w, 3.6 + (k % 2), -0.1, SPOT.CREEK_Z + (k % 3) * 0.6 - 0.6, { side: false, mirror: false }, { mode: "sit", expr: "relief", blink: 0, facing: -1 }, {})); if (F % 10 < 5) puff(out, [3.6 + (k % 2), 0.2, SPOT.CREEK_Z], (F % 10) / FPS, 0.9, 0.3, k, "#cfe8ff"); if (F >= EV.SPLASH14 - 1 && F < EV.SPLASH14 + 14) { poof(out, [3.6 + (k % 2), 0.6, SPOT.CREEK_Z], 2.2, f, EV.SPLASH14 - 1, 14); bigCloud(out, [3.6 + (k % 2), 0.5, SPOT.CREEK_Z], 2.4, F, EV.SPLASH14 - 1, 0.5, k, "#cfe8ff", 1.5); } } // in the creek (splash @1497)
         else if (kind === 3) { lying(out, cam, w, [-(SPOT.ROAD_W / 2 + 1.5), 0.95, 44 + k * 0.6], { expr: "sleep" }, t, 1); zzz(out, [-(SPOT.ROAD_W / 2 + 1.5), 1.6, 44 + k * 0.6], F, dropAt + 6, 0.6); } // asleep on the fence
         else stand(out, cam, w.i, w.o, w.okey, [x * 1.4 + (k % 2 ? 2.9 : -2.9), 0, dz], { mode: "sit", expr: kind === 4 ? "pant" : "dazed", armR: "palm", facing: k % 2 ? -1 : 1 }, t); // sat down on the verge
         if (f - dropAt < 12) poof(out, [x, 1.0, dz], 1.4, f, dropAt, 12);

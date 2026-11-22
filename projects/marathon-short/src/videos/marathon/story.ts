@@ -86,7 +86,8 @@ export const EV = {
   CHASE10: 1013, MILE10: 1028, DOGS10: 1055,
   HICKS11: 1112, ALIVE11: 1140, EGG11: 1204, BRANDY11: 1235, POISON11: 1246,
   FINISH12: 1304,
-  LIFT13: 1378, CARRY13: 1381, TAPE13: 1399, MEDAL13: 1406,
+  LIFT13: 1378, CARRY13: 1381, TAPE13: 1399, MEDAL13: 1409, // medal plonk @1409 = audio/cues.md 46.97 s
+  COUGH4: 379, SWIRL1: 125, SPLASH14: 1497, // audio/cues.md cue frames (picture free in SHOTS.md)
   N32_14: 1427, DROPS14: 1440, N14_14: 1465, DONE14: 1477,
   CAR15: 1543, BOSTON15: 1600, TAPE15: 1604, FEET15: 1637, HONK15: 1650, WINK15: 1660,
 };
@@ -275,7 +276,7 @@ const S9b = (f: number): Shot => P({ pos: [6.6, 1.45, 1.4], look: [-2.0, 1.45, -
 // 10 (988-1077): the cornfield lane: tracking ahead of the runner, three-quarter, dogs at his heels; the spinning sign
 const S10 = (f: number): Shot => {
   const r = chaser10(Math.max(f, 1003)), L = SPOT.LANE_Z;
-  const a = C([-6.2, 1.5, L + 5.4], [-1.6, 1.4, L - 0.2], 48, 0.02);
+  const a = C([-9.2, 1.7, L + 5.6], [-3.0, 1.8, L + 2.2], 48, 0.02);
   const b = C([r[0] - 4.0, 1.3, L + 3.9], [r[0] + 1.1, 0.95, L - 0.3], 46, -0.02);
   return Z(between(a, b, gl(f, 1004, 18)), f, 988, 0.0016, [[EV.CHASE10 - 2, 0.005, 10], [EV.DOGS10 - 2, 0.006, 12]]);
 };
@@ -289,14 +290,14 @@ const S11 = (f: number): Shot => {
 const S12 = (f: number): Shot => Z({ pos: [36, 1.75, 1.2], look: [-3.0, 1.4, -0.6], fov: 7.2, roll: 0.0 }, f, 1273, 0.0024, [[EV.FINISH12 - 2, 0.004, 12]]);
 // 13 (1331-1414): the carry: two trainers lift him, legs still running, through the tape, the medal plonks
 const S13 = (f: number): Shot => {
-  const a = C([5.6, 1.55, 1.7], [-2.6, 1.6, -0.5], 46, 0.02), b = C([4.4, 1.6, 1.4], [-0.6, 1.8, -0.2], 44, -0.02);
+  const a = C([2.0, 1.55, 1.4], [-3.8, 1.5, -0.2], 44, 0.02), b = C([3.7, 1.6, 1.35], [-0.6, 1.8, -0.2], 44, -0.02);
   return P(between(a, b, gl(f, EV.LIFT13 - 6, 26)), f, 1331, 0.0018, 0.007, 12, EV.CARRY13 - 2);
 };
 // 14 (1415-1506): high three-quarter view of the course: the column, the drop-outs, the stadium far ahead
 const S14 = (f: number): Shot => P({ pos: [-6, 11, 20], look: [2.0, 0, 50], fov: 48, roll: 0.0 }, f, 1415, 0.0016, 0.004, 14, EV.DROPS14);
 // 15 (1507-1679): Boston spring street: Lorz breaks the tape, looks down at his feet, the car honks, the wink; creeping push
 const S15 = (f: number): Shot => {
-  const a = C([8.2, 1.6, 2.0], [-3.0, 1.9, -0.6], 48, 0.02), b = C([6.4, 1.6, 1.5], [0.6, 1.65, -0.1], 44, -0.015);
+  const lx = Math.min(lorz15X(f), -2.2), a = C([lx + 8.4, 1.6, 1.7], [lx - 1.5, 1.85, -0.5], 46, 0.02), b = C([6.4, 1.6, 1.5], [0.6, 1.65, -0.1], 44, -0.015);
   const c = C([5.7, 1.62, 1.25], [1.5, 1.6, -0.05], 40, -0.01);
   return P(between(mix(a, b, gl(f, EV.TAPE15 - 8, 30)), c, gl(f, EV.FEET15 - 4, 24)), f, 1507, 0.002, 0.005, 10, EV.WINK15 - 2);
 };
