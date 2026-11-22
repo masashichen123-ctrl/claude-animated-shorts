@@ -124,7 +124,7 @@ const buildTown = (): SetRig => {
   const rig: SetRig = { name: "town", group: new THREE.Group() }; rig.group.name = "town";
   b.build(rig.group, true);
   // the puddle that is the street (shot 3): murky green-brown water over the mud, z -34..-4
-  const pud = new THREE.Mesh(new THREE.PlaneGeometry(9.6, 34).rotateX(-Math.PI / 2), lam("puddleW", () => ({ map: P.waterHD("puddleW", "#9aa3a6") })));
+  const pud = new THREE.Mesh(new THREE.PlaneGeometry(9.6, 34).rotateX(-Math.PI / 2), lam("puddleW", () => ({ map: P.waterHD("puddleW", "#6e5738", "210,175,120") })));
   pud.position.set(0, 0.04, -20); pud.receiveShadow = true; pud.userData.inkId = 1201; rig.group.add(pud);
   const pud2 = new THREE.Mesh(new THREE.PlaneGeometry(5.5, 5).rotateX(-Math.PI / 2), pud.material); pud2.position.set(1.6, 0.05, 22); pud2.userData.inkId = 1201; rig.group.add(pud2);
   return rig;

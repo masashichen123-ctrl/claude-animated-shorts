@@ -236,7 +236,7 @@ const S5b = (f: number): Shot => {
 };
 // 6a (618-659): MS on the fill, the shovellers and the dumping wagon; 6b (660+): pulls back and up: the buildings in the pit
 const S6 = (f: number): Shot => {
-  const a = C([-15.0, 2.9, 4.6], [-5.5, 2.2, 0.0], 46, 0.02), b = C([-24.0, 11.0, 17.0], [4.0, 0.5, -9.0], 48, -0.015);
+  const a = C([-15.0, 2.9, 4.6], [-5.5, 2.2, 0.0], 46, 0.02), b = C([-9.0, 7.5, 5.0], [6.0, 0.8, -9.5], 50, -0.015);
   return P(between(a, b, gl(f, EV.PULL6 - 8, 36)), f, 618, 0.0014, 0.006, 12, EV.BONK6 - 3);
 };
 // 7 (715-816): low hero crane up the front of the hotel to the roof flag

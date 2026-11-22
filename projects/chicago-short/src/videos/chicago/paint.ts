@@ -361,9 +361,9 @@ export const mudHD = (key = "mudHD", base = "#6a4a2c", puddle = 0.5) => ctex(key
   speckle(g, r, S, S, 1400, ["rgba(210,170,120,0.5)", "rgba(40,24,12,0.5)"], 1.2, 4);
 });
 /** murky swamp water / lake (1024 px = 8 m): teal-green with pale ripples and algae */
-export const waterHD = (key = "waterHD", base = "#5c8a7a") => ctex(key, 1024, 512, (g, r) => {
+export const waterHD = (key = "waterHD", base = "#5c8a7a", light = "190,215,225") => ctex(key, 1024, 512, (g, r) => {
   g.fillStyle = base; g.fillRect(0, 0, 1024, 512);
-  octaves(g, r, 1024, 512, 120, "190,215,225", "20,30,34", 0.8);
+  octaves(g, r, 1024, 512, 120, light, "20,16,10", 0.8);
   for (let i = 0; i < 70; i++) { const x = U(r, 0, 1024), y = U(r, 0, 512), l = U(r, 30, 110); g.strokeStyle = "rgba(235,250,245,0.5)"; g.lineWidth = 2.4; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + l / 2, y - 4, x + l, y); g.stroke(); }
   for (let i = 0; i < 14; i++) blotch(g, U(r, 0, 1024), U(r, 0, 512), U(r, 20, 60), 2, "110,130,60", 0.14);
 });
