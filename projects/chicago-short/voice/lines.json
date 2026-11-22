@@ -1,0 +1,128 @@
+[
+ {
+  "line": 0,
+  "text": "In 1861, Chicago lifted a giant brick hotel into the air.",
+  "s": 0.12,
+  "e": 5.111
+ },
+ {
+  "line": 0,
+  "text": "With the guests still inside.",
+  "s": 5.331,
+  "e": 6.65
+ },
+ {
+  "line": 1,
+  "text": "Chicago was built on a swamp.",
+  "s": 7.2,
+  "e": 8.791
+ },
+ {
+  "line": 1,
+  "text": "The streets were rivers of mud, and the sewage had nowhere to go.",
+  "s": 9.011,
+  "e": 12.321
+ },
+ {
+  "line": 2,
+  "text": "Diseases like cholera kept breaking out.",
+  "s": 12.641,
+  "e": 14.608
+ },
+ {
+  "line": 3,
+  "text": "So the city made a wild decision.",
+  "s": 14.928,
+  "e": 16.614
+ },
+ {
+  "line": 3,
+  "text": "Raise the whole city several feet, and build the sewers underneath.",
+  "s": 16.834,
+  "e": 20.172
+ },
+ {
+  "line": 4,
+  "text": "The streets were easy.",
+  "s": 20.672,
+  "e": 21.766
+ },
+ {
+  "line": 4,
+  "text": "But the buildings had to go up too.",
+  "s": 21.986,
+  "e": 23.516
+ },
+ {
+  "line": 5,
+  "text": "The biggest one was the Tremont House, a huge brick hotel.",
+  "s": 23.836,
+  "e": 26.83
+ },
+ {
+  "line": 6,
+  "text": "A young engineer named George Pullman and his partners took the job.",
+  "s": 27.15,
+  "e": 30.877
+ },
+ {
+  "line": 7,
+  "text": "They put about five thousand jackscrews under the building, and hired hundreds of men.",
+  "s": 31.197,
+  "e": 35.41
+ },
+ {
+  "line": 8,
+  "text": "On a signal, every man gave his screws a tiny turn.",
+  "s": 35.73,
+  "e": 38.531
+ },
+ {
+  "line": 8,
+  "text": "Then another.",
+  "s": 38.751,
+  "e": 39.475
+ },
+ {
+  "line": 8,
+  "text": "And another.",
+  "s": 39.695,
+  "e": 40.318
+ },
+ {
+  "line": 9,
+  "text": "Inch by inch, the hotel rose six feet.",
+  "s": 40.768,
+  "e": 42.934
+ },
+ {
+  "line": 10,
+  "text": "And the hotel never closed.",
+  "s": 43.434,
+  "e": 44.876
+ },
+ {
+  "line": 10,
+  "text": "Guests kept eating, sleeping, and checking in, while the building rose beneath them.",
+  "s": 45.096,
+  "e": 49.088
+ },
+ {
+  "line": 11,
+  "text": "Reportedly, not a single window broke.",
+  "s": 49.588,
+  "e": 51.663
+ },
+ {
+  "line": 12,
+  "text": "Pullman later got rich building railway sleeping cars.",
+  "s": 52.163,
+  "e": 54.968
+ },
+ {
+  "line": 12,
+  "text": "So people could sleep, while the world moved beneath them.",
+  "s": 55.188,
+  "e": 57.945
+ }
+]

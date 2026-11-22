@@ -1,0 +1,7 @@
+node_modules
+.rtmp/
+out/
+*.wav
+public/chicago/
+backup/
+__pycache__/
