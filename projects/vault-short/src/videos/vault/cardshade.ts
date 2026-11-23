@@ -24,6 +24,13 @@ const CARD = /* glsl */ `
 vec3 tintK = mix( vec3( 1.0 ), uCharTint, uTintK ) * uEnvTint;
 tintK /= pow( max( dot( tintK, vec3( 0.2126, 0.7152, 0.0722 ) ), 0.2 ), uNorm );             // same face value day and golden
 vec3 outgoingLight = diffuseColor.rgb * tintK;
+for ( int pi = 0; pi < 3; pi ++ ) {                                   // warm practical lights (candles, lamps): a glow on the cards near them
+  vec3 plv = ( viewMatrix * vec4( uPLw[ pi ], 1.0 ) ).xyz;
+  vec3 dv = plv + vViewPosition;
+  float d2 = dot( dv, dv );
+  float fr = 0.5 + 0.5 * clamp( dv.z / sqrt( d2 + 1e-4 ), -0.3, 1.0 );
+  outgoingLight += diffuseColor.rgb * uPLc[ pi ] * fr / ( 1.0 + 1.3 * d2 );
+}
 #if NUM_DIR_LIGHTS > 0
 {
   vec3 sunV = directionalLights[ 0 ].direction;                                          // view space, towards the sun
@@ -70,12 +77,13 @@ vec3 outgoingLight = diffuseColor.rgb * tintK;
 
 const DECL = "#include <common>\nuniform vec3 uCharTint; uniform float uCharShade; uniform float uGrad; uniform float uBodyGrad; uniform vec3 uSideTint;"
   + " uniform float uGradK; uniform float uGradKB; uniform float uTintK; uniform float uNorm; uniform float uGain; uniform float uPx; uniform vec3 uEnvTint;"
-  + " uniform vec3 uRimCol; uniform float uRimK;";
+  + " uniform vec3 uRimCol; uniform float uRimK; uniform vec3 uPLw[ 3 ]; uniform vec3 uPLc[ 3 ];";
 /** card-only constants (not per light): gradient share, tint share, overall gain (calibrated: faces ~.93 V) */
 export const CARD_K = { uGradK: { value: GRAD_K }, uGradKB: { value: GRAD_KB }, uTintK: { value: TINT_K }, uNorm: { value: 0.7 }, uGain: { value: 1.0 }, uPx: { value: 0.5 },
   uEnvTint: { value: new THREE.Vector3(1, 1, 1) },
   /** card rim colour (warm by default: golden / dusk) and a switch that forces the rim on (night's cool moon rim) */
-  uRimCol: { value: new THREE.Vector3(0.95, 0.52, 0.16) }, uRimK: { value: 0 } };
+  uRimCol: { value: new THREE.Vector3(0.95, 0.52, 0.16) }, uRimK: { value: 0 },
+  uPLw: { value: [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()] }, uPLc: { value: [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()] } };
 
 /** environment tint (charshade.md 3.3): env = mean of the scene's fog (horizon), hemisphere sky and ground colours (linear);
  *  tint = luma-normalised mix(1, env / luma(env), ENV_K). Called by cast.ts once per frame per scene. */
@@ -103,7 +111,7 @@ export function cardShade(m: THREE.MeshLambertMaterial, allRim = false) {
       .replace("#include <lights_fragment_begin>", "float sunVis = 1.0;\n" + LFB)
       .replace("vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + totalEmissiveRadiance;", CARD);
   };
-  m.customProgramCacheKey = () => "card12" + (allRim ? "r" : "");
+  m.customProgramCacheKey = () => "card13" + (allRim ? "r" : "");
   return m;
 }
 

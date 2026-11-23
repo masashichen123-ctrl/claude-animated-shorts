@@ -226,6 +226,14 @@ export class World {
       if (h.visible) { h.position.copy(q.p); h.scale.setScalar(q.halo); (h.material as THREE.SpriteMaterial).color.set(q.col).multiplyScalar(0.55); }
     }
     for (const sp of this.spots) sp.visible = false;
+    // the cards are not lit by point lights: hand the three strongest glows (halo first) to cardshade.ts
+    const cl = [...hot].sort((a, b2) => (b2.halo > 0 ? 1 : 0) - (a.halo > 0 ? 1 : 0)).slice(0, 3);
+    for (let i = 0; i < 3; i++) {
+      const q = cl[i];
+      if (!q) { CARD_K.uPLc.value[i].set(0, 0, 0); continue; }
+      const c = new THREE.Color(q.col);
+      CARD_K.uPLw.value[i].copy(q.p); CARD_K.uPLc.value[i].set(c.r, c.g, c.b).multiplyScalar(Math.min(1.6, q.I * 0.11));
+    }
   }
 
   update(id: number, f: number, cam: THREE.PerspectiveCamera, scene: THREE.Scene) {

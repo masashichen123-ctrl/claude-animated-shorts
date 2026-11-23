@@ -131,7 +131,7 @@ export const buildWorkshop = (): ShopRig => {
   b.build(group, true);
   // ---- moving rigs: the kitchen clocks, the flying parts, the mechanism ----
   const clocks = [buildKClock(), buildKClock()], clockRoot: THREE.Group[] = [];
-  clocks.forEach((c, i) => { const g = new THREE.Group(); g.position.set(i ? 0.62 : -0.62, BENCH_Y + 0.68, Z0 + 1.05); g.add(c.group); group.add(g); clockRoot.push(g); });
+  clocks.forEach((c, i) => { const g = new THREE.Group(); g.position.set(i ? 0.42 : -0.42, BENCH_Y + 0.68, Z0 + 1.05); g.add(c.group); group.add(g); clockRoot.push(g); });
   const parts: THREE.Object3D[] = [];
   for (let k = 0; k < 6; k++) {
     const m = k < 4 ? cog(0.1 + 0.03 * (k % 3), 9 + k, 0.05, k % 2 ? goldM() : brassM()) : new THREE.Mesh(cached("flySpring", () => new THREE.TorusKnotGeometry(0.05, 0.012, 60, 6, 3, 5)), steelL());
@@ -139,9 +139,9 @@ export const buildWorkshop = (): ShopRig => {
     m.visible = false; group.add(m); parts.push(m);
   }
   const mech = buildMech(), mechRoot = new THREE.Group(); mechRoot.add(mech.group); group.add(mechRoot);
-  mechRoot.position.set(SPOT.MECH[0] + 0.15, SPOT.MECH[1], SPOT.MECH[2]); mechRoot.scale.setScalar(0.001);
+  mechRoot.position.set(SPOT.MECH[0] - 0.124, SPOT.MECH[1], SPOT.MECH[2]); mechRoot.scale.setScalar(0.001);
   // per-part spill: start at the open clock head, land on the bench, then fly to the mechanism
-  const start = V(-0.62, BENCH_Y + 0.9, Z0 + 1.15), mc = V(SPOT.MECH[0], SPOT.MECH[1], SPOT.MECH[2]);
+  const start = V(-0.42, BENCH_Y + 0.9, Z0 + 1.15), mc = V(SPOT.MECH[0], SPOT.MECH[1], SPOT.MECH[2]);
   const land = (k: number) => V(-1.15 + 0.38 * k + 0.1 * Math.sin(k * 3), BENCH_Y + 0.04, Z0 + 1.0 + 0.26 * ((k * 5) % 3) - 0.1);
   const tmp = V(0, 0, 0);
   return {
@@ -151,7 +151,7 @@ export const buildWorkshop = (): ShopRig => {
       clockRoot.forEach((g, i) => {
         g.visible = showClocks;
         const sc = id === 6 ? 1 - glide((f - EV.FIT6) / 8) : 1;
-        g.scale.setScalar(Math.max(0.001, sc)); g.position.x = lerp(i ? 0.62 : -0.62, 0, id === 6 ? glide((f - EV.FIT6) / 8) : 0);
+        g.scale.setScalar(Math.max(0.001, sc)); g.position.x = lerp(i ? 0.42 : -0.42, 0, id === 6 ? glide((f - EV.FIT6) / 8) : 0);
         const c = clocks[i];
         c.pend.rotation.z = 0.32 * Math.sin(t * 5.2 + i);
         c.hands.forEach((h, j) => { h.rotation.z = -(t * (j ? 0.15 : 1.1) + i); });
@@ -173,7 +173,7 @@ export const buildWorkshop = (): ShopRig => {
       mechRoot.visible = showMech;
       if (showMech) {
         const pop = id === 6 ? clamp01((f - EV.MECH6) / 12) : 1, over = 1 + 0.18 * Math.sin(Math.PI * pop) * (1 - pop);
-        mechRoot.scale.setScalar(0.88 * (id === 6 ? glide(pop) * over : 1) + 0.0001);
+        mechRoot.scale.setScalar(0.62 * (id === 6 ? glide(pop) * over : 1) + 0.0001);
         poseMech(mech, t, id === 7 ? pushAt(f) : 0);
       }
     },

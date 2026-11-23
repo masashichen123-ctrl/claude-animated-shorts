@@ -159,7 +159,7 @@ export const buildBankRow = (): BankRowRig => {
   const PAL = [blockM("#d9cfb4"), brickM("#b8644c"), blockM("#c4ccd6"), brickM("#c0905c"), blockM("#d6c8b8")];
   const BXR = 9.0;
   for (let k = 0; k < 10; k++) {
-    const zs = 10 - k * 9.6 - 8.8, place = M4(BXR, 0, zs, -Math.PI / 2), w = 8.8, mat = PAL[k % 5], trim = blockM("#ece6d4");
+    const zs = -1 - k * 9.6 - 8.8, place = M4(BXR, 0, zs, -Math.PI / 2), w = 8.8, mat = PAL[k % 5], trim = blockM("#ece6d4");
     const arch: Hole = { u0: w / 2 - 1.3, u1: w / 2 + 1.3, v0: 0.22, v1: 4.6, arch: true };
     const wins: Hole[] = [1.2, w - 1.2].map((u) => ({ u0: u - 0.55, u1: u + 0.55, v0: 1.3, v1: 4.2, arch: true }));
     wallPlate(b, mat, 0, w, 0, 8.8, [arch, ...wins], 0.6, place, 2);
@@ -176,9 +176,9 @@ export const buildBankRow = (): BankRowRig => {
     b.add(rod(V(BXR - 0.4, 9.3, zs + w / 2), V(BXR - 0.4, 12.0, zs + w / 2), 0.05, 0.04, 5), col("#e8e2d4"));
     b.add(new THREE.PlaneGeometry(0.02, 0.02), col("#fff"));
   }
-  // the left side: Sargent's shop at SPOT.SHOP (z 0..8): blue-grey siding, a big sign (a gear and a clock), a striped awning,
-  // a wide window with a clock in it, an open door; other shops beyond
-  const S = SPOT.SHOP, sz0 = S[2] - 4, sw = 8, sp = M4(-9.0, 0, sz0 + sw, Math.PI / 2);
+  // the right side again: Sargent's shop at z 0..8 (blue-grey siding, a big sign with a gear and a clock, a striped awning, a
+  // glowing open door); the left side is plain shops
+  const sz0 = 0, sw = 8, sp = M4(BXR, 0, sz0, -Math.PI / 2);
   const sdoor: Hole = { u0: sw / 2 - 0.8, u1: sw / 2 + 0.8, v0: 0.22, v1: 2.8 }, swin: Hole = { u0: 0.7, u1: sw / 2 - 1.2, v0: 0.9, v1: 2.7 }, swin2: Hole = { u0: sw / 2 + 1.2, u1: sw - 0.7, v0: 0.9, v1: 2.7 };
   wallPlate(b, sidingM("#7a98b0"), 0, sw, 0, 6.2, [sdoor, swin, swin2], 0.5, sp, 2);
   for (const h of [swin, swin2]) { surround(b, col(CREAM), h, 0.14, 0.12, sp); pane(b, h, -0.25, GLASS, 1.0, sp); }
@@ -186,18 +186,18 @@ export const buildBankRow = (): BankRowRig => {
   b.add(new THREE.PlaneGeometry(1.6, 2.58).translate(sw / 2, 1.5, -0.2), glow("#e8a850", 1.2), sp);
   plaque(b, "gear", sw / 2 - 1.7, 4.6, 0.03, 1.7, sp); plaque(b, "clock", sw / 2 + 1.7, 4.6, 0.03, 1.7, sp);
   awning(b, sw / 2, 3.45, 0.0, sw - 0.5, 1.4, "#c8282e", sp);
-  rb(b, col(CREAM), -0.12, sw + 0.12, 6.2, 6.6, -0.3, 0.1, 0.03);
-  let z = sz0 - 0.5, i = 0;
+  rb(b, col(CREAM), BXR - 0.3, BXR + 0.1, 6.2, 6.6, sz0 - 0.1, sz0 + sw + 0.1, 0.03);
+  let z = 80, i = 0;
   while (z > -300) { const w = 7 + 2.5 * ((i * 5) % 3); shopFront(b, M4(-9.0, 0, z, Math.PI / 2), w, 6.4 + 1.4 * ((i * 3) % 3), sidingM(SHOP_C[(i + 2) % 6]), i, AWN_C[i % 5], (["coin", "gear", "clock"] as const)[i % 3]); z -= w + 0.4; i++; }
-  z = sz0 + sw + 0.5 + 8; i = 4;
-  while (z < 80) { const w = 7 + 2.5 * ((i * 5) % 3); shopFront(b, M4(-9.0, 0, z, Math.PI / 2), w, 6.4 + 1.4 * ((i * 3) % 3), sidingM(SHOP_C[(i + 4) % 6]), i, AWN_C[(i + 2) % 5], (["coin", "gear", "clock"] as const)[i % 3]); z += w + 0.4; i++; }
+  z = 8.6; i = 4;
+  while (z < 80) { const w = 7 + 2.5 * ((i * 5) % 3); shopFront(b, M4(BXR, 0, z, -Math.PI / 2), w, 6.4 + 1.4 * ((i * 3) % 3), sidingM(SHOP_C[(i + 4) % 6]), i, AWN_C[(i + 2) % 5], (["coin", "gear", "clock"] as const)[i % 3]); z += w + 0.4; i++; }
   for (let k = 0; k < 14; k++) { const zz = 4 - 11 * k; b.add(rod(V(6.8, 0.22, zz), V(6.8, 4.4, zz), 0.07, 0.05, 6), col("#25302a")); b.add(cached("brLampG", () => new THREE.SphereGeometry(0.24, 10, 8)), glow("#fff2c8", 1.2), M4(6.8, 4.7, zz)); b.add(cached("lampCap2", () => new THREE.ConeGeometry(0.32, 0.28, 6)), col("#25302a"), M4(6.8, 5.05, zz)); }
-  barrel(b, -7.6, 0.22, 11.5); crate(b, -8.2, 0.22, 12.4, 0.8, 0.7, 0.8, 0.2);
+  barrel(b, 8.2, 0.22, 10.5); crate(b, 8.0, 0.22, 12.4, 0.8, 0.7, 0.8, 0.2);
   void r;
   b.build(group, true);
   // the big gears turning on Sargent's roof
   const gearA = cog(1.1, 16, 0.18, goldM()), gearB = cog(0.7, 12, 0.18, brassM());
-  gearA.position.set(-9.0 + 0.6, 7.6, sz0 + 2.2); gearB.position.set(-9.0 + 0.6, 7.2, sz0 + 3.8); gearA.rotation.y = Math.PI / 2; gearB.rotation.y = Math.PI / 2;
+  gearA.position.set(BXR - 0.6, 7.7, sz0 + 2.2); gearB.position.set(BXR - 0.6, 7.3, sz0 + 3.9); gearA.rotation.y = Math.PI / 2; gearB.rotation.y = Math.PI / 2;
   group.add(gearA, gearB);
   return { name: "bankrow", group, gearA, gearB, tick: (t) => { gearA.rotation.x = t * 0.7; gearB.rotation.x = -t * 1.1; } };
 };

@@ -5,7 +5,7 @@
 import * as THREE from "three";
 import * as P from "./paint";
 import { Batch, M4, rbox, rb, col, texM, glow, rod, cached, V, SetRig, quad, ground, woodM } from "./build";
-import { SPOT, doorOpen, wheelTurn, boltsBack } from "./story";
+import { SPOT, doorOpen, wheelTurn, boltsBack, lapse } from "./story";
 import { buildDoor, poseDoor, buildChamber, wallWithHole, steelD, goldM, brassM, dialM } from "./door";
 import { blockM, plasterM, panelM, wallPlate, surround, pane, bars, Hole, column, chair, candlestick, crate, barrel, CREAM } from "./setkit";
 
@@ -46,12 +46,17 @@ export const buildBank = (): BankRig => {
   rb(b, col("#2a2a3a"), -5.9, -5.2, 1.02, 1.1, 1.0, 1.7, 0.02); rb(b, col("#f1e4c4"), -5.85, -5.25, 1.1, 1.13, 1.05, 1.65, 0.01);
   chair(b, -3.8, 0, 1.6, Math.PI / 2 * 1.0);
   b.add(cached("deskInk", () => new THREE.CylinderGeometry(0.06, 0.06, 0.1, 10)), col("#1c1a22"), M4(-6.0, 1.07, 2.3));
-  candlestick(b, -5.5, 1.02, 2.2, 0.9);
+  candlestick(b, -5.5, 1.02, 2.2, 0.9); candlestick(b, -0.9, 0, VD[2] + 3.6, 1.4);
   for (const [x, z] of [[-6.4, -6.2], [-5.7, -6.8], [6.3, -6.5]] as [number, number][]) b.add(cached("bagSack", () => new THREE.SphereGeometry(0.4, 12, 10).scale(1, 1.1, 1)), col("#c9a96a"), M4(x, 0.42, z));
   barrel(b, 6.2, 0, -5.4); crate(b, -6.2, 0, -4.4, 0.9, 0.8, 0.9, 0.2);
   // a stone door surround and a heavy lintel plate above the door ring
   rb(b, blockM("#b8b2a0"), -2.9, 2.9, 4.65, 5.1, Z0 - 0.05, Z0 + 0.35, 0.04, 2);
   b.build(group, true);
+  // props of shot 10 only: the chair, the crates and the card table
+  const p10 = new THREE.Group(), pb = new Batch();
+  chair(pb, 0.1, 0, VD[2] + 3.6, 0); candlestick(pb, 0.4, 0, VD[2] + 4.5, 1.4);
+  crate(pb, -1.45, 0, VD[2] + 3.8, 0.8, 0.45, 0.8, 0.1); crate(pb, 0.95, 0, VD[2] + 3.5, 0.8, 0.45, 0.8, 0.2); crate(pb, 2.05, 0, VD[2] + 3.75, 0.8, 0.45, 0.8, -0.1); crate(pb, 1.5, 0, VD[2] + 3.0, 0.6, 0.7, 0.6, 0.0, "#a87a48");
+  pb.build(p10, true); group.add(p10);
   // ---- the door(s) and the chamber behind ----
   const chamber = buildChamber(); chamber.position.set(VD[0], VD[1], Z0); group.add(chamber);
   const old = buildDoor("old"), fresh = buildDoor("clock");
@@ -59,9 +64,9 @@ export const buildBank = (): BankRig => {
   return {
     name: "bank", group, old, fresh, chamber,
     tick: (t, id, f) => {
-      old.root.visible = id <= 4; fresh.root.visible = id >= 9;
+      old.root.visible = id <= 4; fresh.root.visible = id >= 9; p10.visible = id === 10;
       poseDoor(old, doorOpen(id, f), wheelTurn(id, f), boltsBack(id, f), t);
-      poseDoor(fresh, 0, wheelTurn(id, f), 0, t);
+      poseDoor(fresh, 0, wheelTurn(id, f), 0, t + (id === 10 ? 80 * lapse(f) ** 2 : 0));
     },
   };
 };

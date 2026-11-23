@@ -96,8 +96,8 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
     case 1: {
       if (set === "street") {
         // the three robbers tiptoe up the boardwalk to the bank window; the tall one stares at the vault door, sighs, tosses the crowbar
-        const zA = -4.5, BWX = 5.4;
-        const pathZ = (k: number) => (F < EV.TIPTOE1 ? lerp(-11.5, zA, smooth(F / 100)) : zA - (F - EV.TIPTOE1) * 0.075) - k * 1.55;
+        const zA = -5.0, BWX = 5.4;
+        const pathZ = (k: number) => (F < EV.TIPTOE1 ? lerp(-11.5, zA, smooth(F / 100)) : zA - (F - EV.TIPTOE1) * 0.075) - k * 1.15;
         const moving = (F < 98) || F >= EV.TIPTOE1;
         const toss = F >= EV.TOSS1 - 1;
         for (let k = 0; k < 3; k++) {
@@ -197,17 +197,17 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
         // CU: the sweating face, knees knocking, the key jangling; the robbers' candle glows behind him
         const bk: FrontOpts = { expr: F < EV.SCARED4 - 2 ? "nervous" : F < 474 ? "gulp" : "shock", facing: 1, look: 0.3, armR: "offer", prop: "keystring", phase: q((F / 3) % 1, 10), sweat: sweatAt(F, 460) ?? sweatAt(F, 472), headTilt: 3 * Math.sin(F * 2.3), lean: Math.sin(F * 2.1) * 1.4 };
         stand(out, cam, 1, BANKER_NIGHT, "bkN", [0.0, 0, bz], { mode: "stand", ...bk }, t, 1.0);
-        const last = out.places[out.places.length - 1]; last.roll = 0.018 * Math.sin(F * 2.4); last.y += 0.012 * Math.abs(Math.sin(F * 2.4));
+        const kn = [464, 469, 476, 481].some((k) => F >= k && F < k + 3), last = out.places[out.places.length - 1]; last.roll = kn ? 0.035 * (F % 2 ? 1 : -1) : 0.004 * Math.sin(F * 1.1); last.y += kn ? 0.02 : 0;
         const rp: V3[] = [[-0.95, 0, bz + 1.3], [0.9, 0, bz + 1.6], [0.1, 0, bz + 2.4]];
         for (let k = 0; k < 3; k++) A(out, cam, R0(k).i, R0(k).o, R0(k).okey, rp[k], t, k === 1 ? -1 : 1, { expr: "grin", gaze: 0.2, armR: k === 1 ? "lift" : undefined, prop: k === 1 ? "candle" : null }, RS[k]);
         const hp = handAt(cam, rp[1], "lift", 1, RS[1], 0);
         flame(out, [hp[0], hp[1] + 0.2 * RS[1], hp[2]], F, 4, 0.4, 7, 1.3);
       } else {
         // the key in the lock, the wheel spins, the door swings open and gold pours over the rubbing robbers
-        const bx = -1.28, bzz = VD[2] + 1.55;
+        const bx = -0.85, bzz = VD[2] + 1.55;
         A(out, cam, 1, BANKER_NIGHT, "bkN", [bx, 0, bzz], t, 1, { expr: F < EV.OPEN4 - 2 ? "pained" : "shock", armR: "raise", lean: 3, sweat: sweatAt(F, 490), headTilt: 3 * Math.sin(F * 1.2) }, 1.0);
         const rub = (k: number, p: V3, fc: 1 | -1) => A(out, cam, R0(k).i, R0(k).o, R0(k).okey, p, t, fc, { expr: "grin", armR: "rub", armL: "rub", wave: q((F / 10) % 1, 10), lean: 2, gaze: -0.1 }, RS[k]);
-        rub(0, [1.55, 0, VD[2] + 3.0], -1); rub(1, [0.5, 0, VD[2] + 3.9], -1); rub(2, [-1.2, 0, VD[2] + 3.4], 1);
+        rub(0, [0.95, 0, VD[2] + 3.0], -1); rub(1, [-0.2, 0, VD[2] + 3.9], -1); rub(2, [-1.55, 0, VD[2] + 3.4], 1);
         // golden light: the chamber glows; a warm light moves out with the door and a long spill on the floor
         const o = clamp01((F - EV.OPEN4) / 26);
         if (F >= EV.OPEN4 - 2) {
@@ -246,7 +246,7 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
     case 7: {
       // the banker stands by the mechanism's little wheel and tries it: it will not turn; his face pleads, then he shrugs
       const MC = SPOT.MECH, push = pushAt(F);
-      const bx = MC[0] + 1.52, bz = MC[2] + 0.45;
+      const bx = MC[0] + 1.2, bz = MC[2] + 0.5;
       const pleads = F >= EV.FACE7 - 2;
       const fo: FrontOpts = { expr: pleads ? (F < EV.FACE7 + 26 ? "sheepish" : "sheepish") : push > 0.1 ? "pained" : "nervous", facing: -1, look: -0.4,
         armL: pleads && F >= EV.FACE7 + 20 ? "shrug" : "out", armR: pleads && F >= EV.FACE7 + 20 ? "shrug" : undefined, lean: -2 - 8 * push, shrug: pleads && F >= EV.FACE7 + 20 ? q(glide((F - EV.FACE7 - 20) / 8), 10) : undefined,
@@ -312,22 +312,23 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
     case 9: {
       // night: the robbers march the nightshirted banker in; he turns the wheel: nothing; shrug; face-palms; thumbs-up
       const arriveK = glide((F - 1114) / 38), moving = F < 1152;
-      const bx = lerp(-6.0, -0.55, arriveK), rz = VD[2] + 3.6;
-      const rp = (k: number): V3 => [lerp(-8.0 - 1.2 * k, [1.6, 2.6, -2.0][k], arriveK), 0, rz + [0.2, 0.5, 0.9][k]];
+      const bx = lerp(-6.0, -0.4, arriveK), rz = VD[2] + 3.6;
+      const rp = (k: number): V3 => [lerp(-8.0 - 1.2 * k, [1.2, 2.0, -1.4][k], arriveK), 0, rz + [0.2, 0.5, 0.9][k]];
       const turn = F >= EV.TURN9 - 2, shrug = F >= EV.SHRUG9 - 2, palm = F >= EV.PALM9 - 2, thumb = F >= EV.THUMB9 - 2;
       const bf: FrontOpts = moving ? { expr: "nervous", facing: 1, armR: "hang" }
         : { expr: thumb ? "grin" : shrug ? "sheepish" : turn ? "pained" : "nervous", facing: 1, armR: thumb ? "thumb" : shrug ? "point" : turn ? "raise" : "hang", armL: shrug && !thumb ? "shrug" : undefined, shrug: shrug && !thumb ? 0.8 : undefined,
           lean: turn && !shrug ? 4 : 0, sweat: sweatAt(F, 1180) ?? sweatAt(F, 1228), headTilt: shrug ? -5 : 0 };
-      const bp: V3 = [moving ? bx : -1.2 + (shrug ? 0.6 : 0), 0, moving ? rz + 0.4 : VD[2] + 1.55 + (shrug ? 1.4 : 0)];
+      const bp: V3 = [moving ? bx : -0.4 + (shrug ? 0.3 : 0), 0, moving ? rz + 0.4 : VD[2] + 1.55 + (shrug ? 1.2 : 0)];
       if (moving) walkerDraw(out, cam, BN, bp, [1, 0, 0], bx * 1.0 + 20, t, bf, "walk", 1.0); else A(out, cam, 1, BANKER_NIGHT, "bkN", bp, t, 1, bf, 1.0);
       for (let k = 0; k < 3; k++) {
-        const p = moving ? rp(k) : ([1.5 + 0.95 * k - (k === 2 ? 3.9 : 0), 0, rz + [0.2, -0.3, 0.6][k]] as V3), w = R0(k);
+        const p = moving ? rp(k) : ([1.2 + 0.85 * k - (k === 2 ? 3.3 : 0), 0, rz + [0.2, -0.3, 0.6][k]] as V3), w = R0(k);
         const fo: FrontOpts = { expr: palm ? "annoyed" : "grin", facing: moving ? 1 : (k === 2 ? 1 : -1), armR: palm ? "palm" : undefined, armL: undefined, gaze: 0.2, lean: palm ? 4 : 0 };
         if (moving) walkerDraw(out, cam, w, p, [1, 0, 0], p[0] * 1.0 + k * 4, t, { ...fo, facing: 1 }, "walk", RS[k]);
         else A(out, cam, w.i, w.o, w.okey, p, t, fo.facing as 1 | -1, fo, RS[k]);
       }
+      flame(out, [-0.9, 0.0, VD[2] + 3.6], F, 8, 0.4, 5, 1.0);
       // the lead robber's candle
-      const lp = moving ? rp(0) : ([1.5, 0, rz + 0.2] as V3);
+      const lp = moving ? rp(0) : ([1.2, 0, rz + 0.2] as V3);
       if (!moving || true) { const h = handAt(cam, lp, "lift", 1, RS[0], 0); flame(out, [h[0] - 0.35, h[1] + 0.0, h[2]], F, 5, 0.38, 6, 1.1); }
       break;
     }
@@ -358,6 +359,7 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
         A(out, cam, 3, r2, "r1", [lerp(0.8, p2[0], s1), 0.0, cz - 0.1], t, -1, { expr: "stern", armL: F >= EV.TIE10 - 6 ? "pull" : undefined, facing: -1 }, RS[1]);
         A(out, cam, 4, r3, "r2", [lerp(1.9, p3[0], s1), 0.0, cz + 0.15], t, -1, { expr: "stern", armL: F >= EV.TIE10 - 6 ? "pull" : undefined, facing: -1 }, RS[2]);
       }
+      { const cp: V3 = [0.4, 0.0, cz + 0.9]; flame(out, [cp[0], cp[1] + 0.22, cp[2]], F, 7, 0.4, 7, 1.2); }
       // the clock-lock: a tiny smug face on its left dial @SMUG10
       if (F >= EV.SMUG10 - 6) { const bl = F % 40 < 3 ? 1 : 0; fxc(out, "smug" + bl, 300, 300, (p) => fxSmug(p, bl), [-0.44, VD[1] + 1.12, VD[2] + 0.66], 0.56, 0.56, { glow: 1.0 }); }
       break;

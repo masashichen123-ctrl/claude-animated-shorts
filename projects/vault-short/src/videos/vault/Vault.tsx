@@ -140,7 +140,7 @@ const ShotView: React.FC<{ id: number; kit: boolean; alpha: number }> = ({ id, k
  *  under the white). Dissolves elsewhere are untouched. */
 const layersFlash = (f: number) => {
   const L = layersAt(f);
-  const nxt = SHOTS.find((s) => s.a > FLASH_AT);
+  const nxt = SHOTS.find((s) => s.a >= FLASH_AT);
   if (!nxt || f <= FLASH_AT || f >= nxt.a + 3) return L;
   return [{ id: nxt.id, alpha: 1 }];
 };

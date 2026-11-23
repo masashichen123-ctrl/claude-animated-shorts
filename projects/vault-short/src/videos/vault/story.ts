@@ -90,7 +90,7 @@ export const SPOT = {
   // bank hall: the vault wall is the plane z = VD[2]; the door faces +z
   VD: [0, 2.05, -7.5] as V3, DOOR_R: 1.9, HINGE_X: -2.25,
   // workshop
-  BENCH: [0, 1.0, -2.7] as V3, MECH: [0.0, 1.62, -2.35] as V3, TABLE: [0.9, 0.95, 0.5] as V3,
+  BENCH: [0, 1.0, -2.7] as V3, MECH: [0.0, 1.55, -2.35] as V3, TABLE: [0.9, 0.95, 0.5] as V3,
   // prairie: the brick bank on the plane x = PR_BANK_X (faces +x)
   PR_BANK_X: -8.5,
   // bankrow
@@ -167,11 +167,11 @@ export const eyes = (p: V3, s = 1): V3 => [p[0], p[1] + 1.52 * s, p[2]];
 // ---- per-shot cameras ----
 const WZ = SPOT.WIN, VD = SPOT.VD, MD = SPOT.MD, MECH = SPOT.MECH;
 // 1a (0-149): the moonlit street, the bank window with the vault door behind it, the robber with the crowbar; 1b: the bedroom
-const S1a = (f: number): Shot => P({ pos: [1.6, 1.55, 3.2], look: [6.0, 2.05, WZ + 0.2], fov: 40, roll: 0.015 }, f, 0, 0.0016, 0.006, 12, EV.TOSS1 - 3);
+const S1a = (f: number): Shot => P({ pos: [-0.4, 1.5, WZ + 2.6], look: [7.6, 2.0, WZ - 1.3], fov: 42, roll: 0.015 }, f, 0, 0.0016, 0.006, 12, EV.TOSS1 - 3);
 const S1b = (f: number): Shot => P({ pos: [-0.2, 1.5, 3.1], look: [-0.5, 1.25, -1.9], fov: 38, roll: -0.02 }, f, EV.CUT1, 0.0022);
 // 2a (183-274): the plan on the bedpost, the scoop; 2b (275-329): the moonlit march, the camera backs down the street
 const S2a = (f: number): Shot => {
-  const a = C([1.6, 1.55, 2.2], [0.45, 1.5, -2.2], 38, 0.02), b = C([0.4, 1.45, 2.6], [-0.2, 1.3, -1.9], 40, -0.015);
+  const a = C([1.5, 1.6, 4.9], [0.1, 1.3, -1.0], 44, 0.02), b = C([0.3, 1.55, 5.0], [-0.5, 1.2, -1.0], 44, -0.015);
   return P(between(a, b, gl(f, EV.GRAB2 - 14, 26)), f, 183, 0.0018, 0.006, 12, EV.GRAB2 - 3);
 };
 /** where the marchers are at frame f in shot 2b (z; they walk toward -z at 2.5 m/s and stop at the bank door at z = 0) */
@@ -179,23 +179,24 @@ export const marchZ2 = (f: number) => (f >= EV.ARRIVE2 ? 0 : (EV.ARRIVE2 - f) * 
 const S2b = (f: number): Shot => { const z = marchZ2(f); return P({ pos: [1.2, 1.25, z - 5.1], look: [-0.2, 1.35, z + 1.0], fov: 42, roll: 0.02 }, f, EV.CUT2, 0.001); };
 // 3 (330-454): the great door from the floor, up the door; pulls back to the tiny banker with his key
 const S3 = (f: number): Shot => {
-  const a = C([-1.4, 0.45, VD[2] + 3.4], [0.2, 1.5, VD[2]], 50, 0.03), b = C([0.6, 1.3, VD[2] + 3.9], [0.1, 2.0, VD[2]], 42, -0.02), c = C([0.2, 1.15, VD[2] + 8.6], [0.0, 1.55, VD[2] + 1.0], 40, 0.015);
+  const a = C([-1.4, 0.45, VD[2] + 3.4], [0.2, 1.5, VD[2]], 50, 0.03), b = C([0.6, 1.3, VD[2] + 3.9], [0.1, 2.0, VD[2]], 42, -0.02), c = C([0.2, 1.2, VD[2] + 15.4], [0.0, 1.9, VD[2] + 1.0], 36, 0.015);
   return P(between(between(a, b, gl(f, EV.STEEL3 - 6, 40)) as Cam, c, gl(f, EV.PULL3, 34)), f, 330, 0.0012, 0.005, 12, EV.KEY3 - 3);
 };
 // 4a (455-483): the sweating face (CU); 4b (484-521): the wheel and the door, the golden light
 const S4a = (f: number): Shot => P({ pos: [0.5, 1.5, VD[2] + 3.3], look: [0.0, 1.55, VD[2] + 5.4], fov: 36, roll: 0.02 }, f, 455, 0.0035, 0.007, 12, EV.SCARED4 - 3);
-const S4b = (f: number): Shot => P({ pos: [-0.2, 1.65, VD[2] + 6.4], look: [0.1, 1.85, VD[2] + 0.6], fov: 40, roll: -0.02 }, f, EV.WHEEL4, 0.0022);
+const S4b = (f: number): Shot => P({ pos: [-0.2, 1.65, VD[2] + 7.6], look: [0.0, 1.9, VD[2] + 0.6], fov: 42, roll: -0.02 }, f, EV.WHEEL4, 0.0022);
 // 5a (522-594): the workshop, Sargent at the bench; 5b: push to the blueprint table
 const S5 = (f: number): Shot => {
   const a = C([-0.8, 1.55, 5.4], [0.0, 1.5, -1.8], 46, 0.02), b = C([0.55, 1.45, 4.0], [0.55, 1.35, 0.4], 40, -0.015);
   return P(between(a, b, gl(f, EV.IDEA5 - 4, 40)), f, 522, 0.0016, 0.006, 12, EV.IDEA5 - 3);
 };
 // 6 (695-774): the bench: two clocks, the screwdriver, gears, one mechanism
-const S6 = (f: number): Shot => P({ pos: [0.2, 1.75, 1.2], look: [0.0, 1.45, MECH[2]], fov: 40, roll: 0.02 }, f, 695, 0.0018, 0.006, 12, EV.SCREW6 - 3);
+const S6 = (f: number): Shot => P({ pos: [-0.1, 1.85, 2.9], look: [-0.45, 1.5, MECH[2]], fov: 42, roll: 0.02 }, f, 695, 0.0018, 0.006, 12, EV.SCREW6 - 3);
 // 7 (775-934): the mechanism close-up, slow push, a pull for the banker's face
 const S7 = (f: number): Shot => {
-  const a = C([0.3, 1.78, MECH[2] + 2.6], [0.05, 1.6, MECH[2]], 38, 0.02), b = C([0.15, 1.7, MECH[2] + 1.85], [0.1, 1.58, MECH[2]], 36, -0.02), c = C([-0.1, 1.78, MECH[2] + 2.5], [0.1, 1.7, MECH[2]], 38, 0.015);
-  return P(between(between(a, b, gl(f, EV.PUSH7 - 20, 36)) as Cam, c, gl(f, EV.FACE7 - 8, 24)), f, 775, 0.0014, 0.005, 12, EV.PUSH7 - 3);
+  const a = C([0.0, 1.75, MECH[2] + 3.3], [0.0, 1.7, MECH[2]], 38, 0.02), b = C([0.55, 1.5, MECH[2] + 2.5], [0.55, 1.35, MECH[2]], 36, -0.02), c = C([0.1, 1.75, MECH[2] + 3.0], [0.0, 1.65, MECH[2]], 38, 0.015);
+  const d = C([0.15, 1.9, MECH[2] + 2.3], [0.05, 1.72, MECH[2]], 34, 0.02), e = C([0.55, 1.55, MECH[2] + 3.4], [0.65, 1.45, MECH[2]], 40, -0.015);
+  return P(between(between(between(between(a, b, gl(f, EV.BOLT7 - 12, 24)) as Cam, d, gl(f, EV.SET7 - 22, 24)) as Cam, b, gl(f, EV.PUSH7B - 14, 22)) as Cam, e, gl(f, EV.FACE7 - 6, 26)), f, 775, 0.0012, 0.005, 12, EV.PUSH7 - 3);
 };
 // 8: Morrison. 8a (935-1003) the town; 8b (1004-1054) the cart at the bank, Sargent; 8c (1055-1113) the bank front, the ribbon
 const S8a = (f: number): Shot => P(between(C([8.5, 3.4, 22], [-2.0, 2.6, 2], 44, 0.02), C([6.5, 2.6, 17], [-3.5, 2.2, 3.5], 42, -0.015), gl(f, 960, 40)), f, 935, 0.0012);
@@ -203,20 +204,20 @@ const S8b = (f: number): Shot => P({ pos: [-1.0, 1.65, 7.0], look: [-5.0, 1.85, 
 const S8c = (f: number): Shot => P(between(C([1.5, 1.45, 5.8], [-8.5, 2.0, 0.5], 42, 0.02), C([-0.8, 1.45, 3.9], [-8.5, 2.0, 0.3], 40, -0.015), gl(f, EV.RIBBON8 - 14, 30)), f, EV.CUT8, 0.0018, 0.006, 12, EV.RIBBON8 - 3);
 // 9 (1114-1240): the robbers march the banker in, he fails the wheel, the shrug, the face-palms
 const S9 = (f: number): Shot => {
-  const a = C([1.6, 1.5, VD[2] + 6.6], [0.0, 1.8, VD[2] + 1.0], 44, 0.02), b = C([0.7, 1.55, VD[2] + 5.0], [-0.1, 1.75, VD[2] + 0.8], 40, -0.015);
-  const c = C([0.3, 1.5, VD[2] + 5.5], [-0.1, 1.55, VD[2] + 1.4], 40, 0.01);
+  const a = C([1.0, 1.5, VD[2] + 11.0], [0.0, 1.9, VD[2] + 1.0], 46, 0.02), b = C([0.5, 1.5, VD[2] + 9.2], [0.0, 1.85, VD[2] + 1.2], 44, -0.015);
+  const c = C([0.2, 1.5, VD[2] + 9.6], [0.0, 1.8, VD[2] + 1.6], 44, 0.01);
   return P(between(between(a, b, gl(f, EV.TURN9 - 24, 30)) as Cam, c, gl(f, EV.SHRUG9 - 8, 30)), f, 1114, 0.0014, 0.006, 12, EV.TURN9 - 3);
 };
 // 10 (1241-1372): the chair, the waiting; 10b pushes in on the clock-lock
 const S10 = (f: number): Shot => {
-  const a = C([0.4, 1.35, VD[2] + 7.2], [0.0, 1.35, VD[2] + 1.4], 42, 0.02), b = C([0.1, 1.9, VD[2] + 2.7], [0.0, 2.35, VD[2]], 30, -0.02);
+  const a = C([0.5, 1.5, VD[2] + 10.6], [0.5, 1.2, VD[2] + 3.2], 46, 0.02), b = C([0.1, 2.9, VD[2] + 3.2], [-0.2, 3.1, VD[2]], 32, -0.02);
   return P(between(a, b, gl(f, EV.SMUG10 - 10, 40)), f, 1241, 0.0012, 0.006, 12, EV.FIST10 - 3);
 };
 // 11 (1373-1429): the street of banks, the queue; slow push toward Sargent's shop
-const S11 = (f: number): Shot => P({ pos: [-1.2, 1.55, 11.5], look: [-1.6, 2.1, -4.0], fov: 46, roll: 0.02 }, f, 1373, 0.0022, 0.006, 12, EV.QUEUE11 - 3);
+const S11 = (f: number): Shot => P({ pos: [2.0, 1.6, 10.5], look: [8.0, 1.9, 3.0], fov: 48, roll: 0.02 }, f, 1373, 0.0022, 0.006, 12, EV.QUEUE11 - 3);
 // 12a (1430-1503): the modern vault; 12b (1504-1589): the guard clock, creeping push-in
 const S12a = (f: number): Shot => P({ pos: [1.3, 1.6, MD[2] + 7.6], look: [0.0, 2.0, MD[2]], fov: 42, roll: -0.02 }, f, 1430, 0.0018);
-const S12b = (f: number): Shot => P({ pos: [0.5, 1.25, MD[2] + 4.9], look: [0.0, 1.4, MD[2] + 3.0], fov: 34, roll: 0.02 }, f, EV.CUT12, 0.0024, 0.006, 12, EV.WINK12 - 3);
+const S12b = (f: number): Shot => P({ pos: [0.6, 1.2, MD[2] + 8.0], look: [0.0, 1.2, MD[2] + 3.3], fov: 38, roll: 0.02 }, f, EV.CUT12, 0.0024, 0.006, 12, EV.WINK12 - 3);
 
 const CAMS: Record<number, Key[]> = {
   1: [{ f: 0, s: S1a }, { f: EV.CUT1, cut: true, s: S1b }],
@@ -297,9 +298,9 @@ export const DOF: Dof[] = [
   { f: 1114, cInf: 5, focus: () => [0.0, 1.5, VD[2] + 2.0] },
   { f: 1241, cInf: 5, focus: () => [0.0, 1.2, VD[2] + 1.6] },
   { f: EV.SMUG10 - 10, dur: 40, cInf: 12, focus: () => [0.0, 2.35, VD[2] + 0.1] },
-  { f: 1373, cInf: 4, focus: () => [-1.6, 1.4, -1.0] },
+  { f: 1373, cInf: 4, focus: () => [7.6, 1.4, 2.0] },
   { f: 1430, cInf: 3, focus: () => [0.0, 2.0, MD[2]] },
-  { f: EV.CUT12, cInf: 7, focus: () => [0.0, 1.3, MD[2] + 3.0] },
+  { f: EV.CUT12, cInf: 7, focus: () => [0.0, 1.3, MD[2] + 3.3] },
 ];
 export const dofAt = (f: number) => {
   let i = 0; while (i + 1 < DOF.length && f >= DOF[i + 1].f) i++;
